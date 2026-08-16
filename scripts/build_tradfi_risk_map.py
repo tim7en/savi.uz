@@ -24,10 +24,10 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from savi_uz.mapping_check import (  # noqa: E402
+    ASSUMED,
     NO_DATA,
     UNVERIFIED,
-    VERIFIED,
-    WEAK,
+    USABLE_STATUSES,
     MappingCheck,
     check_mapping,
     pick_best_mapping,
@@ -221,24 +221,19 @@ def resolve_search_hints(instruments: list[TradFiInstrument], args: argparse.Nam
     return resolved
 
 
-def download_yahoo_history(tickers: list[str], args: argparse.Namespace) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Adjusted closes and share volumes for every candidate ticker."""
-    close_path = _cache_path(args.cache_dir, "yahoo_closes.csv")
-    volume_path = _cache_path(args.cache_dir, "yahoo_volumes.csv")
-    if not args.refresh and close_path.exists() and volume_path.exists():
-        closes = pd.read_csv(close_path, index_col=0, parse_dates=True)
-        volumes = pd.read_csv(volume_path, index_col=0, parse_dates=True)
-        if set(tickers).issubset(closes.columns):
-            return closes, volumes
-
+def _download_batches(tickers: list[str], start: date, batch_size: int) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Download in batches, tolerating a batch that Yahoo fails outright."""
     import yfinance as yf
 
-    start = (datetime.now() - timedelta(days=args.lookback_days)).date()
     close_frames, volume_frames = [], []
-    for offset in range(0, len(tickers), YAHOO_BATCH_SIZE):
-        batch = tickers[offset : offset + YAHOO_BATCH_SIZE]
+    for offset in range(0, len(tickers), batch_size):
+        batch = tickers[offset : offset + batch_size]
         print(f"[yahoo] downloading {offset + 1}-{offset + len(batch)} of {len(tickers)} tickers ...")
-        frame = yf.download(batch, start=start, interval="1d", auto_adjust=True, progress=False, threads=True)
+        try:
+            frame = yf.download(batch, start=start, interval="1d", auto_adjust=True, progress=False, threads=True)
+        except Exception as exc:
+            print(f"[yahoo] batch failed: {type(exc).__name__}: {exc}")
+            continue
         if frame is None or frame.empty:
             continue
         if not isinstance(frame.columns, pd.MultiIndex):
@@ -246,12 +241,66 @@ def download_yahoo_history(tickers: list[str], args: argparse.Namespace) -> tupl
         close_frames.append(frame["Close"])
         volume_frames.append(frame["Volume"])
 
-    closes = pd.concat(close_frames, axis=1).sort_index() if close_frames else pd.DataFrame()
-    volumes = pd.concat(volume_frames, axis=1).sort_index() if volume_frames else pd.DataFrame()
-    closes = closes.loc[:, ~closes.columns.duplicated()].dropna(axis=1, how="all")
-    volumes = volumes.loc[:, ~volumes.columns.duplicated()]
-    closes.to_csv(close_path)
-    volumes.to_csv(volume_path)
+    closes = pd.concat(close_frames, axis=1, sort=True) if close_frames else pd.DataFrame()
+    volumes = pd.concat(volume_frames, axis=1, sort=True) if volume_frames else pd.DataFrame()
+    return closes.dropna(axis=1, how="all"), volumes
+
+
+def _merge_panels(existing: pd.DataFrame, incoming: pd.DataFrame) -> pd.DataFrame:
+    """Union of columns and dates, preferring freshly downloaded values."""
+    if existing.empty:
+        return incoming.loc[:, ~incoming.columns.duplicated()].sort_index()
+    if incoming.empty:
+        return existing
+    incoming = incoming.loc[:, ~incoming.columns.duplicated()]
+    merged = existing.reindex(existing.index.union(incoming.index))
+    for column in incoming.columns:
+        fresh = incoming[column].reindex(merged.index)
+        merged[column] = fresh.combine_first(merged[column]) if column in merged.columns else fresh
+    return merged.sort_index()
+
+
+def download_yahoo_history(tickers: list[str], args: argparse.Namespace) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Adjusted closes and share volumes for every candidate ticker.
+
+    Yahoo drops whole batches at random, so the cache is merged rather than
+    overwritten: a flaky run can only ever add columns, never silently delete a
+    working series that an earlier run captured.
+    """
+    close_path = _cache_path(args.cache_dir, "yahoo_closes.csv")
+    volume_path = _cache_path(args.cache_dir, "yahoo_volumes.csv")
+    attempted_path = _cache_path(args.cache_dir, "yahoo_attempted.json")
+
+    closes, volumes = pd.DataFrame(), pd.DataFrame()
+    attempted: set[str] = set()
+    if not args.refresh and close_path.exists() and volume_path.exists():
+        closes = pd.read_csv(close_path, index_col=0, parse_dates=True)
+        volumes = pd.read_csv(volume_path, index_col=0, parse_dates=True)
+        attempted = set(_load_json_cache(attempted_path, refresh=False) or [])
+
+    start = (datetime.now() - timedelta(days=args.lookback_days)).date()
+    pending = [ticker for ticker in tickers if ticker not in closes.columns and ticker not in attempted]
+    if pending:
+        new_closes, new_volumes = _download_batches(pending, start, YAHOO_BATCH_SIZE)
+        closes = _merge_panels(closes, new_closes)
+        volumes = _merge_panels(volumes, new_volumes)
+
+        # One narrower retry for anything the batch pass lost to a transient failure.
+        retry = [ticker for ticker in pending if ticker not in closes.columns]
+        if retry:
+            print(f"[yahoo] retrying {len(retry)} tickers that returned nothing ...")
+            retry_closes, retry_volumes = _download_batches(retry, start, max(YAHOO_BATCH_SIZE // 5, 1))
+            closes = _merge_panels(closes, retry_closes)
+            volumes = _merge_panels(volumes, retry_volumes)
+
+        attempted |= set(pending)
+        closes.to_csv(close_path)
+        volumes.to_csv(volume_path)
+        _save_json_cache(attempted_path, sorted(attempted))
+
+    dead = [ticker for ticker in tickers if ticker not in closes.columns]
+    if dead:
+        print(f"[yahoo] {len(dead)} tickers have no data at all (e.g. {', '.join(dead[:6])})")
     return closes, volumes
 
 
@@ -279,7 +328,16 @@ def resolve_mappings(
 
         candidates = candidate_yahoo_tickers(instrument, search_hints.get(instrument.base_asset, ()))
         checks = [
-            check_mapping(symbol, ticker, source, binance_closes.get(symbol, {}), yahoo_series[ticker])
+            check_mapping(
+                symbol,
+                ticker,
+                source,
+                binance_closes.get(symbol, {}),
+                yahoo_series[ticker],
+                # HK/KR perps are USD-quoted on a local-currency underlying, so their
+                # price ratio is an FX rate rather than 1:1.
+                expect_unit_scale=source == "venue-mirror" or instrument.region not in ("HK", "KR"),
+            )
             for ticker, source in candidates
             if ticker in yahoo_series
         ]
@@ -327,9 +385,10 @@ def build_universe_frame(
                 "yahoo_ticker": mapping.yahoo_ticker,
                 "mapping_source": mapping.source,
                 "mapping_status": mapping.status,
-                "mapping_corr": round(mapping.return_corr, 4),
+                "mapping_rank_corr": round(mapping.rank_corr, 4),
                 "mapping_lag": mapping.best_lag,
-                "mapping_scale_cv": round(mapping.scale_cv, 4),
+                "mapping_scale_dispersion": round(mapping.scale_dispersion, 4),
+                "mapping_scale_median": round(mapping.scale_median, 6),
                 "mapping_overlap_days": mapping.overlap_days,
                 "seed_group": seed_lookup.get(instrument.base_asset, ""),
             }
@@ -453,7 +512,7 @@ def pick_basket(metrics: pd.DataFrame, raw_corr: pd.DataFrame, args: argparse.Na
     eligible = metrics[
         (metrics["quote_volume_24h"] >= args.basket_min_volume)
         & (metrics["binance_bars"] >= args.min_binance_bars)
-        & (metrics["mapping_status"].isin([VERIFIED, WEAK]))
+        & (metrics["mapping_status"].isin(USABLE_STATUSES))
     ]
     if eligible.empty:
         return []
@@ -579,6 +638,10 @@ def write_report(
     add("- Liquidity figures are a single 24h snapshot and move a lot; re-check before sizing.")
     add(f"- Mappings marked `{UNVERIFIED}` or `{NO_DATA}` were excluded from the panel; "
         "review them in `universe.csv` before trading those contracts.")
+    assumed = universe.index[universe["mapping_status"] == ASSUMED].tolist()
+    if assumed:
+        add(f"- Listed too recently on Binance to validate, so the mapping is taken on trust "
+            f"(`{ASSUMED}`): {', '.join(universe.loc[assumed, 'base_asset'])}.")
 
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -614,7 +677,7 @@ def main(argv: list[str] | None = None) -> int:
     mappings = resolve_mappings(instruments, binance_closes, yahoo_closes, search_hints)
     universe = build_universe_frame(instruments, liquidity, binance_closes, mappings)
     usable_sources = {"curated", "derived", "search"} | ({"venue-mirror"} if args.include_mirrors else set())
-    universe["usable"] = universe["mapping_status"].isin([VERIFIED, WEAK]) & universe["mapping_source"].isin(
+    universe["usable"] = universe["mapping_status"].isin(USABLE_STATUSES) & universe["mapping_source"].isin(
         usable_sources
     )
 
