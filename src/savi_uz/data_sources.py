@@ -14,11 +14,11 @@ class AlphaVantageClient:
     def __init__(self, api_key: str, base_url: str = "https://www.alphavantage.co/query"):
         if not base_url.startswith("https://"):
             raise ValueError("AlphaVantage base_url must use https://")
-        self.api_key = api_key
+        self._api_key = api_key
         self.base_url = base_url
 
     def _get(self, **params: str) -> dict[str, Any]:
-        query = urlencode({**params, "apikey": self.api_key})
+        query = urlencode({**params, "apikey": self._api_key})
         with urlopen(f"{self.base_url}?{query}") as response:  # nosec B310
             data = json.loads(response.read().decode("utf-8"))
         if "Error Message" in data:
