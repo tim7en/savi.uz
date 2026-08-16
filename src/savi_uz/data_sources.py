@@ -58,7 +58,7 @@ class AlphaVantageClient:
         payload = self._get(function="FEDERAL_FUNDS_RATE", interval=interval)
         return list(payload.get("data", []))
 
-    def fetch_predicted_rates_proxy(self, interval: str = "monthly", maturity: str = "3month") -> list[dict[str, Any]]:
+    def fetch_treasury_yield(self, interval: str = "monthly", maturity: str = "3month") -> list[dict[str, Any]]:
         payload = self._get(
             function="TREASURY_YIELD",
             interval=interval,

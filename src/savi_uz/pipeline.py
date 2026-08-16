@@ -15,6 +15,7 @@ def _returns(series: list[float]) -> list[float]:
         prev = series[idx - 1]
         current = series[idx]
         if prev == 0:
+            returns.append(0.0)
             continue
         returns.append((current - prev) / prev)
     return returns
@@ -28,9 +29,9 @@ def _corr(x: list[float], y: list[float]) -> float:
     y = y[:n]
     x_mean = sum(x) / n
     y_mean = sum(y) / n
-    cov = sum((x[i] - x_mean) * (y[i] - y_mean) for i in range(n))
-    x_var = sum((i - x_mean) ** 2 for i in x)
-    y_var = sum((i - y_mean) ** 2 for i in y)
+    cov = sum((x[idx] - x_mean) * (y[idx] - y_mean) for idx in range(n))
+    x_var = sum((x_value - x_mean) ** 2 for x_value in x)
+    y_var = sum((y_value - y_mean) ** 2 for y_value in y)
     if x_var == 0 or y_var == 0:
         return 0.0
     return cov / sqrt(x_var * y_var)
@@ -73,7 +74,7 @@ class MarketDataPipeline:
         options = {symbol: self.alpha_vantage.fetch_options_chain(symbol=symbol) for symbol in equity_symbols}
         macro = {
             "fed_funds_rate": self.alpha_vantage.fetch_fed_funds_rate(interval="monthly"),
-            "predicted_rates_proxy": self.alpha_vantage.fetch_predicted_rates_proxy(interval="monthly", maturity="3month"),
+            "predicted_rates_proxy": self.alpha_vantage.fetch_treasury_yield(interval="monthly", maturity="3month"),
             "cpi": self.alpha_vantage.fetch_macro_series("CPI", interval="monthly"),
             "unemployment": self.alpha_vantage.fetch_macro_series("UNEMPLOYMENT", interval="monthly"),
         }
