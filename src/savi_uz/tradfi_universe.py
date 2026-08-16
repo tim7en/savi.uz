@@ -199,10 +199,20 @@ class BinanceTradFiClient:
         limit: int = 500,
         max_workers: int = 6,
     ) -> dict[str, DailyBars]:
-        """Fetch daily bars concurrently, staying well inside the futures weight budget."""
+        """Fetch daily bars concurrently, staying well inside the futures weight budget.
+
+        One contract that refuses to serve klines must not sink the whole universe,
+        so failures come back as empty histories.
+        """
+
+        def fetch(symbol: str) -> DailyBars:
+            try:
+                return self.fetch_daily_bars(symbol, limit=limit)
+            except (ValueError, OSError):
+                return DailyBars(binance_symbol=symbol)
+
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
-            results = pool.map(lambda symbol: self.fetch_daily_bars(symbol, limit=limit), symbols)
-            return {bars.binance_symbol: bars for bars in results}
+            return {bars.binance_symbol: bars for bars in pool.map(fetch, symbols)}
 
 
 def _epoch_ms_to_date(value: Any) -> date | None:

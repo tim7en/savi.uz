@@ -476,6 +476,8 @@ def build_metrics_frame(universe: pd.DataFrame, result: dict, yahoo_volumes: pd.
             "ann_volatility": result["volatility"].reindex(symbols),
             "beta_spy": result["betas"][MARKET_FACTOR_TICKER].reindex(symbols),
             "observations": result["observations"].reindex(symbols),
+            # Thinnest pairwise estimate feeding this row, as a data-quality flag.
+            "min_pair_overlap": result["pair_counts"].reindex(index=symbols, columns=symbols).min(axis=1),
             "cluster_raw": raw_assignment.reindex(symbols),
             "cluster_residual": residual_assignment.reindex(symbols),
             "max_abs_corr": max_correlation_to_others(raw_corr).reindex(symbols),

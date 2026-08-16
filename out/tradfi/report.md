@@ -1,6 +1,6 @@
 # Binance trad-FI risk map
 
-Generated 2026-08-16 22:05, daily returns over 730 calendar days.
+Generated 2026-08-16 22:07, daily returns over 730 calendar days.
 
 ## Universe
 
