@@ -2,3 +2,7 @@ __pycache__/
 *.py[cod]
 .cache/
 out/
+data/
+.env
+.env.*
+!.env.example
