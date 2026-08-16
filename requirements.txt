@@ -1,0 +1,5 @@
+# Core package (savi_uz.data_sources, tradfi_universe, mapping_check, seed_groups)
+# is standard library only. These are needed for the risk-map analysis.
+numpy>=1.26
+pandas>=2.2
+yfinance>=0.2.40

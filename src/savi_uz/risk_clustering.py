@@ -12,9 +12,19 @@ TRADING_WEEKS_PER_YEAR = 52
 
 
 def log_returns(prices: pd.DataFrame) -> pd.DataFrame:
-    """Daily log returns, with non-positive prices treated as missing."""
+    """Close-to-close log returns, computed per column on observed prices only.
+
+    A plain ``.diff()`` over a multi-market calendar would blank out every return
+    that follows a day the asset did not trade -- for a US name that silently
+    deletes the whole Monday series once a 7-day instrument puts weekends on the
+    index. Differencing each column's own observations keeps the real
+    Friday-to-Monday return instead.
+    """
     clean = prices.where(prices > 0)
-    return np.log(clean).diff()
+    columns = {
+        column: np.log(clean[column].dropna()).diff().reindex(clean.index) for column in clean.columns
+    }
+    return pd.DataFrame(columns, index=clean.index)
 
 
 def resample_weekly(prices: pd.DataFrame) -> pd.DataFrame:
@@ -250,16 +260,47 @@ def select_diversified_basket(
     scores: pd.Series,
     max_abs_correlation: float = 0.35,
     limit: int | None = None,
+    groups: pd.Series | None = None,
 ) -> list[str]:
-    """Greedy pick of the highest-scoring assets that stay mutually uncorrelated."""
+    """Greedy pick of the highest-scoring assets that stay mutually uncorrelated.
+
+    ``groups`` (typically cluster ids) caps the basket at one name per group. A
+    pairwise correlation limit alone is not enough: two names can each sit under
+    the limit day to day and still be the same factor bet.
+    """
     ranked = scores.reindex(corr.index).dropna().sort_values(ascending=False)
     selected: list[str] = []
+    taken_groups: set = set()
     for candidate in ranked.index:
         if limit is not None and len(selected) >= limit:
             break
-        if all(abs(corr.at[candidate, chosen]) <= max_abs_correlation for chosen in selected):
-            selected.append(candidate)
+        if groups is not None:
+            group = groups.get(candidate)
+            if group in taken_groups:
+                continue
+        if any(abs(corr.at[candidate, chosen]) > max_abs_correlation for chosen in selected):
+            continue
+        selected.append(candidate)
+        if groups is not None:
+            taken_groups.add(groups.get(candidate))
     return selected
+
+
+def cluster_resolution_curve(corr: pd.DataFrame, thresholds: tuple[float, ...]) -> pd.DataFrame:
+    """Cluster count and largest-block size as the merge threshold is relaxed."""
+    tree = average_linkage(corr)
+    rows = []
+    for threshold in thresholds:
+        clusters = tree.cut(distance_for_correlation(threshold))
+        rows.append(
+            {
+                "corr_threshold": threshold,
+                "clusters": len(clusters),
+                "singletons": sum(1 for cluster in clusters if len(cluster) == 1),
+                "largest_cluster": max(len(cluster) for cluster in clusters),
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 def cluster_assignments(clusters: list[list[str]]) -> pd.Series:

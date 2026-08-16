@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-16T21:56:41",
+  "generated_at": "2026-08-16T22:05:41",
   "settings": {
     "freq": "daily",
     "lookback_days": 730,
@@ -7,51 +7,60 @@
     "basket_max_corr": 0.35,
     "basket_min_volume": 1000000.0
   },
-  "effective_bets_raw": 44.646964241568014,
-  "effective_bets_residual": 71.60036478664672,
+  "effective_bets_raw": 47.26375675279061,
+  "effective_bets_residual": 74.50808973194496,
   "clusters_raw": [
     [
-      "AAOIUSDT",
-      "CIENUSDT",
-      "COHRUSDT",
-      "LITEUSDT",
-      "GLWUSDT",
-      "AMDUSDT",
-      "ASMLUSDT",
-      "KLACUSDT",
-      "LRCXUSDT",
       "AMATUSDT",
-      "SMHUSDT",
+      "LRCXUSDT",
+      "KLACUSDT",
       "SOXLUSDT",
+      "SMHUSDT",
+      "ASMLUSDT",
       "EWTUSDT",
       "TSMUSDT",
       "IWMUSDT",
       "QQQUSDT",
       "TQQQUSDT",
       "SPYUSDT",
+      "AMDUSDT",
       "FLEXUSDT",
-      "NVDAUSDT",
-      "ARMUSDT",
-      "EWJUSDT",
-      "DRAMUSDT",
-      "SNXXUSDT",
-      "MUUSDT",
-      "MUUUSDT",
-      "SNDKUSDT",
-      "EWYUSDT",
-      "KORUUSDT",
-      "WDCUSDT",
       "CATUSDT",
       "TERUSDT",
       "MRVLUSDT",
       "MVLLUSDT",
+      "ARMUSDT",
+      "DRAMUSDT",
+      "EWYUSDT",
+      "KORUUSDT",
+      "MUUSDT",
+      "MUUUSDT",
+      "SNDKUSDT",
+      "SNXXUSDT",
+      "WDCUSDT",
+      "EWJUSDT",
       "PENGUSDT"
     ],
     [
-      "BITOUSDT",
-      "MSTRUSDT",
+      "ALABUSDT",
+      "CRDOUSDT",
+      "AVGOUSDT",
+      "GEVUSDT",
+      "VRTUSDT",
+      "NVDAUSDT"
+    ],
+    [
+      "AAOIUSDT",
+      "CIENUSDT",
+      "COHRUSDT",
+      "LITEUSDT",
+      "GLWUSDT"
+    ],
+    [
       "COINUSDT",
       "HOODUSDT",
+      "MSTRUSDT",
+      "BITOUSDT",
       "SOFIUSDT"
     ],
     [
@@ -62,26 +71,16 @@
       "SAMSUNGEMUSDT"
     ],
     [
-      "HK0700USDT",
-      "TENCENTUSDT",
+      "XAGUSDT",
+      "XAUUSDT",
+      "XPDUSDT",
+      "XPTUSDT"
+    ],
+    [
       "KUAISHOUUSDT",
+      "TENCENTUSDT",
+      "HK0700USDT",
       "MEITUANUSDT"
-    ],
-    [
-      "SQQQUSDT",
-      "SOXSUSDT",
-      "UVXYUSDT",
-      "TZAUSDT"
-    ],
-    [
-      "AVGOUSDT",
-      "CRDOUSDT",
-      "ALABUSDT"
-    ],
-    [
-      "CRWVUSDT",
-      "NBISUSDT",
-      "IRENUSDT"
     ],
     [
       "BXUSDT",
@@ -89,9 +88,9 @@
       "JPMUSDT"
     ],
     [
-      "XAGUSDT",
-      "XPDUSDT",
-      "XPTUSDT"
+      "ADBEUSDT",
+      "CRMUSDT",
+      "NOWUSDT"
     ],
     [
       "BZUSDT",
@@ -99,40 +98,48 @@
       "XLEUSDT"
     ],
     [
-      "GEVUSDT",
-      "VRTUSDT"
+      "SQQQUSDT",
+      "TZAUSDT",
+      "UVXYUSDT"
     ],
     [
-      "INTWUSDT",
-      "INTCUSDT"
+      "INTCUSDT",
+      "INTWUSDT"
     ],
     [
       "DELLUSDT",
       "HPEUSDT"
     ],
     [
-      "ASTSUSDT",
-      "RKLBUSDT"
+      "NBISUSDT",
+      "CRWVUSDT"
+    ],
+    [
+      "RKLBUSDT",
+      "ASTSUSDT"
     ],
     [
       "AMZNUSDT",
       "METAUSDT"
     ],
     [
-      "ADBEUSDT",
-      "NOWUSDT"
-    ],
-    [
-      "CRWDUSDT",
-      "PANWUSDT"
+      "PANWUSDT",
+      "CRWDUSDT"
     ],
     [
       "HYUNDAIUSDT",
       "LGELECTRONICSUSDT"
     ],
     [
-      "COSTUSDT",
-      "WMTUSDT"
+      "KSTRUSDT",
+      "GIGADEVUSDT"
+    ],
+    [
+      "WMTUSDT",
+      "COSTUSDT"
+    ],
+    [
+      "QCOMUSDT"
     ],
     [
       "TXNUSDT"
@@ -141,16 +148,25 @@
       "CSCOUSDT"
     ],
     [
+      "BEUSDT"
+    ],
+    [
+      "IRENUSDT"
+    ],
+    [
+      "SHAZUSDT"
+    ],
+    [
       "ORCLUSDT"
     ],
     [
-      "EWZUSDT"
+      "NOKUSDT"
+    ],
+    [
+      "CBRSUSDT"
     ],
     [
       "URNMUSDT"
-    ],
-    [
-      "NOKUSDT"
     ],
     [
       "ONDSUSDT"
@@ -162,22 +178,13 @@
       "SMCIUSDT"
     ],
     [
-      "AAPLUSDT"
+      "FLNCUSDT"
     ],
     [
-      "SONYUSDT"
+      "AXTIUSDT"
     ],
     [
       "GOOGLUSDT"
-    ],
-    [
-      "TSLAUSDT"
-    ],
-    [
-      "DISUSDT"
-    ],
-    [
-      "PYPLUSDT"
     ],
     [
       "APPUSDT"
@@ -186,16 +193,40 @@
       "PLTRUSDT"
     ],
     [
+      "TSLAUSDT"
+    ],
+    [
+      "CRCLUSDT"
+    ],
+    [
       "RDDTUSDT"
     ],
     [
-      "FLNCUSDT"
+      "EWZUSDT"
     ],
     [
-      "AXTIUSDT"
+      "PAYPUSDT"
     ],
     [
       "RIVNUSDT"
+    ],
+    [
+      "AAPLUSDT"
+    ],
+    [
+      "DISUSDT"
+    ],
+    [
+      "VUSDT"
+    ],
+    [
+      "BRKBUSDT"
+    ],
+    [
+      "PYPLUSDT"
+    ],
+    [
+      "SONYUSDT"
     ],
     [
       "MSFTUSDT"
@@ -210,7 +241,7 @@
       "TTWOUSDT"
     ],
     [
-      "NFLXUSDT"
+      "IBMUSDT"
     ],
     [
       "DKNGUSDT"
@@ -219,7 +250,7 @@
       "UBERUSDT"
     ],
     [
-      "IBMUSDT"
+      "NFLXUSDT"
     ],
     [
       "LLYUSDT"
@@ -231,28 +262,22 @@
       "NVOUSDT"
     ],
     [
-      "BMNRUSDT"
+      "COPPERUSDT"
     ],
     [
-      "STRCUSDT"
-    ],
-    [
-      "CRCLUSDT"
+      "BOTUSDT"
     ],
     [
       "FWDIUSDT"
     ],
     [
-      "PAYPUSDT"
+      "STRCUSDT"
+    ],
+    [
+      "BMNRUSDT"
     ],
     [
       "USARUSDT"
-    ],
-    [
-      "COPPERUSDT"
-    ],
-    [
-      "BNCUSDT"
     ],
     [
       "GMEUSDT"
@@ -267,31 +292,16 @@
       "POPMARTUSDT"
     ],
     [
-      "GIGADEVUSDT"
-    ],
-    [
-      "KSTRUSDT"
+      "NAVERUSDT"
     ],
     [
       "ZHONGJIUSDT"
     ],
     [
-      "BOTUSDT"
+      "BNCUSDT"
     ],
     [
-      "CBRSUSDT"
-    ],
-    [
-      "NAVERUSDT"
-    ],
-    [
-      "BRKBUSDT"
-    ],
-    [
-      "VUSDT"
-    ],
-    [
-      "KOUSDT"
+      "EBAYUSDT"
     ],
     [
       "HDUSDT"
@@ -300,16 +310,19 @@
       "TMFUSDT"
     ],
     [
-      "WENUSDT"
+      "KOUSDT"
     ],
     [
-      "EBAYUSDT"
+      "WENUSDT"
     ],
     [
       "TBTUSDT"
     ],
     [
       "NATGASUSDT"
+    ],
+    [
+      "SOXSUSDT"
     ]
   ],
   "clusters_residual": [
@@ -325,10 +338,10 @@
     ],
     [
       "DRAMUSDT",
-      "SNDKUSDT",
-      "SNXXUSDT",
       "MUUSDT",
       "MUUUSDT",
+      "SNDKUSDT",
+      "SNXXUSDT",
       "WDCUSDT"
     ],
     [
@@ -345,9 +358,15 @@
       "MEITUANUSDT"
     ],
     [
+      "XAUUSDT",
+      "XAGUSDT",
+      "XPDUSDT",
+      "XPTUSDT"
+    ],
+    [
       "CIENUSDT",
-      "LITEUSDT",
-      "COHRUSDT"
+      "COHRUSDT",
+      "LITEUSDT"
     ],
     [
       "EWTUSDT",
@@ -355,9 +374,9 @@
       "KORUUSDT"
     ],
     [
-      "XAGUSDT",
-      "XPDUSDT",
-      "XPTUSDT"
+      "ADBEUSDT",
+      "CRMUSDT",
+      "NOWUSDT"
     ],
     [
       "BZUSDT",
@@ -369,44 +388,52 @@
       "MVLLUSDT"
     ],
     [
-      "INTCUSDT",
-      "INTWUSDT"
+      "INTWUSDT",
+      "INTCUSDT"
     ],
     [
-      "HYUNDAIUSDT",
-      "LGELECTRONICSUSDT"
+      "CRDOUSDT",
+      "ALABUSDT"
     ],
     [
-      "ADBEUSDT",
-      "NOWUSDT"
-    ],
-    [
-      "CRWDUSDT",
-      "PANWUSDT"
+      "GEVUSDT",
+      "VRTUSDT"
     ],
     [
       "CRWVUSDT",
       "NBISUSDT"
     ],
     [
-      "BITOUSDT",
-      "MSTRUSDT"
+      "GIGADEVUSDT",
+      "KSTRUSDT"
+    ],
+    [
+      "HYUNDAIUSDT",
+      "LGELECTRONICSUSDT"
     ],
     [
       "COINUSDT",
       "HOODUSDT"
     ],
     [
-      "SOXSUSDT",
-      "SQQQUSDT"
+      "MSTRUSDT",
+      "BITOUSDT"
     ],
     [
-      "WMTUSDT",
-      "COSTUSDT"
+      "ASTSUSDT",
+      "RKLBUSDT"
     ],
     [
-      "JPMUSDT",
-      "GSUSDT"
+      "GSUSDT",
+      "JPMUSDT"
+    ],
+    [
+      "COSTUSDT",
+      "WMTUSDT"
+    ],
+    [
+      "CRWDUSDT",
+      "PANWUSDT"
     ],
     [
       "AAOIUSDT"
@@ -415,19 +442,16 @@
       "GLWUSDT"
     ],
     [
-      "TSMUSDT"
-    ],
-    [
       "FLEXUSDT"
     ],
     [
       "AMDUSDT"
     ],
     [
-      "CATUSDT"
+      "TERUSDT"
     ],
     [
-      "TERUSDT"
+      "CATUSDT"
     ],
     [
       "PENGUSDT"
@@ -436,43 +460,37 @@
       "ARMUSDT"
     ],
     [
-      "GEVUSDT"
-    ],
-    [
-      "VRTUSDT"
-    ],
-    [
-      "ALABUSDT"
-    ],
-    [
-      "CRDOUSDT"
-    ],
-    [
       "AVGOUSDT"
-    ],
-    [
-      "NOKUSDT"
-    ],
-    [
-      "AXTIUSDT"
-    ],
-    [
-      "GIGADEVUSDT"
-    ],
-    [
-      "KSTRUSDT"
-    ],
-    [
-      "ZHONGJIUSDT"
-    ],
-    [
-      "TXNUSDT"
     ],
     [
       "NVDAUSDT"
     ],
     [
+      "TSMUSDT"
+    ],
+    [
+      "BEUSDT"
+    ],
+    [
+      "IRENUSDT"
+    ],
+    [
+      "SHAZUSDT"
+    ],
+    [
+      "AXTIUSDT"
+    ],
+    [
       "SMCIUSDT"
+    ],
+    [
+      "FLNCUSDT"
+    ],
+    [
+      "QCOMUSDT"
+    ],
+    [
+      "TXNUSDT"
     ],
     [
       "CSCOUSDT"
@@ -484,7 +502,22 @@
       "HPEUSDT"
     ],
     [
+      "NOKUSDT"
+    ],
+    [
+      "ZHONGJIUSDT"
+    ],
+    [
       "NAVERUSDT"
+    ],
+    [
+      "BABAUSDT"
+    ],
+    [
+      "HK1810USDT"
+    ],
+    [
+      "POPMARTUSDT"
     ],
     [
       "COPPERUSDT"
@@ -499,30 +532,6 @@
       "SONYUSDT"
     ],
     [
-      "EWZUSDT"
-    ],
-    [
-      "PAYPUSDT"
-    ],
-    [
-      "BABAUSDT"
-    ],
-    [
-      "HK1810USDT"
-    ],
-    [
-      "POPMARTUSDT"
-    ],
-    [
-      "MSFTUSDT"
-    ],
-    [
-      "SNOWUSDT"
-    ],
-    [
-      "ZMUSDT"
-    ],
-    [
       "APPUSDT"
     ],
     [
@@ -532,40 +541,13 @@
       "RDDTUSDT"
     ],
     [
-      "TTWOUSDT"
-    ],
-    [
-      "IBMUSDT"
-    ],
-    [
-      "ASTSUSDT"
-    ],
-    [
-      "RKLBUSDT"
-    ],
-    [
-      "ONDSUSDT"
-    ],
-    [
-      "USARUSDT"
-    ],
-    [
-      "IRENUSDT"
-    ],
-    [
-      "ORCLUSDT"
-    ],
-    [
-      "FLNCUSDT"
-    ],
-    [
-      "HIMSUSDT"
+      "SOFIUSDT"
     ],
     [
       "CRCLUSDT"
     ],
     [
-      "SOFIUSDT"
+      "STRCUSDT"
     ],
     [
       "FWDIUSDT"
@@ -574,7 +556,19 @@
       "BMNRUSDT"
     ],
     [
-      "STRCUSDT"
+      "CBRSUSDT"
+    ],
+    [
+      "ONDSUSDT"
+    ],
+    [
+      "USARUSDT"
+    ],
+    [
+      "BOTUSDT"
+    ],
+    [
+      "HIMSUSDT"
     ],
     [
       "RIVNUSDT"
@@ -586,7 +580,94 @@
       "GMEUSDT"
     ],
     [
+      "EWZUSDT"
+    ],
+    [
+      "PAYPUSDT"
+    ],
+    [
+      "IWMUSDT"
+    ],
+    [
+      "XBIUSDT"
+    ],
+    [
+      "BNCUSDT"
+    ],
+    [
+      "AAPLUSDT"
+    ],
+    [
+      "KOUSDT"
+    ],
+    [
+      "SQQQUSDT"
+    ],
+    [
+      "BRKBUSDT"
+    ],
+    [
+      "VUSDT"
+    ],
+    [
+      "SOXSUSDT"
+    ],
+    [
+      "HDUSDT"
+    ],
+    [
+      "TMFUSDT"
+    ],
+    [
+      "WENUSDT"
+    ],
+    [
+      "LLYUSDT"
+    ],
+    [
+      "NVOUSDT"
+    ],
+    [
+      "ZMUSDT"
+    ],
+    [
+      "SNOWUSDT"
+    ],
+    [
+      "MSFTUSDT"
+    ],
+    [
+      "PYPLUSDT"
+    ],
+    [
+      "TTWOUSDT"
+    ],
+    [
+      "IBMUSDT"
+    ],
+    [
+      "ORCLUSDT"
+    ],
+    [
+      "BXUSDT"
+    ],
+    [
+      "DISUSDT"
+    ],
+    [
+      "DKNGUSDT"
+    ],
+    [
+      "EBAYUSDT"
+    ],
+    [
+      "UBERUSDT"
+    ],
+    [
       "AMZNUSDT"
+    ],
+    [
+      "METAUSDT"
     ],
     [
       "GOOGLUSDT"
@@ -598,91 +679,31 @@
       "TZAUSDT"
     ],
     [
-      "EBAYUSDT"
-    ],
-    [
-      "METAUSDT"
-    ],
-    [
-      "UBERUSDT"
+      "SPYUSDT"
     ],
     [
       "UVXYUSDT"
-    ],
-    [
-      "BOTUSDT"
     ],
     [
       "TBTUSDT"
     ],
     [
       "NATGASUSDT"
-    ],
-    [
-      "CBRSUSDT"
-    ],
-    [
-      "SPYUSDT"
-    ],
-    [
-      "AAPLUSDT"
-    ],
-    [
-      "BRKBUSDT"
-    ],
-    [
-      "VUSDT"
-    ],
-    [
-      "DISUSDT"
-    ],
-    [
-      "KOUSDT"
-    ],
-    [
-      "WENUSDT"
-    ],
-    [
-      "BNCUSDT"
-    ],
-    [
-      "NVOUSDT"
-    ],
-    [
-      "PYPLUSDT"
-    ],
-    [
-      "BXUSDT"
-    ],
-    [
-      "DKNGUSDT"
-    ],
-    [
-      "HDUSDT"
-    ],
-    [
-      "TMFUSDT"
-    ],
-    [
-      "IWMUSDT"
-    ],
-    [
-      "XBIUSDT"
-    ],
-    [
-      "LLYUSDT"
     ]
   ],
   "basket": [
     "SNDKUSDT",
+    "XAUUSDT",
     "SKHYNIXUSDT",
     "CLUSDT",
-    "XAGUSDT",
     "TSLAUSDT",
     "CRCLUSDT",
+    "SOXSUSDT",
+    "AAPLUSDT",
     "MSFTUSDT",
     "BABAUSDT",
     "BMNRUSDT",
+    "DELLUSDT",
     "NATGASUSDT",
     "CBRSUSDT",
     "AXTIUSDT"

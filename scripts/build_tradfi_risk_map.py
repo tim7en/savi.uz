@@ -40,6 +40,7 @@ from savi_uz.risk_clustering import (  # noqa: E402
     average_intra_cluster_correlation,
     average_linkage,
     cluster_assignments,
+    cluster_resolution_curve,
     components_for_variance,
     correlation_matrix,
     distance_for_correlation,
@@ -517,7 +518,12 @@ def pick_basket(metrics: pd.DataFrame, raw_corr: pd.DataFrame, args: argparse.Na
     if eligible.empty:
         return []
     corr = raw_corr.loc[eligible.index, eligible.index]
-    return select_diversified_basket(corr, eligible["liquidity_score"], args.basket_max_corr)
+    return select_diversified_basket(
+        corr,
+        eligible["liquidity_score"],
+        args.basket_max_corr,
+        groups=eligible["cluster_raw"],
+    )
 
 
 # --------------------------------------------------------------------------- output
@@ -569,20 +575,38 @@ def write_report(
     add(f"- Clusters at |rho| >= {args.corr_threshold:.2f}: **{len(result['raw_clusters'])}** raw, "
         f"**{len(result['residual_clusters'])}** residual")
     add("")
+    add("How the picture changes with the merge threshold:")
+    add("")
+    add("| Cut at rho | Clusters | Singletons | Largest block |")
+    add("|-----------:|---------:|-----------:|--------------:|")
+    for _, row in cluster_resolution_curve(raw_corr, (0.30, 0.40, 0.50, 0.60, 0.70)).iterrows():
+        add(f"| {row['corr_threshold']:.2f} | {int(row['clusters'])} | {int(row['singletons'])} | "
+            f"{int(row['largest_cluster'])} |")
+    add("")
 
     add("## Data-driven clusters (raw returns)")
     add("")
+    add("Trade at most one name per block. The most liquid member is the natural "
+        "expression of the block on Binance.")
+    add("")
     add("| # | Size | Avg intra-corr | Most liquid member | Members |")
     add("|---|------|----------------|--------------------|---------|")
+    singletons: list[str] = []
     for index, cluster in enumerate(result["raw_clusters"]):
+        if len(cluster) == 1:
+            singletons.append(cluster[0])
+            continue
         members = metrics.loc[cluster]
         leader = members["quote_volume_24h"].idxmax()
         intra = average_intra_cluster_correlation(raw_corr, cluster)
-        intra_text = "-" if not np.isfinite(intra) else f"{intra:.2f}"
-        names = ", ".join(members["base_asset"])
-        add(f"| {index} | {len(cluster)} | {intra_text} | {metrics.at[leader, 'base_asset']} "
-            f"({_fmt_money(metrics.at[leader, 'quote_volume_24h'])}) | {names} |")
+        add(f"| {index} | {len(cluster)} | {intra:.2f} | {metrics.at[leader, 'base_asset']} "
+            f"({_fmt_money(metrics.at[leader, 'quote_volume_24h'])}) | {', '.join(members['base_asset'])} |")
     add("")
+    if singletons:
+        standalone = metrics.loc[singletons].sort_values("quote_volume_24h", ascending=False)
+        add(f"**{len(singletons)} contracts cluster alone** at this threshold, in descending liquidity: "
+            f"{', '.join(standalone['base_asset'])}.")
+        add("")
 
     add("## Hand-labelled groups vs measured correlation")
     add("")
@@ -597,7 +621,7 @@ def write_report(
 
     add("## Recommended low-correlation basket")
     add("")
-    add(f"Greedy pick by Binance liquidity, capped at pairwise |rho| <= {args.basket_max_corr:.2f}, "
+    add(f"Greedy pick by Binance liquidity: one name per cluster, pairwise |rho| <= {args.basket_max_corr:.2f}, "
         f"24h quote volume >= {_fmt_money(args.basket_min_volume)}, "
         f"at least {args.min_binance_bars} Binance daily bars.")
     add("")
@@ -615,6 +639,11 @@ def write_report(
             add(f"| {symbol} | {row['yahoo_ticker']} | {row['region']} | {row['seed_group'] or '-'} | "
                 f"{_fmt_money(row['quote_volume_24h'])} | {row['ann_volatility']:.1%} | "
                 f"{row['beta_spy']:.2f} | {worst:.2f} |")
+        add("")
+        add("Read the beta column alongside the correlations. A pair can sit under the "
+            "pairwise cap on daily moves and still carry the same directional exposure: "
+            "the basket is decorrelated day to day, not market-neutral. Size against beta, "
+            "or hedge the residual index exposure separately.")
     else:
         add("_No contracts cleared the liquidity and mapping filters._")
     add("")
