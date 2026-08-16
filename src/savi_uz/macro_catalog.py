@@ -130,14 +130,27 @@ LABOR = _specs(
     VintagePolicy.FIRST,
 )
 
+#: FRED serves the ICE BofA indices under a rolling ~3-year licence window, so
+#: they cannot reach back to 2000 no matter what start date is requested. The
+#: Moody's, Chicago Fed and St Louis Fed measures carry the long history instead
+#: and are kept alongside as the pre-2023 credit-stress record.
 CREDIT = _specs(
     "credit",
     (
-        ("BAMLH0A0HYM2", "ICE BofA US high yield OAS"),
-        ("BAMLH0A3HYC", "ICE BofA CCC and lower OAS"),
-        ("BAMLC0A0CM", "ICE BofA US corporate OAS"),
-        ("BAMLC0A4CBBB", "ICE BofA BBB corporate OAS"),
-        ("BAMLH0A0HYM2EY", "ICE BofA US high yield effective yield"),
+        ("BAMLH0A0HYM2", "ICE BofA US high yield OAS (rolling 3y licence window)"),
+        ("BAMLH0A3HYC", "ICE BofA CCC and lower OAS (rolling 3y licence window)"),
+        ("BAMLC0A0CM", "ICE BofA US corporate OAS (rolling 3y licence window)"),
+        ("BAMLC0A4CBBB", "ICE BofA BBB corporate OAS (rolling 3y licence window)"),
+        ("BAMLH0A0HYM2EY", "ICE BofA US high yield effective yield (rolling 3y window)"),
+        ("BAA10Y", "Moody's Baa yield minus 10y Treasury (daily, 1986-)"),
+        ("AAA10Y", "Moody's Aaa yield minus 10y Treasury (daily, 1983-)"),
+        ("DBAA", "Moody's seasoned Baa corporate bond yield (daily)"),
+        ("DAAA", "Moody's seasoned Aaa corporate bond yield (daily)"),
+        ("NFCI", "Chicago Fed national financial conditions index"),
+        ("NFCICREDIT", "Chicago Fed financial conditions, credit subindex"),
+        ("NFCILEVERAGE", "Chicago Fed financial conditions, leverage subindex"),
+        ("STLFSI4", "St Louis Fed financial stress index"),
+        ("VIXCLS", "CBOE VIX close"),
     ),
     VintagePolicy.LATEST,
 )
