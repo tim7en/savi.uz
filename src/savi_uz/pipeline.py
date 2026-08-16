@@ -49,7 +49,7 @@ def build_uncorrelated_clusters(
     for symbol in symbols:
         assigned = False
         for cluster in clusters:
-            if all(abs(_corr(symbol_returns[symbol], symbol_returns[other])) <= correlation_threshold for other in cluster):
+            if all(abs(_corr(symbol_returns[symbol], symbol_returns[other])) < correlation_threshold for other in cluster):
                 cluster.append(symbol)
                 assigned = True
                 break

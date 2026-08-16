@@ -84,6 +84,8 @@ class BinanceClient:
     def fetch_tradfi_reference_symbols(self) -> list[str]:
         with urlopen(f"{self.base_url}/exchangeInfo") as response:  # nosec B310
             payload = json.loads(response.read().decode("utf-8"))
+        if "code" in payload and "msg" in payload:
+            raise ValueError(f"Binance API error {payload['code']}: {payload['msg']}")
         symbols = []
         for item in payload.get("symbols", []):
             if item.get("status") != "TRADING":
