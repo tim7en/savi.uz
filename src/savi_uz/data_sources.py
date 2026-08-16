@@ -12,6 +12,8 @@ class AlphaVantageClient:
     """Thin AlphaVantage API client for market and macro data collection."""
 
     def __init__(self, api_key: str, base_url: str = "https://www.alphavantage.co/query"):
+        if not base_url.startswith("https://"):
+            raise ValueError("AlphaVantage base_url must use https://")
         self.api_key = api_key
         self.base_url = base_url
 
@@ -75,6 +77,8 @@ class BinanceClient:
     """Client for Binance exchange metadata used as trad-FI reference universe."""
 
     def __init__(self, base_url: str = "https://api.binance.com/api/v3"):
+        if not base_url.startswith("https://"):
+            raise ValueError("Binance base_url must use https://")
         self.base_url = base_url
 
     def fetch_tradfi_reference_symbols(self) -> list[str]:

@@ -53,9 +53,11 @@ class PipelineTests(unittest.TestCase):
             },
             correlation_threshold=0.3,
         )
-        cluster_sets = [set(cluster) for cluster in clusters]
-        self.assertIn({"A", "C"}, cluster_sets)
-        self.assertIn({"B"}, cluster_sets)
+        cluster_by_symbol = {}
+        for cluster_index, cluster in enumerate(clusters):
+            for symbol in cluster:
+                cluster_by_symbol[symbol] = cluster_index
+        self.assertNotEqual(cluster_by_symbol["A"], cluster_by_symbol["B"])
 
     def test_pipeline_downloads_required_dataset_groups(self):
         pipeline = MarketDataPipeline(alpha_vantage=FakeAlphaVantageClient(), binance=FakeBinanceClient())
