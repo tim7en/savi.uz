@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from typing import Any
+from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import urlopen
 
@@ -82,8 +83,11 @@ class BinanceClient:
         self.base_url = base_url
 
     def fetch_tradfi_reference_symbols(self) -> list[str]:
-        with urlopen(f"{self.base_url}/exchangeInfo") as response:  # nosec B310
-            payload = json.loads(response.read().decode("utf-8"))
+        try:
+            with urlopen(f"{self.base_url}/exchangeInfo") as response:  # nosec B310
+                payload = json.loads(response.read().decode("utf-8"))
+        except HTTPError as exc:
+            raise ValueError(f"Binance API request failed: HTTP {exc.code}") from exc
         if "code" in payload and "msg" in payload:
             raise ValueError(f"Binance API error {payload['code']}: {payload['msg']}")
         symbols = []

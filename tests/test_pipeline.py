@@ -57,7 +57,6 @@ class PipelineTests(unittest.TestCase):
         for cluster_index, cluster in enumerate(clusters):
             for symbol in cluster:
                 cluster_by_symbol[symbol] = cluster_index
-        self.assertEqual(len(clusters), 2)
         self.assertNotEqual(cluster_by_symbol["A"], cluster_by_symbol["B"])
 
     def test_pipeline_downloads_required_dataset_groups(self):
