@@ -26,7 +26,7 @@ import ssl
 import threading
 import time
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -358,44 +358,75 @@ HOURLY_BARS_PER_YEAR = 1_566
 DEFAULT_YEARS_PER_REQUEST = 3
 
 
+#: Bars a full year produces, per frequency. Used to size a request so it never
+#: reaches the silent row cap.
+BARS_PER_YEAR = {
+    "1hour": HOURLY_BARS_PER_YEAR,
+    "4hour": HOURLY_BARS_PER_YEAR // 4,
+    "30min": HOURLY_BARS_PER_YEAR * 2,
+    "15min": HOURLY_BARS_PER_YEAR * 4,
+    "5min": HOURLY_BARS_PER_YEAR * 12,
+    "1min": HOURLY_BARS_PER_YEAR * 60,
+    "daily": 252,
+}
+
+
+def max_safe_months(frequency: str = "1hour", safety: float = 0.5) -> int:
+    """Largest chunk in months that stays under ``safety`` of the row cap.
+
+    Sub-hourly frequencies overflow a single calendar year -- 5-minute bars run
+    to roughly 19,700 a year against a 10,000 cap -- so the chunker has to work
+    in months, not years, or every request silently loses its early months.
+    """
+    per_year = BARS_PER_YEAR.get(frequency, HOURLY_BARS_PER_YEAR)
+    months = int(MAX_ROWS_PER_REQUEST * safety / (per_year / 12.0))
+    return max(min(months, 240), 1)
+
+
 def max_safe_years(frequency: str = "1hour", safety: float = 0.5) -> int:
-    """Largest chunk that stays under ``safety`` of the row cap for a frequency."""
-    if frequency == "daily":
-        return 20
-    per_year = {
-        "1hour": HOURLY_BARS_PER_YEAR,
-        "4hour": HOURLY_BARS_PER_YEAR // 4,
-        "30min": HOURLY_BARS_PER_YEAR * 2,
-        "15min": HOURLY_BARS_PER_YEAR * 4,
-        "5min": HOURLY_BARS_PER_YEAR * 12,
-        "1min": HOURLY_BARS_PER_YEAR * 60,
-    }.get(frequency, HOURLY_BARS_PER_YEAR)
-    return max(int(MAX_ROWS_PER_REQUEST * safety / per_year), 1)
+    """Largest whole-year chunk that stays under ``safety`` of the row cap."""
+    return max(max_safe_months(frequency, safety) // 12, 0)
+
+
+def month_windows(start: date, end: date, months_per_chunk: int) -> list[tuple[date, date]]:
+    """Split a range into chunks of whole calendar months.
+
+    Chunks are anchored to the calendar (January, then every ``months_per_chunk``
+    after it) rather than to ``start``, so two runs over different ranges ask for
+    the same windows and share the cache.
+    """
+    if start > end:
+        return []
+    if months_per_chunk < 1:
+        raise ValueError("months_per_chunk must be at least 1")
+
+    windows = []
+    index = start.year * 12 + (start.month - 1)
+    last_index = end.year * 12 + (end.month - 1)
+    index -= index % months_per_chunk
+    while index <= last_index:
+        chunk_end = index + months_per_chunk - 1
+        first = date(index // 12, index % 12 + 1, 1)
+        end_year, end_month = chunk_end // 12, chunk_end % 12 + 1
+        if end_month == 12:
+            last_day = date(end_year, 12, 31)
+        else:
+            last_day = date(end_year, end_month + 1, 1) - timedelta(days=1)
+        first = max(first, start)
+        last_day = min(last_day, end)
+        if first <= last_day:
+            windows.append((first, last_day))
+        index = chunk_end + 1
+    return windows
 
 
 def year_windows(
     start: date, end: date, years_per_chunk: int = 1
 ) -> list[tuple[date, date]]:
-    """Split a range into chunks of whole calendar years.
-
-    Chunks are aligned to calendar years so a resumed run with the same setting
-    asks for exactly the windows it asked for before and hits the cache.
-    """
-    if start > end:
-        return []
+    """Split a range into chunks of whole calendar years."""
     if years_per_chunk < 1:
         raise ValueError("years_per_chunk must be at least 1")
-
-    windows = []
-    year = start.year
-    while year <= end.year:
-        chunk_end_year = min(year + years_per_chunk - 1, end.year)
-        first = max(start, date(year, 1, 1))
-        last = min(end, date(chunk_end_year, 12, 31))
-        if first <= last:
-            windows.append((first, last))
-        year = chunk_end_year + 1
-    return windows
+    return month_windows(start, end, years_per_chunk * 12)
 
 
 def utc_now_iso() -> str:

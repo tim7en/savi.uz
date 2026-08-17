@@ -40,18 +40,21 @@ CREATE TABLE IF NOT EXISTS symbols (
     fetched_at    TEXT
 );
 
--- One row per (ticker, frequency, year) that has been fetched to completion.
--- This is what makes a resumed run cheap.
+-- One row per (ticker, frequency, year, month) that has been fetched. Month
+-- granularity is required, not cosmetic: sub-hourly frequencies need chunks
+-- shorter than a year, and a year-granular key would let the first chunk of
+-- 2017 mark the whole year complete and a resumed run skip the rest of it.
 CREATE TABLE IF NOT EXISTS windows (
     ticker      TEXT NOT NULL,
     frequency   TEXT NOT NULL,
     year        INTEGER NOT NULL,
+    month       INTEGER NOT NULL DEFAULT 0,
     first_ts    TEXT,
     last_ts     TEXT,
     rows        INTEGER,
     truncated   INTEGER DEFAULT 0,
     fetched_at  TEXT,
-    PRIMARY KEY (ticker, frequency, year)
+    PRIMARY KEY (ticker, frequency, year, month)
 );
 
 -- Intraday bars are raw. These factors are what lets a backtest rebuild an
@@ -141,42 +144,49 @@ class IntradayStore:
         )
 
     def mark_window(
-        self, ticker: str, frequency: str, first_year: int, bars: list[Any],
-        truncated: bool, fetched_at: str, last_year: int | None = None,
+        self, ticker: str, frequency: str, first: date, last: date, bars: list[Any],
+        truncated: bool, fetched_at: str,
     ) -> None:
-        """Record a fetched chunk as one row per calendar year it covered.
+        """Record a fetched chunk as one row per calendar month it covered.
 
-        Resume state is kept per year even when a request spans several, so
-        changing ``--years-per-request`` between runs does not invalidate work
-        already done: the downloader re-checks years, not request windows.
+        Resume state is per month even when a request spans many, so changing
+        the chunk size between runs does not invalidate work already done: the
+        downloader re-checks months, not request windows.
         """
-        span_end = first_year if last_year is None else last_year
-        by_year: dict[int, list[str]] = {year: [] for year in range(first_year, span_end + 1)}
+        months: dict[tuple[int, int], list[str]] = {}
+        cursor = date(first.year, first.month, 1)
+        while cursor <= last:
+            months[(cursor.year, cursor.month)] = []
+            cursor = date(cursor.year + (cursor.month // 12), cursor.month % 12 + 1, 1)
+
         for bar in bars:
             stamp = str(bar.timestamp)
-            # A timestamp that does not start with a year is attributed to the
-            # window's first year rather than crashing the run: losing the split
-            # is recoverable, losing the whole download is not.
-            head = stamp[:4]
-            year = int(head) if head.isdigit() else first_year
-            by_year.setdefault(year, []).append(stamp)
+            # A timestamp that does not parse is attributed to the window's
+            # first month rather than crashing the run: losing the split is
+            # recoverable, losing the whole download is not.
+            try:
+                key = (int(stamp[:4]), int(stamp[5:7]))
+            except ValueError:
+                key = (first.year, first.month)
+            months.setdefault(key, []).append(stamp)
 
         self._write(
             "windows",
-            ("ticker", "frequency", "year", "first_ts", "last_ts", "rows", "truncated", "fetched_at"),
+            ("ticker", "frequency", "year", "month", "first_ts", "last_ts", "rows",
+             "truncated", "fetched_at"),
             [
-                (ticker, frequency, year, min(stamps) if stamps else None,
+                (ticker, frequency, year, month, min(stamps) if stamps else None,
                  max(stamps) if stamps else None, len(stamps), int(truncated), fetched_at)
-                for year, stamps in sorted(by_year.items())
+                for (year, month), stamps in sorted(months.items())
             ],
         )
 
-    def completed_windows(self, frequency: str) -> set[tuple[str, int]]:
-        """(ticker, year) pairs already fetched, so a rerun can skip them."""
+    def completed_windows(self, frequency: str) -> set[tuple[str, int, int]]:
+        """(ticker, year, month) triples already fetched, so a rerun can skip them."""
         return {
-            (row[0], row[1])
+            (row[0], row[1], row[2])
             for row in self.connection.execute(
-                "SELECT ticker, year FROM windows WHERE frequency = ?", (frequency,)
+                "SELECT ticker, year, month FROM windows WHERE frequency = ?", (frequency,)
             )
         }
 
@@ -187,11 +197,11 @@ class IntradayStore:
             for row in self.connection.execute("SELECT ticker, exchange, has_intraday FROM symbols")
         }
 
-    def truncated_windows(self) -> list[tuple[str, str, int, int]]:
+    def truncated_windows(self) -> list[tuple[str, str, str, int]]:
         """Windows that came back at the row cap and so lost their early part."""
         return self.connection.execute(
-            "SELECT ticker, frequency, year, rows FROM windows WHERE truncated = 1 "
-            "ORDER BY ticker, year"
+            "SELECT ticker, frequency, printf('%d-%02d', year, month), rows FROM windows "
+            "WHERE truncated = 1 ORDER BY ticker, year, month"
         ).fetchall()
 
     def write_adjustments(self, rows: Iterable[Any]) -> int:

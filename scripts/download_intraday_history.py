@@ -54,9 +54,9 @@ from savi_uz.tiingo_sources import (  # noqa: E402
     TiingoClient,
     TiingoError,
     TiingoRateLimitError,
-    max_safe_years,
+    max_safe_months,
+    month_windows,
     utc_now_iso,
-    year_windows,
 )
 
 DEFAULT_START_YEAR = 2017
@@ -85,9 +85,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=f"stop after this many live requests in one run (default {DEFAULT_MAX_REQUESTS})",
     )
     parser.add_argument(
-        "--years-per-request", type=int, default=DEFAULT_YEARS_PER_REQUEST,
-        help=f"calendar years per request (default {DEFAULT_YEARS_PER_REQUEST}); larger means "
-             "fewer requests but risks the 10,000-row cap",
+        "--months-per-request", type=int, default=None,
+        help="calendar months per request; defaults to the largest that stays under "
+             "half the 10,000-row cap for the chosen frequency",
     )
     parser.add_argument("--refresh", action="store_true", help="ignore the cache and refetch")
     parser.add_argument("--plan", action="store_true",
@@ -95,6 +95,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--no-daily-fallback", action="store_true",
                         help="skip OTC tickers instead of fetching daily bars for them")
     return parser.parse_args(argv)
+
+
+def months_in(first: date, last: date, symbol: str) -> list[tuple[str, int, int]]:
+    """Resume keys for every calendar month a request window touches."""
+    keys = []
+    cursor = date(first.year, first.month, 1)
+    while cursor <= last:
+        keys.append((symbol, cursor.year, cursor.month))
+        cursor = date(cursor.year + (cursor.month // 12), cursor.month % 12 + 1, 1)
+    return keys
 
 
 def load_leader_symbols(path: Path) -> dict[str, list[str]]:
@@ -115,26 +125,24 @@ def print_plan(
     done: set[tuple[str, int]],
 ) -> None:
     years = list(range(args.start_year, args.end_year + 1))
-    chunks = year_windows(
-        date(args.start_year, 1, 1), date(args.end_year, 12, 31), args.years_per_request
-    )
+    months = args.months_per_request or max_safe_months(args.frequency)
+    chunks = month_windows(date(args.start_year, 1, 1), date(args.end_year, 12, 31), months)
     outstanding = 0
     metadata_needed = 0
     for symbol in symbols:
         if symbol not in known:
             metadata_needed += 1
         for first, last in chunks:
-            span = range(first.year, last.year + 1)
-            if any((symbol, year) not in done for year in span):
+            if any(key not in done for key in months_in(first, last, symbol)):
                 outstanding += 1
 
     total = metadata_needed + outstanding
     hours = total / max(args.requests_per_hour, 1)
     print(f"symbols                : {len(symbols)}")
     print(f"years                  : {years[0]}-{years[-1]} ({len(years)})")
-    safe = max_safe_years(args.frequency)
-    print(f"years per request      : {args.years_per_request} "
-          f"({len(chunks)} chunks; up to {safe} is safe for {args.frequency})")
+    print(f"months per request     : {months} "
+          f"({len(chunks)} chunks; {max_safe_months(args.frequency)} is the safe max "
+          f"for {args.frequency})")
     print(f"metadata requests due  : {metadata_needed}")
     print(f"bar-window requests due: {outstanding} (upper bound; pre-listing years are skipped)")
     print(f"total requests due     : {total}")
@@ -173,9 +181,9 @@ def download_symbol(
         return 0, 0
 
     total_bars = total_windows = 0
-    for first, last in year_windows(start, end, args.years_per_request):
-        span = range(first.year, last.year + 1)
-        if all((symbol, year) in done for year in span) and not args.refresh:
+    months = args.months_per_request or max_safe_months(args.frequency)
+    for first, last in month_windows(start, end, months):
+        if all(key in done for key in months_in(first, last, symbol)) and not args.refresh:
             continue
         if client.budget_exhausted():
             raise TiingoError("request budget reached")
@@ -186,14 +194,12 @@ def download_symbol(
             bars, truncated = client.fetch_intraday(symbol, first, last, frequency)
 
         written = store.write_bars(bars)
-        store.mark_window(
-            symbol, frequency, first.year, bars, truncated, utc_now_iso(), last_year=last.year
-        )
+        store.mark_window(symbol, frequency, first, last, bars, truncated, utc_now_iso())
         total_bars += written
         total_windows += 1
         if truncated:
             print(f"[{symbol:<6}] {first.year}-{last.year} hit the {len(bars)}-row cap; "
-                  "narrow --years-per-request and rerun with --refresh")
+                  "narrow --months-per-request and rerun with --refresh")
             store.log(run_id, utc_now_iso(), "TIINGO", f"{symbol}/{first.year}-{last.year}",
                       written, "truncated", "response hit the row cap")
 
