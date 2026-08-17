@@ -58,13 +58,14 @@ def load_bars(db: Path, ticker: str, frequency: str) -> list[Bar]:
 def table(rows: list[GapBucket], header: str) -> list[str]:
     out = [
         "", f"### {header}", "",
-        "| Bucket | n | Mean gap | Median retained | Filled | Extended | Reversed | Value overlap | Opening volume |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| Bucket | n | Mean gap | Median retained | IQR | Filled | Extended | Reversed | Value overlap | Opening volume |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for b in rows:
         out.append(
             f"| {b.label} | {b.count:,} | {b.mean_gap_bp:.0f}bp | {b.median_retained:.2f} "
-            f"| {b.fill_rate*100:.0f}% | {b.extend_rate*100:.0f}% | {b.reverse_rate*100:.0f}% "
+            f"| {b.retained_iqr:.1f} | {b.fill_rate*100:.0f}% | {b.extend_rate*100:.0f}% "
+            f"| {b.reverse_rate*100:.0f}% "
             f"| {b.mean_overlap:.2f} | {b.mean_volume_ratio:.2f}x |"
         )
     return out
@@ -121,6 +122,10 @@ def main(argv: list[str] | None = None) -> int:
         "that price crossed back through the prior close. `Value overlap` is how much of",
         "the new session's value area sits on the old one -- 0 is a new distribution,",
         "1 is the market trading right back where it was.",
+        "",
+        "Retention divides by the gap, so a near-zero gap makes it explode. The `IQR`",
+        "column is how far to trust the median: it is around 1 for gaps above 50bp and",
+        "around 10 for gaps under 10bp, where the fill rate is the reliable measure.",
     ]
     lines += table([overall], "All gaps")
     lines += table(bucket_by_size(gaps), "By gap size")
@@ -139,9 +144,9 @@ def main(argv: list[str] | None = None) -> int:
 
     print("by gap size")
     for b in bucket_by_size(gaps):
-        print(f"  {b.label:<12} n={b.count:>5,}  retained {b.median_retained:>5.2f}  "
-              f"filled {b.fill_rate*100:>3.0f}%  overlap {b.mean_overlap:.2f}  "
-              f"open vol {b.mean_volume_ratio:.2f}x")
+        print(f"  {b.label:<12} n={b.count:>5,}  retained {b.median_retained:>5.2f} "
+              f"(IQR {b.retained_iqr:>5.1f})  filled {b.fill_rate*100:>3.0f}%  "
+              f"overlap {b.mean_overlap:.2f}  open vol {b.mean_volume_ratio:.2f}x")
     print(f"\nwrote {report} and {csv_path}")
     return 0
 

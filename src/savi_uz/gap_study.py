@@ -191,6 +191,9 @@ class GapBucket:
     count: int
     mean_gap_bp: float
     median_retained: float
+    #: Interquartile range of retention. Retention divides by the gap itself, so
+    #: a near-zero gap makes it explode; this is how far to trust the median.
+    retained_iqr: float
     fill_rate: float
     extend_rate: float
     reverse_rate: float
@@ -212,6 +215,13 @@ def mean(values: list[float]) -> float:
     return sum(clean) / len(clean) if clean else float("nan")
 
 
+def iqr(values: list[float]) -> float:
+    ordered = sorted(v for v in values if v == v)
+    if len(ordered) < 4:
+        return float("nan")
+    return ordered[int(len(ordered) * 0.75)] - ordered[int(len(ordered) * 0.25)]
+
+
 def summarise(gaps: list[Gap], label: str) -> GapBucket:
     """Retention is summarised by the median, not the mean: a handful of
     sessions that extend several times the gap would otherwise drag the average
@@ -221,6 +231,7 @@ def summarise(gaps: list[Gap], label: str) -> GapBucket:
         count=len(gaps),
         mean_gap_bp=mean([abs(g.gap_bp) for g in gaps]),
         median_retained=median([g.retained for g in gaps]),
+        retained_iqr=iqr([g.retained for g in gaps]),
         fill_rate=mean([1.0 if g.filled else 0.0 for g in gaps]),
         extend_rate=mean([1.0 if g.extended else 0.0 for g in gaps]),
         reverse_rate=mean([1.0 if g.reversed_through else 0.0 for g in gaps]),
