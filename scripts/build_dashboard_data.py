@@ -272,8 +272,12 @@ def build_intraday_page(conn: sqlite3.Connection | None) -> dict:
     stats: dict[str, dict] = {}
 
     for ticker in tickers:
+        # Tiingo emits placeholder bars for closed markets: flat OHLC and zero
+        # volume, about nine or ten a year. They are not trading and counting
+        # them inflates the session count and flattens the return histogram.
         rows = conn.execute(
             "SELECT ts, close, volume FROM bars WHERE ticker = ? AND frequency = '1hour' "
+            "AND NOT (volume = 0 AND open = high AND high = low AND low = close) "
             "ORDER BY ts", (ticker,)
         ).fetchall()
         if not rows:
@@ -330,6 +334,7 @@ def build_intraday_page(conn: sqlite3.Connection | None) -> dict:
         cutoff = (datetime.now(timezone.utc) - timedelta(days=70)).strftime("%Y-%m-%d")
         rows = conn.execute(
             "SELECT ts, close FROM bars WHERE ticker = ? AND frequency = '1hour' AND ts >= ? "
+            "AND NOT (volume = 0 AND open = high AND high = low AND low = close) "
             "ORDER BY ts", (ticker, cutoff),
         ).fetchall()
         recent[ticker] = [[r[0][:16].replace("T", " "), _round(r[1], 2)] for r in rows if r[1]]

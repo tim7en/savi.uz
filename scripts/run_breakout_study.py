@@ -37,6 +37,7 @@ from savi_uz.breakout_study import (  # noqa: E402
     bucket_numeric,
     build_samples,
     mean,
+    quantile_edges,
     quantile_labeller,
     split_by_date,
     stratified_buckets,
@@ -196,8 +197,13 @@ def main(argv: list[str] | None = None) -> int:
             tr = {b.label: b for b in bucket_by(train, key, present)}
             te = {b.label: b for b in bucket_by(test, key, present)}
         else:
-            tr = {b.label: b for b in bucket_numeric(train, numeric, name)}
-            te = {b.label: b for b in bucket_numeric(test, numeric, name)}
+            # Thresholds are fitted on train and reused on test. Refitting them
+            # on test would let the bucket boundaries be chosen with knowledge
+            # of the data being scored -- a quiet look-ahead in the evaluation
+            # even though the features themselves are clean.
+            fitted = quantile_edges([numeric(s) for s in train], 5)
+            tr = {b.label: b for b in bucket_numeric(train, numeric, name, edges=fitted)}
+            te = {b.label: b for b in bucket_numeric(test, numeric, name, edges=fitted)}
         for label in tr:
             if label not in te:
                 continue

@@ -4,6 +4,7 @@ import unittest
 
 from savi_uz.breakout_study import (
     Sample,
+    bucket_numeric,
     build_samples,
     bucket_by,
     group_sessions,
@@ -267,3 +268,34 @@ class StratifiedTests(unittest.TestCase):
         rows = [self._s("2024-01-01", "D", 1, 0.01 * i) for i in range(1, 101)]
         lab = quantile_labeller(rows, lambda s: s.forward_abs, 5)
         self.assertEqual(sorted({lab(r) for r in rows}), [0, 1, 2, 3, 4])
+
+
+class ThresholdLeakTests(unittest.TestCase):
+    """Bucket boundaries fitted on the data being scored are a quiet look-ahead."""
+
+    def _s(self, session: str, value: float, fwd: float) -> Sample:
+        return Sample(session, session + "T14:00:00.000Z", 3, 100.0, "D",
+                      0.5, 0.0, value, 0.4, 0.5, 0.01, 1.0, fwd, abs(fwd), abs(fwd))
+
+    def test_supplied_edges_are_used_instead_of_refitting(self):
+        train = [self._s("2024-01-01", v / 100, 0.01) for v in range(100)]
+        test = [self._s("2025-01-01", v / 1000, 0.01) for v in range(100)]  # much lower values
+        fitted = quantile_edges([s.value_width for s in train], 5)
+
+        refit = bucket_numeric(test, lambda s: s.value_width, "V")
+        applied = bucket_numeric(test, lambda s: s.value_width, "V", edges=fitted)
+        # Refitting spreads the test set over all five buckets; applying the
+        # train edges correctly collapses it into the lowest one.
+        self.assertEqual(len(refit), 5)
+        self.assertEqual(len(applied), 1)
+        self.assertEqual(applied[0].label, "V Q1")
+
+    def test_quantile_labeller_accepts_external_edges(self):
+        rows = [self._s("2024-01-01", v / 100, 0.01) for v in range(100)]
+        lab = quantile_labeller(rows, lambda s: s.value_width, 5, edges=[0.5])
+        self.assertEqual(lab(rows[10]), 0)
+        self.assertEqual(lab(rows[90]), 1)
+
+    def test_edges_default_to_the_sample_when_not_supplied(self):
+        rows = [self._s("2024-01-01", v / 100, 0.01) for v in range(100)]
+        self.assertEqual(len(bucket_numeric(rows, lambda s: s.value_width, "V")), 5)

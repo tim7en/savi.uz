@@ -602,5 +602,44 @@ little. The same study at 5-minute bars has 78 observations a session and a
 genuinely shaped profile. `--frequency 5min` runs it there; the module is
 resolution-agnostic.
 
+### Audit of the look-ahead claim
+
+The no-look-ahead claim was re-checked independently of the study code, by
+recomputing every feature from the raw bars. Four checks, all clean:
+
+| Check | Result |
+|---|---|
+| Samples drawn from synthetic zero-volume sessions | **0** of 6,655 |
+| Forward returns that are not literally the next bar in the same session | **0** |
+| Independently recomputed profile prefixes that disagree | **0** of 4,000 |
+| Rows where `bars_elapsed` mismatches position in session | **0** |
+
+**The bar timestamp convention was verified, not assumed.** Tiingo stamps a bar
+with the *start* of its interval: the first 5-minute bar of a January session is
+`14:30Z` with 43,875 shares, and the session opens at 14:30Z in EST — an
+end-stamped bar there would cover 14:25-14:30, before the open. This is the
+convention the study needs: the decision point at the close of bar `t` is wall
+clock `t + interval`, which is exactly when bar `t+1` begins. The prediction is
+implementable at the moment it is made.
+
+Two real problems the audit did turn up, both now fixed:
+
+- **Bucket thresholds were fitted on the whole sample.** The features were clean
+  but the *evaluation* was not: the boundary between "wide value area" and
+  "narrow" was chosen with knowledge of the period being scored. Quantile edges
+  are now fitted on the training period and applied unchanged to the test
+  period. `Close vs POC` Q1 holds up: 1.452 train, **1.304** test.
+- **Tiingo emits placeholder bars for closed markets** — flat OHLC, zero volume,
+  about nine or ten a year (2017-01-16 MLK, 02-20 Presidents', 04-14 Good
+  Friday, 05-29 Memorial). The study already excluded them, but the dashboard
+  was counting them as trading days: 2,506 sessions where the truth is **2,417**.
+  A further 188 sessions in 2017-18 carry real prices with no volume at all.
+
+One caveat that is *not* look-ahead but does affect realism: the forward return
+is measured close-to-close, and `close[t]` does not always equal `open[t+1]` --
+IEX does not always print at the boundary. The gap is small (median 0.21bp,
+mean 0.55bp against a ~20bp baseline move, p99 5bp) but it is slippage the
+measured return does not charge for.
+
 Output is `out/strategy/breakout_<ticker>_<freq>.md` plus the full sample table
 as CSV, so the raw decision points can be re-cut without rerunning the study.

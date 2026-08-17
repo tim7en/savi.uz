@@ -204,32 +204,50 @@ def quantile_edges(values: list[float], parts: int) -> list[float]:
     return [ordered[min(len(ordered) - 1, int(len(ordered) * i / parts))] for i in range(1, parts)]
 
 
-def bucket_numeric(samples: list[Sample], key, name: str, parts: int = 5) -> list[Bucket]:
-    """Split a continuous feature at its own quantiles and score each slice."""
-    edges = quantile_edges([key(s) for s in samples], parts)
+def bucket_numeric(
+    samples: list[Sample], key, name: str, parts: int = 5, edges: list[float] | None = None
+) -> list[Bucket]:
+    """Split a continuous feature at quantiles and score each slice.
+
+    ``edges`` may be supplied so a test period is cut at thresholds fitted on
+    the training period. Letting the test period pick its own thresholds is a
+    quiet look-ahead: the boundary between "wide value area" and "narrow" would
+    then be chosen with knowledge of the very data being scored.
+    """
+    if edges is None:
+        edges = quantile_edges([key(s) for s in samples], parts)
     if not edges:
         return []
+    # Bucket count follows the edges, not `parts`. When train-fitted edges are
+    # supplied the two can disagree, and trusting `parts` would then label the
+    # top bucket with an index no edge produces.
+    buckets = len(edges) + 1
 
     def label_of(sample: Sample) -> str:
         value = key(sample)
         for i, edge in enumerate(edges):
             if value < edge:
                 return f"{name} Q{i + 1}"
-        return f"{name} Q{parts}"
+        return f"{name} Q{buckets}"
 
-    return bucket_by(samples, label_of, [f"{name} Q{i + 1}" for i in range(parts)])
+    return bucket_by(samples, label_of, [f"{name} Q{i + 1}" for i in range(buckets)])
 
 
-def quantile_labeller(samples: list[Sample], key, parts: int):
-    """A function mapping a sample to its quantile bucket of ``key``."""
-    edges = quantile_edges([key(s) for s in samples], parts)
+def quantile_labeller(samples: list[Sample], key, parts: int, edges: list[float] | None = None):
+    """A function mapping a sample to its quantile bucket of ``key``.
+
+    Pass ``edges`` to reuse thresholds fitted elsewhere -- on the training
+    period -- rather than refitting them on the data being scored.
+    """
+    if edges is None:
+        edges = quantile_edges([key(s) for s in samples], parts)
 
     def label(sample: Sample) -> int:
         value = key(sample)
         for index, edge in enumerate(edges):
             if value < edge:
                 return index
-        return parts - 1
+        return len(edges)
 
     return label
 
