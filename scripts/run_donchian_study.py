@@ -79,7 +79,8 @@ def main(argv: list[str] | None = None) -> int:
         "of the same five-minute slot over the previous 20 clean sessions. Sessions must contain",
         "78 positive-volume bars. `Sustainable` means no close back inside during the next 30",
         "minutes and still outside after 60 minutes. The trade outcome uses a 2 ATR stop and 2R",
-        "target, conservatively charging a stop if both are touched in one bar.", "",
+        "target, conservatively charging a stop if both are touched in one bar. Mean R and profit",
+        "factor are gross of commissions, spread, slippage and financing.", "",
         "| Sessions | Vol floor | Period | n | Mean R | PF | Target | Sustainable | Outside 60m | Re-enter 30m | Whipsaw 30m | Median MFE |",
         "|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
@@ -126,4 +127,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         traceback.print_exc(limit=0)
         raise SystemExit(130)
-
