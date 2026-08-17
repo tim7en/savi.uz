@@ -594,13 +594,44 @@ There is also a clear **asymmetry**: `b` (volume low, price working the bottom)
 is loud while `P` (volume high) is quiet. Downside exploration is faster than
 upside exploration, which is what the tails in the original question describe.
 
-### Resolution matters more than history here
+### Rerun at 5-minute resolution
 
-Hourly SPY gives six bars a session, and a six-observation volume profile is a
-crude instrument -- the `b`/`P`/`B` classification is doing a lot of work on very
-little. The same study at 5-minute bars has 78 observations a session and a
-genuinely shaped profile. `--frequency 5min` runs it there; the module is
-resolution-agnostic.
+78 bars a session instead of six, and the 5-minute feed also covers the opening
+half hour that the hourly feed drops. 36,760 decision points across 564 sessions,
+baseline next-bar move 4.4bp. Controlled for range quintile and bar of session:
+
+| Close in range | n | Next-bar move | Lift | t |
+|---|---:|---:|---:|---:|
+| Q1 (bottom) | 7,327 | 6.3bp | **1.220** | +19.9 |
+| Q2 | 7,352 | 4.4bp | 1.053 | +5.3 |
+| Q3 | 7,339 | 3.9bp | 1.007 | +0.7 |
+| Q4 | 7,337 | 3.5bp | 0.892 | -11.7 |
+| Q5 (top) | 7,348 | 3.7bp | **0.826** | -19.7 |
+
+**Position in the developing range is the signal, and it replicates.** The
+gradient is monotonic, the magnitudes match the hourly run (1.088 / 0.765 there,
+1.220 / 0.826 here), and it survives the chronological split with train-fitted
+thresholds: `Close in range` Q1 is 1.498 train against **1.539** test. `Close vs
+POC` behaves the same way, which is expected -- the two features are close
+cousins.
+
+**Profile shape does not survive the resolution change.** At hourly the shape
+buckets spanned +-24% (`b` 1.103, `B` 0.763); at 5-minute they collapse to +-6%
+(`D` 1.060, `P` 0.959). The reason is visible in the label mix:
+
+| | B | D | P | b |
+|---|---:|---:|---:|---:|
+| hourly, 6 bars/session | 15% | 50% | 12% | 23% |
+| 5-minute, 78 bars/session | 44% | 27% | 20% | 9% |
+
+With 78 bars over 30 bins a histogram has far more genuine local minima, so the
+peak-counting test flags multi-modality three times as often and `B` stops being
+a discriminating label at all. **The shape vocabulary is not resolution-invariant
+and its thresholds would need recalibrating per bar size.** The hourly shape
+result should be read as an artefact of a six-observation profile, not a finding.
+
+`--frequency 5min --min-prefix 12 --bins 30` runs it there; the module itself is
+resolution-agnostic, the classifier constants are not.
 
 ### Audit of the look-ahead claim
 
