@@ -268,6 +268,21 @@ def main(argv: list[str] | None = None) -> int:
             for ticker, frequency, year, rows in truncated[:10]:
                 print(f"  {ticker} {frequency} {year}: {rows} rows")
 
+        # Data quality is reported, never silently repaired: a backtest should
+        # decide for itself what to do with a close outside its own bar range.
+        violations = store.ohlc_violations()
+        if violations:
+            print("\nbars where open/close falls outside the bar's own high/low "
+                  "(IEX resampling artefact, left as published):")
+            for ticker, frequency, count in violations:
+                print(f"  {ticker:<6} {frequency:<6} {count}")
+
+        gaps = [row for row in store.missing_volume() if row[2]]
+        if gaps:
+            print("\nbars with no volume:")
+            for ticker, frequency, missing, total in gaps:
+                print(f"  {ticker:<6} {frequency:<6} {missing:,}/{total:,}")
+
         if args.csv_dir:
             exported = store.export_csv(args.csv_dir)
             print(f"\ncsv export -> {args.csv_dir} ({sum(exported.values()):,} rows)")

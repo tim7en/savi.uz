@@ -49,6 +49,14 @@ NO_INTRADAY_EXCHANGES = frozenset({"PINK", "OTC", "OTCMKTS", "GREY", "OTCBB"})
 
 SUPPORTED_FREQUENCIES = ("1min", "5min", "15min", "30min", "1hour", "4hour", "daily")
 
+#: Must be requested explicitly. The IEX endpoint's default projection is
+#: date/open/high/low/close and drops volume without saying so.
+INTRADAY_COLUMNS = "open,high,low,close,volume"
+
+#: IEX is one venue with a low single-digit share of consolidated volume, so
+#: these counts are a relative activity measure, not tradable share volume.
+VOLUME_IS_IEX_ONLY = True
+
 
 class HourlyRateLimiter:
     """Spaces requests evenly across the hour.
@@ -261,6 +269,10 @@ class TiingoClient:
     ) -> tuple[list[Bar], bool]:
         """Intraday bars for one window. Returns ``(bars, hit_row_cap)``.
 
+        ``columns`` has to be spelled out: the IEX endpoint returns only
+        date/open/high/low/close by default and silently omits volume, so a
+        download that does not ask for it ends up with none at all.
+
         The cap flag matters: at exactly ``MAX_ROWS_PER_REQUEST`` the window was
         truncated and the caller must narrow it, or silently lose the early part
         of the range.
@@ -273,8 +285,9 @@ class TiingoClient:
                 "startDate": start.isoformat(),
                 "endDate": end.isoformat(),
                 "resampleFreq": frequency,
+                "columns": INTRADAY_COLUMNS,
             },
-            f"iex_{ticker}_{frequency}_{start.isoformat()}_{end.isoformat()}",
+            f"iex_{ticker}_{frequency}_{start.isoformat()}_{end.isoformat()}_ohlcv",
         )
         bars = self._bars(payload, ticker, frequency)
         return bars, len(bars) >= MAX_ROWS_PER_REQUEST

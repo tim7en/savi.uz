@@ -182,6 +182,36 @@ class IntradayStore:
             "ORDER BY ticker, year"
         ).fetchall()
 
+    def ohlc_violations(self, ticker: str | None = None) -> list[tuple[str, str, int]]:
+        """Bars whose close or open falls outside the bar's own high/low range.
+
+        IEX resampling takes the close from the last trade while the high and
+        low come from the interval's own aggregation, and the two occasionally
+        disagree by a few cents. The rows are left exactly as published -- a
+        backtest that assumes ``low <= close <= high`` should know the count
+        rather than have the data quietly rewritten under it.
+        """
+        clause = "AND ticker = ?" if ticker else ""
+        params = (ticker,) if ticker else ()
+        return self.connection.execute(
+            f"""
+            SELECT ticker, frequency, COUNT(*) FROM bars
+            WHERE open IS NOT NULL AND high IS NOT NULL
+              AND low IS NOT NULL AND close IS NOT NULL
+              AND (close > high OR close < low OR open > high OR open < low)
+              {clause}
+            GROUP BY ticker, frequency ORDER BY ticker
+            """,
+            params,
+        ).fetchall()
+
+    def missing_volume(self) -> list[tuple[str, str, int, int]]:
+        """Per series: how many bars carry no volume, against the total."""
+        return self.connection.execute(
+            "SELECT ticker, frequency, SUM(CASE WHEN volume IS NULL OR volume = 0 THEN 1 ELSE 0 END), "
+            "COUNT(*) FROM bars GROUP BY ticker, frequency ORDER BY ticker"
+        ).fetchall()
+
     def log(self, run_id: str, logged_at: str, source: str, target: str, rows: int,
             status: str, message: str = "") -> None:
         self._write(
