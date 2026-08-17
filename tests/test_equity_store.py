@@ -7,6 +7,18 @@ from pathlib import Path
 
 from savi_uz.equity_sources import IndexBar, ReportedEarnings, SecFact, ShillerRow
 from savi_uz.equity_store import SHILLER_FIELDS, EquityStore
+from savi_uz.factset_sources import KeyMetrics
+
+
+def _metrics(day: date, values: dict, missing: tuple = (), page_text: str = "Key Metrics ...") -> KeyMetrics:
+    return KeyMetrics(
+        report_date=day,
+        source_url="https://example/EarningsInsight.pdf",
+        document_date=day,
+        values=values,
+        missing=missing,
+        page_text=page_text,
+    )
 
 
 def _fact(cik: int, concept: str, frame: str, value: float, unit: str = "USD") -> SecFact:
@@ -136,8 +148,62 @@ class EquityStoreTests(unittest.TestCase):
 
     def test_coverage_lists_every_source_even_when_empty(self):
         keys = [row[0] for row in self.store.coverage()]
-        self.assertEqual(keys, ["shiller", "index", "sec", "estimates"])
+        self.assertEqual(keys, ["shiller", "index", "sec", "estimates", "factset"])
         self.assertTrue(all(row[3] == 0 for row in self.store.coverage()))
+
+    def test_factset_report_round_trip_keeps_values_and_page_text(self):
+        metrics = _metrics(
+            date(2026, 8, 7),
+            {"quarter": "Q2 2026", "forward_12m_pe": 20.0, "blended_earnings_growth": 50.4},
+        )
+        self.assertEqual(self.store.write_factset_report(metrics, "t"), 1)
+        stored = self.store.connection.execute(
+            "SELECT quarter, forward_12m_pe, blended_earnings_growth, estimated_earnings_growth, "
+            "missing_core_fields, page_text FROM factset_reports"
+        ).fetchone()
+        self.assertEqual(stored[:4], ("Q2 2026", 20.0, 50.4, None))
+        self.assertEqual(stored[4], "")
+        self.assertEqual(stored[5], "Key Metrics ...")
+
+    def test_missing_fields_are_recorded_as_a_list(self):
+        metrics = _metrics(date(2026, 6, 18), {"quarter": "Q2 2026"}, missing=("forward_12m_pe",))
+        self.store.write_factset_report(metrics, "t")
+        stored = self.store.connection.execute(
+            "SELECT missing_fields, missing_core_fields, forward_12m_pe FROM factset_reports"
+        ).fetchone()
+        self.assertEqual(stored, ("forward_12m_pe", "forward_12m_pe", None))
+
+    def test_rewriting_an_edition_updates_in_place(self):
+        """--reparse rewrites every stored edition and must not duplicate them."""
+        self.store.write_factset_report(_metrics(date(2026, 8, 7), {"forward_12m_pe": 19.0}), "t")
+        self.store.write_factset_report(_metrics(date(2026, 8, 7), {"forward_12m_pe": 20.0}), "t")
+        self.assertEqual(
+            self.store.connection.execute(
+                "SELECT COUNT(*), MAX(forward_12m_pe) FROM factset_reports"
+            ).fetchone(),
+            (1, 20.0),
+        )
+
+    def test_page_texts_are_retrievable_for_offline_reparsing(self):
+        self.store.write_factset_report(_metrics(date(2026, 8, 7), {}), "t")
+        self.store.write_factset_report(_metrics(date(2026, 7, 31), {}, page_text=""), "t")
+        texts = self.store.factset_page_texts()
+        self.assertEqual([row[0] for row in texts], ["2026-08-07"])
+
+    def test_field_coverage_counts_editions_carrying_each_field(self):
+        self.store.write_factset_report(
+            _metrics(date(2026, 8, 7), {"forward_12m_pe": 20.0, "blended_earnings_growth": 50.4}), "t"
+        )
+        self.store.write_factset_report(
+            _metrics(date(2026, 6, 26), {"forward_12m_pe": 20.1, "estimated_earnings_growth": 23.1}), "t"
+        )
+        coverage = dict(self.store.factset_field_coverage())
+        self.assertEqual(coverage["forward_12m_pe"], 2)
+        self.assertEqual(coverage["blended_earnings_growth"], 1)
+        self.assertEqual(coverage["estimated_earnings_growth"], 1)
+
+    def test_field_coverage_is_empty_before_anything_is_stored(self):
+        self.assertEqual(self.store.factset_field_coverage(), [])
 
     def test_csv_export_writes_every_table(self):
         self.store.write_index_prices([IndexBar("^GSPC", date(2024, 1, 2), 4742.83, None)])
