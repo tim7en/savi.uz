@@ -5,6 +5,7 @@ Data ingestion scaffold for a daily strategy that combines:
 - US equities 5-minute OHLC data (AlphaVantage)
 - US options chains for major symbols like `SPY` and `QQQ` (AlphaVantage)
 - Macro datasets including Fed policy rate and yield-based forward-rate proxy (AlphaVantage)
+- CFTC Commitments of Traders positioning, all six reports, back to 2000 (or 1986 for legacy)
 - Binance trad-FI perpetuals, mapped to their Yahoo Finance underlyings and clustered
   for uncorrelated position selection
 
@@ -146,3 +147,85 @@ premium can be netted off, and the SEP dots give the Committee's own path for co
   2003 but vintages only from 2014). Compare `observations` against `first_release`
   counts in the `coverage()` view before assuming a clean real-time history.
 - SEP series begin in January 2012, when the FOMC first published fed funds projections.
+
+## CFTC Commitments of Traders
+
+```bash
+PYTHONPATH=src python scripts/download_cftc_history.py --db data/cftc/cot.db
+```
+
+Pulls all six COT reports from the CFTC's own annual archives back to 2000 by
+default. No API key: these are public files. 82 archives, ~975k rows, about
+five minutes and a 712MB database.
+
+| Report | Table | Breakdown | Coverage |
+|---|---|---|---|
+| `legacy_futures` | `cot_legacy_futures` | Non-commercial / commercial / non-reportable | 1986- |
+| `legacy_combined` | `cot_legacy_combined` | Same, options delta-weighted in | 1995-03-21- |
+| `disagg_futures` | `cot_disagg_futures` | Producer-merchant / swap dealer / managed money / other | 2006-06-13- |
+| `disagg_combined` | `cot_disagg_combined` | Same, with options | 2006-06-13- |
+| `tff_futures` | `cot_tff_futures` | Dealer / asset manager / leveraged funds / other | 2006-06-13- |
+| `tff_combined` | `cot_tff_combined` | Same, with options | 2006-06-13- |
+
+The three regimes do not share a start date, and that is a property of the
+source rather than a gap in the download: the disaggregated and financial-trader
+breakdowns were introduced in 2006 and no earlier history exists. A run starting
+in 2000 is legacy-only for its first six years. `--start-year 1986` gets the
+full legacy record, which is monthly and then biweekly before 1992 and only
+becomes weekly around 2000.
+
+Useful flags: `--reports tff_futures` limits the pull, `--list` prints the
+archive plan without fetching, `--csv-dir` exports every table, `--start-year`
+and `--end-year` bound the range.
+
+### Storage
+
+One wide table per report, mirroring the published file: COT already arrives as
+one row per contract per Tuesday, and the columns are what analysts name
+directly, so long-form storage would turn 975k rows into roughly 150M for no
+gain. Tables are built from the header of the first file ingested and widened
+with `ALTER TABLE` if the CFTC adds a column.
+
+Header spelling differs by regime -- `"Noncommercial Positions-Long (All)"` in
+the legacy files against `"Prod_Merc_Positions_Long_All"` in the newer ones --
+so every name is normalised to snake_case. Each table also carries a canonical
+`contract_code` / `report_date` pair as its primary key, which is the one thing
+the three header conventions do not agree on. Re-running updates rows in place.
+
+Contract market codes are stored as TEXT. `001602` is a label, not a quantity,
+and integer parsing would silently eat the leading zero.
+
+`cot_contracts` is the lookup table: one row per contract per report, with the
+**most recent** market name, the exchange, and the date span it covers.
+
+### Weekly update
+
+The CFTC rewrites the current year's ZIP every Friday, so the incremental update
+is one year with the cache bypassed:
+
+```bash
+PYTHONPATH=src python scripts/download_cftc_history.py --start-year 2026 --refresh
+```
+
+Archives are cached under `--cache-dir` (default `.cache/cftc`, 151MB for the
+full history), so re-runs over past years cost nothing.
+
+### Known source quirks
+
+- **Contracts get renamed.** `043602` was `10-YEAR U.S. TREASURY NOTES - CHICAGO
+  BOARD OF TRADE` until 2022-02-01 and `UST 10Y NOTE - CHICAGO BOARD OF TRADE`
+  from 2022-02-08. The code is continuous across the rename and the name is not,
+  so join on `contract_code`; `cot_contracts.market_name` gives the current name
+  for searching.
+- **The 2006-2016 TFF bundles are not ISO.** Both ship dates as
+  `9/9/2014 12:00:00 AM` under a column named `Report_Date_as_YYYY-MM-DD`, while
+  every other archive uses ISO. `parse_report_date` handles both and the store
+  normalises to ISO; the raw column keeps whatever the file said. A file that
+  yields no usable rows now raises rather than reporting an empty result, since
+  a parser failure and an out-of-range archive otherwise look identical.
+- **Report dates are almost always Tuesdays**, published the following Friday at
+  15:30 ET -- but not invariably: 22 of the 1390 legacy dates fall on a Monday,
+  Wednesday or Friday, shifted by holiday weeks. Derive the publication lag from
+  the date rather than assuming a fixed weekday. The archives carry no
+  publication timestamp, so unlike the FRED tables there is no vintage dimension
+  here; for backtests, lag the report date by three days to avoid look-ahead.
