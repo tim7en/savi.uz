@@ -711,12 +711,13 @@ one broad distribution, and a deep dip beside a negligible bump is noise.
 PYTHONPATH=src python scripts/run_donchian_study.py --ticker SPY --frequency 5min
 ```
 
-This compares channels formed from the previous 5 and 10 completed sessions.
-The signal is the first qualifying five-minute close outside the channel and
-the simulated entry is the next bar's open. Signal volume is divided by the
-median volume in the same bar position over the preceding 20 clean sessions,
-so the opening auction is not compared with lunchtime. The default sweep is
-0x, 1x, 1.25x, 1.5x and 2x relative volume.
+This compares rolling channels formed from the previous 5 and 10 completed
+five-minute bars in the same session -- 25-minute versus 50-minute lookbacks.
+The signal is the first qualifying close outside the channel and the simulated
+entry is the next bar's open. Signal volume is divided by the median volume in
+the same bar position over the preceding 20 clean sessions, so the opening
+auction is not compared with lunchtime. The default sweep is 0x, 1x, 1.25x,
+1.5x and 2x relative volume.
 
 Only 2019-onward sessions with all 78 bars carrying positive volume enter the
 study. This removes Tiingo's closed-market placeholders, early-close padding
@@ -730,14 +731,14 @@ against a 2R target. If both stop and target appear inside one OHLC bar, the
 stop is charged. Mean R and profit factor are gross of commissions, spread,
 slippage and financing.
 
-On SPY, moderate confirmation improves the trade outcome and reduces quick
-stop-outs, but does not increase acceptance monotonically. The 5-session 1.25x
-floor is the most stable default: mean outcome is +0.090R before 2023 and
-+0.068R after, while the test quick-stop rate falls from 31.8% unfiltered to
-27.2%. At 2x, test expectancy returns to -0.010R. The 10-session channel has no
-stable train/test edge at the same volume floors. Direction also rotates:
-5-session shorts lead in training and longs lead after 2023, so neither side is
-a standalone conclusion yet.
+On SPY the 5-bar channel with a 1.0x floor is the clearest default. Mean gross
+outcome is +0.039R before 2023 and +0.137R after; sustainable breaks rise from
+33.4%/35.9% without confirmation to 34.4%/39.2%, while quick stop-outs are
+13.0%/14.7%. Raising the floor further does not improve results monotonically.
+The 10-bar 1.0x version is steadier but weaker at +0.056R/+0.072R, with fewer
+quick stop-outs. Both long and short 5-bar breaks remain positive on both sides
+of the split. Results from completed-session channels answer a different
+question and are not mixed into this study.
 
 Output is `out/strategy/donchian_<ticker>_<frequency>.md` and the complete event
 table beside it as CSV.

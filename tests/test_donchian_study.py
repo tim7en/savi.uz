@@ -21,8 +21,8 @@ def session(day: str, closes: list[float], volume: float = 100.0) -> list[Bar]:
 class DonchianStudyTests(unittest.TestCase):
     def history(self) -> list[Bar]:
         return (
-            session("2024-01-02", [99.0, 99.5, 100.0, 99.5])
-            + session("2024-01-03", [99.5, 100.0, 100.5, 100.0])
+            session("2024-01-02", [99.0] * 20)
+            + session("2024-01-03", [99.5] * 20)
         )
 
     def build(self, bars: list[Bar], floor: float = 0.0):
@@ -31,8 +31,8 @@ class DonchianStudyTests(unittest.TestCase):
             volume_lookback=2, atr_lookback=2, stop_atr=1.0, target_r=2.0,
         )
 
-    def test_channel_uses_prior_sessions_and_entry_uses_next_open(self):
-        today = session("2024-01-04", [100.0, 101.0, 101.5, 102.0])
+    def test_channel_uses_prior_bars_and_entry_uses_next_open(self):
+        today = session("2024-01-04", [100.0, 100.5, 101.0, 101.5, 102.0])
         events = self.build(self.history() + today)
         self.assertEqual(len(events), 1)
         event = events[0]
@@ -41,9 +41,9 @@ class DonchianStudyTests(unittest.TestCase):
         self.assertEqual(event.entry, 101.5)
 
     def test_future_mutation_cannot_change_signal_features(self):
-        today = session("2024-01-04", [100.0, 101.0, 101.5, 102.0])
+        today = session("2024-01-04", [100.0, 100.5, 101.0, 101.5, 102.0])
         before = self.build(self.history() + today)[0]
-        today[-1] = bar("2024-01-04", 3, 500.0, 999999.0)
+        today[-1] = bar("2024-01-04", 4, 500.0, 999999.0)
         after = self.build(self.history() + today)[0]
         self.assertEqual(
             (before.timestamp, before.channel_high, before.entry, before.volume_ratio),
@@ -51,16 +51,16 @@ class DonchianStudyTests(unittest.TestCase):
         )
 
     def test_volume_floor_skips_a_low_volume_crossing(self):
-        today = session("2024-01-04", [100.0, 101.0, 100.0, 101.2, 101.4], volume=100.0)
-        today[1] = bar("2024-01-04", 1, 101.0, volume=50.0)
+        today = session("2024-01-04", [100.0, 100.5, 101.0, 100.4, 101.5, 101.7], volume=100.0)
+        today[2] = bar("2024-01-04", 2, 101.0, volume=50.0)
         events = self.build(self.history() + today, floor=0.75)
         self.assertEqual(len(events), 1)
-        self.assertEqual(events[0].signal_bar, 3)
+        self.assertEqual(events[0].signal_bar, 4)
         self.assertAlmostEqual(events[0].volume_ratio, 1.0)
 
     def test_sustainable_requires_no_30m_reentry_and_60m_acceptance(self):
         prior = self.history()
-        today = session("2024-01-04", [101.0] + [101.2] * 13)
+        today = session("2024-01-04", [100.0, 100.5, 101.0] + [101.2] * 13)
         event = self.build(prior + today)[0]
         self.assertTrue(event.accepted_30m)
         self.assertTrue(event.accepted_60m)
@@ -69,15 +69,15 @@ class DonchianStudyTests(unittest.TestCase):
 
     def test_same_bar_stop_and_target_is_charged_as_stop(self):
         prior = self.history()
-        today = session("2024-01-04", [100.0, 101.0, 101.0, 101.0])
+        today = session("2024-01-04", [100.0, 100.5, 101.0, 101.0])
         # The entry bar spans both sides of a deliberately small one-ATR risk.
-        today[2] = bar("2024-01-04", 2, 101.0, high=105.0, low=95.0)
+        today[3] = bar("2024-01-04", 3, 101.0, high=105.0, low=95.0)
         event = self.build(prior + today)[0]
         self.assertEqual(event.fixed_r, -1.0)
         self.assertFalse(event.target_before_stop)
 
     def test_summary_reports_rates(self):
-        today = session("2024-01-04", [101.0] + [101.2] * 13)
+        today = session("2024-01-04", [100.0, 100.5, 101.0] + [101.2] * 13)
         event = self.build(self.history() + today)[0]
         result = summarise([event])
         self.assertEqual(result.count, 1)

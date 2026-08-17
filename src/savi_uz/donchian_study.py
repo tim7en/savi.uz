@@ -1,8 +1,8 @@
-"""Leakage-safe multi-session Donchian breakout event study.
+"""Leakage-safe intraday Donchian breakout event study.
 
-The channel for session ``t`` is formed exclusively from completed sessions
-``t-n .. t-1``.  A signal is known only after a five-minute bar closes outside
-that channel, and execution is placed at the next bar's open.
+At intraday bar ``t`` the channel is formed exclusively from bars
+``t-n .. t-1`` in the same session. A signal is known only after bar ``t``
+closes outside that channel, and execution is placed at bar ``t+1``'s open.
 """
 
 from __future__ import annotations
@@ -131,20 +131,19 @@ def build_events(
     atrs = _atr_map(sessions, atr_lookback)
     events: list[DonchianEvent] = []
 
-    first_session = max(window, volume_lookback)
+    first_session = volume_lookback
     for index in range(first_session, len(sessions)):
         session, current = sessions[index]
-        history = [bar for _, rows in sessions[index - window:index] for bar in rows]
-        channel_high = max(bar.high for bar in history)
-        channel_low = min(bar.low for bar in history)
-        prior_close = sessions[index - 1][1][-1].close
         last_signal = len(current) - 2
         if max_signal_bar is not None:
             last_signal = min(last_signal, max_signal_bar)
 
-        for position in range(last_signal + 1):
+        for position in range(window, last_signal + 1):
             bar = current[position]
-            before = prior_close if position == 0 else current[position - 1].close
+            channel = current[position - window:position]
+            channel_high = max(row.high for row in channel)
+            channel_low = min(row.low for row in channel)
+            before = current[position - 1].close
             long_break = before <= channel_high and bar.close > channel_high
             short_break = before >= channel_low and bar.close < channel_low
             if not (long_break or short_break):
@@ -269,4 +268,3 @@ def summarise(events: list[DonchianEvent]) -> DonchianSummary:
         median_mfe_r=median(event.mfe_r for event in events),
         median_mae_r=median(event.mae_r for event in events),
     )
-
