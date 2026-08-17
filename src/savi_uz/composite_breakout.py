@@ -24,6 +24,7 @@ class CompositeEvent:
     timestamp: str
     window: int
     boundary: str
+    volume_floor: float
     compression_quantile: float | None
     direction: int
     signal_bar: int
@@ -247,6 +248,7 @@ def build_events(
                     timestamp=row.timestamp,
                     window=window,
                     boundary=boundary,
+                    volume_floor=volume_floor,
                     compression_quantile=compression_quantile,
                     direction=direction,
                     signal_bar=position,
