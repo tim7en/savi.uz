@@ -43,17 +43,20 @@ CORE_CONFIGS = (
 )
 
 TRADE_VARIANTS = (
-    ("EOD stop2.5", 2.5, None, 2.0, 0),
-    ("next close stop2.5", 2.5, None, 2.0, 1),
-    ("next close stop4", 4.0, None, 2.0, 1),
-    ("next close stop6", 6.0, None, 2.0, 1),
-    ("next close stop8", 8.0, None, 2.0, 1),
-    ("next close no stop", None, None, 2.0, 1),
-    ("3-close no stop", None, None, 2.0, 3),
-    ("5-close no stop", None, None, 2.0, 5),
-    ("next close wide trail", 4.0, 2.0, 4.0, 1),
-    ("3-close wide trail", 4.0, 2.0, 4.0, 3),
-    ("5-close wide trail", 4.0, 2.0, 4.0, 5),
+    ("EOD stop2.5", 2.5, None, None, 2.0, 0),
+    ("next close stop2.5", 2.5, None, None, 2.0, 1),
+    ("next close stop4", 4.0, None, None, 2.0, 1),
+    ("next close stop6", 6.0, None, None, 2.0, 1),
+    ("next close stop8", 8.0, None, None, 2.0, 1),
+    ("next close daily0.5", None, 0.5, None, 2.0, 1),
+    ("next close daily0.75", None, 0.75, None, 2.0, 1),
+    ("next close daily1", None, 1.0, None, 2.0, 1),
+    ("next close no stop", None, None, None, 2.0, 1),
+    ("3-close no stop", None, None, None, 2.0, 3),
+    ("5-close no stop", None, None, None, 2.0, 5),
+    ("next close wide trail", 4.0, None, 2.0, 4.0, 1),
+    ("3-close wide trail", 4.0, None, 2.0, 4.0, 3),
+    ("5-close wide trail", 4.0, None, 2.0, 4.0, 5),
 )
 
 
@@ -142,13 +145,14 @@ def _strategy_table(lines: list[str], configurations, sessions, split: str) -> N
         if not any(config.startswith(f"{w}d {b} vol{v:g} {('narrow25' if c else 'all')}")
                    for w, b, v, c in CORE_CONFIGS):
             continue
-        for variant, stop, trail, activation, hold in TRADE_VARIANTS:
+        for variant, stop, daily_stop, trail, activation, hold in TRADE_VARIANTS:
             for period, subset in (
                 ("train", [event for event in events if event.session < split]),
                 ("test", [event for event in events if event.session >= split]),
             ):
                 results = non_overlapping_results(
-                    subset, sessions, stop_atr=stop, trail_atr=trail,
+                    subset, sessions, stop_atr=stop, stop_daily_atr=daily_stop,
+                    trail_atr=trail,
                     activation_atr=activation, max_hold_sessions=hold,
                     round_trip_cost=0.0002,
                 )

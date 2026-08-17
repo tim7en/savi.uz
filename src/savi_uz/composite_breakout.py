@@ -32,6 +32,7 @@ class CompositeEvent:
     upper: float
     entry: float
     atr: float
+    daily_atr: float
     volume_ratio: float
     range_atr_ratio: float
 
@@ -173,11 +174,13 @@ def build_events(
     intraday_atr = _intraday_atrs(sessions, atr_lookback)
 
     ratios: list[float | None] = [None] * len(sessions)
+    daily_atrs: list[float | None] = [None] * len(sessions)
     for index in range(window, len(sessions)):
         prior = [row for _, rows in sessions[index - window:index] for row in rows]
         span = max(row.high for row in prior) - min(row.low for row in prior)
         atr_values = daily_tr[max(0, index - 20):index]
         typical = median(atr_values) if atr_values else 0.0
+        daily_atrs[index] = typical if typical > 0 else None
         ratios[index] = span / typical if typical > 0 else None
 
     events: list[CompositeEvent] = []
@@ -256,6 +259,7 @@ def build_events(
                     upper=upper,
                     entry=entry,
                     atr=intraday_atr[(day, position)],
+                    daily_atr=daily_atrs[index],
                     volume_ratio=volume_ratio,
                     range_atr_ratio=ratio,
                     close_return=_directional(direction, current[-1].close, entry),
@@ -274,6 +278,7 @@ def simulate_trade(
     sessions: list[tuple[str, list[Bar]]],
     *,
     stop_atr: float | None = 2.5,
+    stop_daily_atr: float | None = None,
     trail_atr: float | None = None,
     activation_atr: float = 2.0,
     max_hold_sessions: int = 1,
@@ -284,8 +289,12 @@ def simulate_trade(
     A newly raised trailing stop becomes active on the following bar.  This
     avoids inventing the high/low ordering inside a five-minute OHLC bar.
     """
-    if (stop_atr is not None and stop_atr <= 0) or max_hold_sessions < 0:
+    if (stop_atr is not None and stop_atr <= 0) or (
+        stop_daily_atr is not None and stop_daily_atr <= 0
+    ) or max_hold_sessions < 0:
         raise ValueError("stop must be positive and holding period non-negative")
+    if stop_atr is not None and stop_daily_atr is not None:
+        raise ValueError("choose an intraday ATR stop or a daily ATR stop, not both")
     if trail_atr is not None and trail_atr <= 0:
         raise ValueError("trail must be positive")
 
@@ -295,9 +304,14 @@ def simulate_trade(
         return None
 
     direction = event.direction
+    stop_distance = None
+    if stop_daily_atr is not None:
+        stop_distance = stop_daily_atr * event.daily_atr
+    elif stop_atr is not None:
+        stop_distance = stop_atr * event.atr
     stop = (
-        event.entry - direction * stop_atr * event.atr
-        if stop_atr is not None else (-math.inf if direction > 0 else math.inf)
+        event.entry - direction * stop_distance
+        if stop_distance is not None else (-math.inf if direction > 0 else math.inf)
     )
     best = event.entry
     last_index = start_index + max_hold_sessions

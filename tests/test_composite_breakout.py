@@ -39,6 +39,7 @@ def event(day: str = "2024-01-03", signal_bar: int = 0) -> CompositeEvent:
         upper=101.0,
         entry=100.0,
         atr=1.0,
+        daily_atr=4.0,
         volume_ratio=2.0,
         range_atr_ratio=1.0,
         close_return=0.0,
@@ -137,6 +138,17 @@ class OvernightExecutionTests(unittest.TestCase):
         result = simulate_trade(event(), sessions, stop_atr=None, max_hold_sessions=1)
         self.assertEqual(result.reason, "time")
         self.assertAlmostEqual(result.exit_price, 90.0)
+
+    def test_daily_atr_stop_uses_the_daily_scale(self):
+        sessions = [
+            ("2024-01-03", session("2024-01-03", [100.0, 97.0, 97.0])),
+        ]
+        result = simulate_trade(
+            event(), sessions, stop_atr=None, stop_daily_atr=0.5,
+            max_hold_sessions=0,
+        )
+        self.assertEqual(result.reason, "stop")
+        self.assertAlmostEqual(result.exit_price, 98.0)
 
 
 if __name__ == "__main__":
