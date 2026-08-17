@@ -43,12 +43,17 @@ CORE_CONFIGS = (
 )
 
 TRADE_VARIANTS = (
-    ("EOD fixed", None, 0),
-    ("next close fixed", None, 1),
-    ("next close trail1", 1.0, 1),
-    ("next close trail2", 2.0, 1),
-    ("3-close trail1", 1.0, 3),
-    ("5-close trail1", 1.0, 5),
+    ("EOD stop2.5", 2.5, None, 2.0, 0),
+    ("next close stop2.5", 2.5, None, 2.0, 1),
+    ("next close stop4", 4.0, None, 2.0, 1),
+    ("next close stop6", 6.0, None, 2.0, 1),
+    ("next close stop8", 8.0, None, 2.0, 1),
+    ("next close no stop", None, None, 2.0, 1),
+    ("3-close no stop", None, None, 2.0, 3),
+    ("5-close no stop", None, None, 2.0, 5),
+    ("next close wide trail", 4.0, 2.0, 4.0, 1),
+    ("3-close wide trail", 4.0, 2.0, 4.0, 3),
+    ("5-close wide trail", 4.0, 2.0, 4.0, 5),
 )
 
 
@@ -126,8 +131,9 @@ def _event_table(lines: list[str], configurations, split: str) -> None:
 def _strategy_table(lines: list[str], configurations, sessions, split: str) -> None:
     lines += [
         "", "## Non-overlapping strategy simulations", "",
-        "Only one position may be open. Initial stop is 2.5 ATR. A trail activates after a 2 ATR",
-        "favorable excursion and is updated only after a completed bar. Overnight gaps through",
+        "Only one position may be open. Fixed stops from 2.5-8 ATR and a no-stop benchmark are",
+        "compared. The wide trail uses a 4 ATR initial stop, activates after a 4 ATR favorable",
+        "excursion, and trails by 2 ATR after completed bars. Overnight gaps through",
         "the stop fill at the next regular-session open. Results include the same 2 bp round trip.",
         "", "| Configuration | Variant | Period | n | Mean bp | Win | PF | $100 -> | CAGR | Max DD | Stop | Gap stop | Avg hold |",
         "|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
@@ -136,14 +142,14 @@ def _strategy_table(lines: list[str], configurations, sessions, split: str) -> N
         if not any(config.startswith(f"{w}d {b} vol{v:g} {('narrow25' if c else 'all')}")
                    for w, b, v, c in CORE_CONFIGS):
             continue
-        for variant, trail, hold in TRADE_VARIANTS:
+        for variant, stop, trail, activation, hold in TRADE_VARIANTS:
             for period, subset in (
                 ("train", [event for event in events if event.session < split]),
                 ("test", [event for event in events if event.session >= split]),
             ):
                 results = non_overlapping_results(
-                    subset, sessions, stop_atr=2.5, trail_atr=trail,
-                    activation_atr=2.0, max_hold_sessions=hold,
+                    subset, sessions, stop_atr=stop, trail_atr=trail,
+                    activation_atr=activation, max_hold_sessions=hold,
                     round_trip_cost=0.0002,
                 )
                 summary = summarise_trades(results)

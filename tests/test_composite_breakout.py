@@ -129,6 +129,15 @@ class OvernightExecutionTests(unittest.TestCase):
         results = non_overlapping_results(events, sessions, max_hold_sessions=1)
         self.assertEqual(len(results), 1)
 
+    def test_no_hard_stop_holds_until_the_time_exit(self):
+        sessions = [
+            ("2024-01-03", session("2024-01-03", [100.0, 90.0, 91.0])),
+            ("2024-01-04", session("2024-01-04", [80.0, 85.0, 90.0])),
+        ]
+        result = simulate_trade(event(), sessions, stop_atr=None, max_hold_sessions=1)
+        self.assertEqual(result.reason, "time")
+        self.assertAlmostEqual(result.exit_price, 90.0)
+
 
 if __name__ == "__main__":
     unittest.main()

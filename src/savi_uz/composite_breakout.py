@@ -273,7 +273,7 @@ def simulate_trade(
     event: CompositeEvent,
     sessions: list[tuple[str, list[Bar]]],
     *,
-    stop_atr: float = 2.5,
+    stop_atr: float | None = 2.5,
     trail_atr: float | None = None,
     activation_atr: float = 2.0,
     max_hold_sessions: int = 1,
@@ -284,7 +284,7 @@ def simulate_trade(
     A newly raised trailing stop becomes active on the following bar.  This
     avoids inventing the high/low ordering inside a five-minute OHLC bar.
     """
-    if stop_atr <= 0 or max_hold_sessions < 0:
+    if (stop_atr is not None and stop_atr <= 0) or max_hold_sessions < 0:
         raise ValueError("stop must be positive and holding period non-negative")
     if trail_atr is not None and trail_atr <= 0:
         raise ValueError("trail must be positive")
@@ -295,8 +295,10 @@ def simulate_trade(
         return None
 
     direction = event.direction
-    risk = stop_atr * event.atr
-    stop = event.entry - direction * risk
+    stop = (
+        event.entry - direction * stop_atr * event.atr
+        if stop_atr is not None else (-math.inf if direction > 0 else math.inf)
+    )
     best = event.entry
     last_index = start_index + max_hold_sessions
 
