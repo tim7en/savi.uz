@@ -152,3 +152,67 @@ class IntradayStoreTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class IntegrityTests(unittest.TestCase):
+    def setUp(self):
+        self._dir = tempfile.TemporaryDirectory()
+        self.store = IntradayStore(Path(self._dir.name) / "bars.db")
+
+    def tearDown(self):
+        self.store.close()
+        self._dir.cleanup()
+
+    def test_a_close_outside_the_bar_range_is_counted_not_repaired(self):
+        """IEX resampling puts the close a few cents outside high/low ~0.2% of the time."""
+        good = Bar("SPY", "1hour", "2024-01-02T15:00:00.000Z", 1.0, 2.0, 0.5, 1.5, 10.0)
+        bad = Bar("SPY", "1hour", "2024-01-02T16:00:00.000Z", 1.0, 2.0, 1.5, 2.5, 10.0)
+        self.store.write_bars([good, bad])
+
+        self.assertEqual(self.store.ohlc_violations(), [("SPY", "1hour", 1)])
+        # The row is still there, exactly as published.
+        self.assertEqual(
+            self.store.connection.execute(
+                "SELECT close FROM bars WHERE ts = '2024-01-02T16:00:00.000Z'"
+            ).fetchone()[0],
+            2.5,
+        )
+
+    def test_an_open_outside_the_range_also_counts(self):
+        self.store.write_bars(
+            [Bar("X", "1hour", "2024-01-02T15:00:00.000Z", 5.0, 2.0, 0.5, 1.5, 10.0)]
+        )
+        self.assertEqual(self.store.ohlc_violations()[0][2], 1)
+
+    def test_bars_with_null_prices_are_not_counted_as_violations(self):
+        self.store.write_bars([Bar("X", "1hour", "2024-01-02T15:00:00.000Z", None, None, None, None, None)])
+        self.assertEqual(self.store.ohlc_violations(), [])
+
+    def test_missing_volume_is_reported_per_series(self):
+        self.store.write_bars([
+            Bar("SPY", "1hour", "2024-01-02T15:00:00.000Z", 1.0, 2.0, 0.5, 1.5, 100.0),
+            Bar("SPY", "1hour", "2024-01-02T16:00:00.000Z", 1.0, 2.0, 0.5, 1.5, None),
+            Bar("SPY", "1hour", "2024-01-02T17:00:00.000Z", 1.0, 2.0, 0.5, 1.5, 0.0),
+        ])
+        self.assertEqual(self.store.missing_volume(), [("SPY", "1hour", 2, 3)])
+
+    def test_splits_are_listed_and_non_splits_ignored(self):
+        from savi_uz.tiingo_sources import Adjustment
+        self.store.write_adjustments([
+            Adjustment("NVDA", date(2024, 6, 7), 1208.88, 120.68, 1.0, 0.0),
+            Adjustment("NVDA", date(2024, 6, 10), 121.79, 121.58, 10.0, 0.0),
+            Adjustment("NVDA", date(2024, 6, 11), 120.91, 120.71, 1.0, 0.01),
+        ])
+        self.assertEqual(self.store.splits(), [("NVDA", "2024-06-10", 10.0)])
+        self.assertEqual(self.store.splits("SPY"), [])
+
+    def test_adjustments_update_in_place(self):
+        from savi_uz.tiingo_sources import Adjustment
+        self.store.write_adjustments([Adjustment("SPY", date(2024, 6, 7), 1.0, 1.0, 1.0, 0.0)])
+        self.store.write_adjustments([Adjustment("SPY", date(2024, 6, 7), 2.0, 2.0, 1.0, 0.0)])
+        self.assertEqual(
+            self.store.connection.execute(
+                "SELECT COUNT(*), MAX(close) FROM corporate_actions"
+            ).fetchone(),
+            (1, 2.0),
+        )

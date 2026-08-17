@@ -54,6 +54,18 @@ CREATE TABLE IF NOT EXISTS windows (
     PRIMARY KEY (ticker, frequency, year)
 );
 
+-- Intraday bars are raw. These factors are what lets a backtest rebuild an
+-- adjusted series instead of reading a 10:1 split as a 90% loss.
+CREATE TABLE IF NOT EXISTS corporate_actions (
+    ticker       TEXT NOT NULL,
+    obs_date     TEXT NOT NULL,
+    close        REAL,
+    adj_close    REAL,
+    split_factor REAL,
+    div_cash     REAL,
+    PRIMARY KEY (ticker, obs_date)
+);
+
 CREATE TABLE IF NOT EXISTS fetch_log (
     run_id     TEXT NOT NULL,
     logged_at  TEXT NOT NULL,
@@ -68,7 +80,7 @@ CREATE INDEX IF NOT EXISTS idx_bars_ticker_ts ON bars (ticker, ts);
 CREATE INDEX IF NOT EXISTS idx_fetch_log_run ON fetch_log (run_id);
 """
 
-EXPORT_TABLES = ("symbols", "windows", "bars", "fetch_log")
+EXPORT_TABLES = ("symbols", "windows", "bars", "corporate_actions", "fetch_log")
 
 
 def _iso(value: date | str | None) -> str | None:
@@ -180,6 +192,25 @@ class IntradayStore:
         return self.connection.execute(
             "SELECT ticker, frequency, year, rows FROM windows WHERE truncated = 1 "
             "ORDER BY ticker, year"
+        ).fetchall()
+
+    def write_adjustments(self, rows: Iterable[Any]) -> int:
+        return self._write(
+            "corporate_actions",
+            ("ticker", "obs_date", "close", "adj_close", "split_factor", "div_cash"),
+            [(r.ticker, _iso(r.obs_date), r.close, r.adj_close, r.split_factor, r.div_cash)
+             for r in rows],
+        )
+
+    def splits(self, ticker: str | None = None) -> list[tuple[str, str, float]]:
+        """Split events, which are what silently break an unadjusted backtest."""
+        clause = "AND ticker = ?" if ticker else ""
+        params = (ticker,) if ticker else ()
+        return self.connection.execute(
+            f"SELECT ticker, obs_date, split_factor FROM corporate_actions "
+            f"WHERE split_factor IS NOT NULL AND split_factor != 1.0 {clause} "
+            f"ORDER BY obs_date",
+            params,
         ).fetchall()
 
     def ohlc_violations(self, ticker: str | None = None) -> list[tuple[str, str, int]]:

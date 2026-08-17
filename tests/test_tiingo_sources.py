@@ -228,3 +228,73 @@ class TiingoClientTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AdjustmentTests(unittest.TestCase):
+    """Intraday bars are raw, so split and dividend factors have to come along."""
+
+    def setUp(self):
+        self._dir = tempfile.TemporaryDirectory()
+        self.client = TiingoClient("token", cache_dir=Path(self._dir.name), requests_per_hour=3600)
+
+    def tearDown(self):
+        self._dir.cleanup()
+
+    def test_split_and_dividend_factors_are_parsed(self):
+        payload = [
+            {"date": "2024-06-07T00:00:00.000Z", "close": 1208.88, "adjClose": 120.68,
+             "splitFactor": 1.0, "divCash": 0.0},
+            {"date": "2024-06-10T00:00:00.000Z", "close": 121.79, "adjClose": 121.58,
+             "splitFactor": 10.0, "divCash": 0.0},
+            {"date": "2024-06-11T00:00:00.000Z", "close": 120.91, "adjClose": 120.71,
+             "splitFactor": 1.0, "divCash": 0.01},
+        ]
+        with patch("savi_uz.tiingo_sources.urlopen", return_value=_Response(payload)):
+            rows = self.client.fetch_adjustments("NVDA", date(2024, 6, 1), date(2024, 6, 30))
+
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(rows[1].split_factor, 10.0)
+        self.assertTrue(rows[1].is_split)
+        self.assertFalse(rows[0].is_split)
+        self.assertEqual(rows[2].div_cash, 0.01)
+
+    def test_absent_factors_default_to_no_action(self):
+        payload = [{"date": "2024-06-07T00:00:00.000Z", "close": 1.0}]
+        with patch("savi_uz.tiingo_sources.urlopen", return_value=_Response(payload)):
+            rows = self.client.fetch_adjustments("X", date(2024, 6, 1), date(2024, 6, 30))
+        self.assertEqual(rows[0].split_factor, 1.0)
+        self.assertEqual(rows[0].div_cash, 0.0)
+        self.assertFalse(rows[0].is_split)
+
+    def test_undated_records_are_skipped(self):
+        payload = [{"close": 1.0}, {"date": "2024-06-07T00:00:00.000Z", "close": 2.0}]
+        with patch("savi_uz.tiingo_sources.urlopen", return_value=_Response(payload)):
+            rows = self.client.fetch_adjustments("X", date(2024, 6, 1), date(2024, 6, 30))
+        self.assertEqual(len(rows), 1)
+
+
+class IntradayColumnTests(unittest.TestCase):
+    def setUp(self):
+        self._dir = tempfile.TemporaryDirectory()
+        self.client = TiingoClient("token", cache_dir=Path(self._dir.name), requests_per_hour=3600)
+
+    def tearDown(self):
+        self._dir.cleanup()
+
+    def test_volume_is_requested_explicitly(self):
+        """The IEX default projection omits volume without saying so."""
+        captured = {}
+
+        def fake(request, **kwargs):
+            captured["url"] = request.full_url
+            return _Response(BARS)
+
+        with patch("savi_uz.tiingo_sources.urlopen", side_effect=fake):
+            self.client.fetch_intraday("SPY", date(2024, 1, 1), date(2024, 12, 31))
+        self.assertIn("volume", captured["url"])
+
+    def test_volume_reaches_the_bar(self):
+        payload = [dict(BARS[0], volume=150780.0)]
+        with patch("savi_uz.tiingo_sources.urlopen", return_value=_Response(payload)):
+            bars, _ = self.client.fetch_intraday("SPY", date(2024, 1, 1), date(2024, 12, 31))
+        self.assertEqual(bars[0].volume, 150780.0)

@@ -123,6 +123,22 @@ class SymbolMeta:
 
 
 @dataclass(frozen=True)
+class Adjustment:
+    """One day's split and dividend factors, for adjusting raw intraday bars."""
+
+    ticker: str
+    obs_date: date
+    close: float | None
+    adj_close: float | None
+    split_factor: float
+    div_cash: float
+
+    @property
+    def is_split(self) -> bool:
+        return self.split_factor not in (1.0, 0.0)
+
+
+@dataclass(frozen=True)
 class Bar:
     ticker: str
     frequency: str
@@ -291,6 +307,36 @@ class TiingoClient:
         )
         bars = self._bars(payload, ticker, frequency)
         return bars, len(bars) >= MAX_ROWS_PER_REQUEST
+
+    def fetch_adjustments(self, ticker: str, start: date, end: date) -> list[Adjustment]:
+        """Daily split and dividend factors for rebuilding an adjusted series.
+
+        Intraday bars come back raw: NVDA's close goes from 1,203 to 121 across
+        its 10:1 split, which a backtest reads as a 90% loss in a day. The daily
+        endpoint carries ``splitFactor`` and ``divCash``, so storing them lets a
+        backtest adjust intraday prices itself. One request covers 20 years.
+        """
+        payload = self._get(
+            f"/tiingo/daily/{ticker}/prices",
+            {"startDate": start.isoformat(), "endDate": end.isoformat()},
+            f"adj_{ticker}_{start.isoformat()}_{end.isoformat()}",
+        )
+        rows = []
+        for record in payload or []:
+            day = _parse_date(record.get("date"))
+            if day is None:
+                continue
+            rows.append(
+                Adjustment(
+                    ticker=ticker,
+                    obs_date=day,
+                    close=_parse_float(record.get("close")),
+                    adj_close=_parse_float(record.get("adjClose")),
+                    split_factor=_parse_float(record.get("splitFactor")) or 1.0,
+                    div_cash=_parse_float(record.get("divCash")) or 0.0,
+                )
+            )
+        return rows
 
     def fetch_daily(self, ticker: str, start: date, end: date) -> tuple[list[Bar], bool]:
         """End-of-day bars; the only route for OTC tickers."""

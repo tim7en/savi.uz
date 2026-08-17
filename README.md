@@ -462,21 +462,53 @@ One metadata request per symbol pays for itself: it returns the ticker's first
 date, so no requests are spent on years before a company listed. `RKLB` starts
 2021-08, `GEV` 2024-03.
 
-### Two source limits worth knowing
+### Source limits handled, not papered over
 
 **The 10,000-row cap is silent.** A request spanning more than about six years of
 hourly bars returns exactly 10,000 rows, no error, and it returns the *recent*
 end of the range. Asking for 2017-2026 in one call hands back 2020 onward and
 looks exactly like history starting in 2020 -- which is what it appeared to do
-until the range was chunked. Requests are split by calendar year (~1,550 hourly
-bars each) and any response arriving at the cap is flagged in the `windows`
-table and printed.
+until the range was chunked. Requests are split into `--years-per-request`
+chunks (default 3, ~4,700 hourly bars) and any response arriving at the cap is
+flagged in the `windows` table and printed. `max_safe_years()` computes the
+ceiling per frequency: 3 for hourly, 20 for daily.
 
-**IEX intraday is exchange-listed only.** The OTC ADRs in this universe --
-`TCEHY`, `XIACY`, `MPNGY`, `PMRTY`, all on `PINK` -- return zero intraday bars
-for any window, recent or historic, while having years of daily history
-(`TCEHY` back to 2008). They fall back to daily bars automatically;
-`--no-daily-fallback` skips them instead.
+Chunk size is the single biggest lever on cost. One year per request uses 16% of
+each response and turns the 46-symbol 2020-2026 pull into ~500 requests and 11
+hours; three years makes it 183 requests and about 4.
+
+**Volume has to be asked for by name.** The IEX endpoint's default projection is
+`date/open/high/low/close` and drops volume without a word. The client sends
+`columns=open,high,low,close,volume` explicitly. Note that IEX is one venue with
+a low single-digit share of consolidated volume, so these counts are a *relative*
+activity measure, not tradable share volume.
+
+**IEX intraday is exchange-listed only.** The OTC ADRs here -- `TCEHY`, `XIACY`,
+`MPNGY`, `PMRTY`, all on `PINK` -- return zero intraday bars for any window,
+recent or historic, while having years of daily history (`TCEHY` back to 2008).
+They fall back to daily automatically; `--no-daily-fallback` skips them instead.
+
+### Before you backtest on this
+
+**Intraday bars are RAW.** NVDA's close goes 1,203 to 121 across its 10:1 split
+on 2024-06-10, which a naive backtest reads as a 90% loss in one day. The
+`corporate_actions` table carries `splitFactor`, `divCash`, `close` and
+`adjClose` per day -- one request per symbol covers 20 years -- so a backtest can
+rebuild an adjusted series. Split events are printed at the end of every run.
+
+**Timestamps are UTC and the session shifts with US DST.** SPY has exactly six
+bars a day, but they sit at 14:00-19:00 UTC in summer and 15:00-20:00 in winter.
+Convert to `America/New_York` before assuming a fixed bar index.
+
+**About 0.2% of bars have a close outside their own high/low.** IEX takes the
+close from the last trade while high and low come from the interval aggregation,
+and they occasionally disagree by a few cents -- 32 bars in SPY's 15,036, mostly
+2018. The rows are stored exactly as published and the count is reported; a
+backtest that assumes `low <= close <= high` should decide for itself what to do
+rather than have the data quietly rewritten under it.
+
+**Early volume is patchy.** 1,727 of SPY's 15,036 bars carry no volume, 73% of
+them in 2017-2018 when IEX had less share. Post-2019 it is under 5% a year.
 
 ### A local TLS wrinkle
 
@@ -488,5 +520,10 @@ client pins certifi's bundle rather than weakening verification.
 
 `data/intraday/bars.db` holds `bars` (keyed by ticker, frequency and timestamp,
 so hourly and daily coexist), `symbols` (exchange, listing date, which themes the
-name represents), `windows` (the resume state and truncation flags) and
-`fetch_log`. `--csv-dir` exports all of it.
+name represents), `corporate_actions` (split and dividend factors), `windows`
+(the resume state and truncation flags) and `fetch_log`. `--csv-dir` exports all
+of it.
+
+Downloaded so far: `SPY` and `QQQ`, 15,036 hourly bars each covering
+2017-01-03 to 2026-08-14 across 2,506 trading days, plus 2,417 days of
+adjustment factors apiece.

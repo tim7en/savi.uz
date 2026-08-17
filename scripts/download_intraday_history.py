@@ -197,7 +197,15 @@ def download_symbol(
             store.log(run_id, utc_now_iso(), "TIINGO", f"{symbol}/{first.year}-{last.year}",
                       written, "truncated", "response hit the row cap")
 
+    # One request buys the whole split/dividend history, without which the raw
+    # intraday bars cannot be turned into a tradable return series.
+    adjustments = client.fetch_adjustments(symbol, start, end)
+    store.write_adjustments(adjustments)
+    split_count = sum(1 for row in adjustments if row.is_split)
+
     label = f"{frequency}{' (daily fallback)' if use_daily else ''}"
+    if split_count:
+        label += f", {split_count} split(s)"
     print(f"[{symbol:<6}] {total_bars:>6,} bars over {total_windows:>2} window(s)  {label}"
           f"  listed {listing_start}")
     store.log(run_id, utc_now_iso(), "TIINGO", symbol, total_bars, "ok", label)
@@ -276,6 +284,13 @@ def main(argv: list[str] | None = None) -> int:
                   "(IEX resampling artefact, left as published):")
             for ticker, frequency, count in violations:
                 print(f"  {ticker:<6} {frequency:<6} {count}")
+
+        splits = store.splits()
+        if splits:
+            print(f"\n{len(splits)} split event(s) -- intraday bars are RAW, apply these "
+                  "before computing returns:")
+            for ticker, day, factor in splits[:12]:
+                print(f"  {ticker:<6} {day}  {factor:g}:1")
 
         gaps = [row for row in store.missing_volume() if row[2]]
         if gaps:
