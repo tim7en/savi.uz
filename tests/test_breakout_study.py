@@ -14,7 +14,13 @@ from savi_uz.breakout_study import (
     stratified_buckets,
     welch_t,
 )
-from savi_uz.volume_profile import Bar, build_profile, classify_shape, count_peaks
+from savi_uz.volume_profile import (
+    Bar,
+    bimodality,
+    build_profile,
+    classify_shape,
+    count_peaks,
+)
 
 
 def _bar(ts: str, o: float, h: float, low: float, c: float, v: float | None = 1000.0) -> Bar:
@@ -334,3 +340,34 @@ class VolumeCoverageTests(unittest.TestCase):
         samples = build_samples(bars, bins=12, min_prefix=3, min_volume_coverage=0.6)
         self.assertTrue(samples)
         self.assertLessEqual(max(s.bars_elapsed for s in samples), 10)
+
+
+class BimodalityTests(unittest.TestCase):
+    """Scoring a double distribution by low concentration finds the flattest
+    session, which looks like no distribution rather than two."""
+
+    def test_two_clear_humps_score_high(self):
+        self.assertGreater(bimodality([1, 9, 2, 1, 1, 2, 9, 1]), 0.8)
+
+    def test_one_broad_peak_scores_low(self):
+        self.assertLess(bimodality([1, 4, 9, 8, 9, 4, 1, 1]), 0.3)
+
+    def test_a_flat_histogram_is_not_bimodal(self):
+        self.assertEqual(bimodality([5, 5, 5, 5, 5, 5, 5, 5]), 0.0)
+
+    def test_a_single_spike_is_not_bimodal(self):
+        self.assertEqual(bimodality([1, 1, 9, 1, 1, 1, 1, 1]), 0.0)
+
+    def test_a_negligible_second_peak_scores_low(self):
+        """A deep trough beside a tiny bump is noise, not a second distribution."""
+        self.assertLess(bimodality([9, 1, 1, 1, 1, 1, 2, 1]), 0.2)
+
+    def test_deeper_troughs_score_higher_than_shallow_ones(self):
+        deep = bimodality([9, 1, 1, 1, 9])
+        shallow = bimodality([9, 7, 7, 7, 9])
+        self.assertGreater(deep, shallow)
+
+    def test_degenerate_input_is_zero(self):
+        self.assertEqual(bimodality([]), 0.0)
+        self.assertEqual(bimodality([1, 2]), 0.0)
+        self.assertEqual(bimodality([0, 0, 0, 0, 0, 0]), 0.0)

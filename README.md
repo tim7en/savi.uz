@@ -674,3 +674,33 @@ measured return does not charge for.
 
 Output is `out/strategy/breakout_<ticker>_<freq>.md` plus the full sample table
 as CSV, so the raw decision points can be re-cut without rerunning the study.
+
+### Seeing the profiles
+
+```bash
+PYTHONPATH=src python scripts/build_profile_gallery.py --count 20
+PYTHONPATH=src python scripts/build_dashboard.py \
+    --template assets/profile_gallery_template.html \
+    --data out/gallery/profiles.json --out out/gallery/index.html
+```
+
+A page of the actual distributions, built by calling the same `build_profile`
+the study calls, so the picture is the analysis rather than a second
+reconstruction of it.
+
+Each session is drawn as **two panels sharing one price axis**: price against
+time on the left, volume against price on the right. They are not merged --
+volume-at-price and price-over-time have different horizontal meanings, and one
+combined axis would invent a relationship that is not there.
+
+Volume bins use a validated three-step ordinal ramp of one hue: outside the
+value area, inside it, and the point of control. The value area is also washed
+across both panels, so the reader has a second, non-colour cue for the same
+boundary.
+
+The exemplar strip needed care. Picking the "clearest" double distribution by
+*lowest* concentration finds the flattest session on record -- which looks like
+no distribution at all rather than two. `bimodality()` scores it properly: the
+weaker of the two modes against the stronger, times how far the trough between
+them falls. Both terms matter, since a tall second peak over a shallow dip is
+one broad distribution, and a deep dip beside a negligible bump is noise.

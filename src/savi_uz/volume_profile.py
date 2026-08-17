@@ -199,6 +199,34 @@ def count_peaks(buckets: list[float]) -> int:
     return modes
 
 
+def bimodality(volume: list[float]) -> float:
+    """How convincingly two-humped a histogram is, in [0, 1].
+
+    Scores the best split into two modes: the height of the weaker mode against
+    the stronger, times how far the trough between them falls. Both terms are
+    needed -- a tall second peak with a shallow dip is one broad distribution,
+    and a deep dip beside a negligible second peak is noise.
+    """
+    if len(volume) < 5:
+        return 0.0
+    peak = max(volume)
+    if peak <= 0:
+        return 0.0
+    best = 0.0
+    for split in range(2, len(volume) - 2):
+        left = max(volume[:split])
+        right = max(volume[split:])
+        weaker = min(left, right)
+        if weaker <= 0:
+            continue
+        left_at = volume.index(left)
+        right_at = split + volume[split:].index(right)
+        trough = min(volume[left_at:right_at + 1]) if right_at > left_at else weaker
+        separation = 1.0 - trough / weaker
+        best = max(best, (weaker / peak) * separation)
+    return best
+
+
 def classify_shape(buckets: list[float], poc_position: float) -> tuple[str, int]:
     """Market-profile shape vocabulary, from the volume distribution.
 
