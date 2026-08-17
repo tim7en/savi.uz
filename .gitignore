@@ -3,6 +3,7 @@ __pycache__/
 .cache/
 out/
 data/
+*.rar
 .env
 .env.*
 !.env.example
