@@ -8,6 +8,7 @@ from pathlib import Path
 #: Searched in order; the first name present wins.
 FRED_KEY_NAMES = ("FRED_API_KEY", "FRED_API", "FRED_KEY")
 ALPHAVANTAGE_KEY_NAMES = ("ALPHAVANTAGE_API_KEY", "ALPHAVANTAGE_API")
+TIINGO_KEY_NAMES = ("TIINGO_API_KEY", "TIINGO_API", "TIINGO_TOKEN")
 
 #: The SEC blocks default library user agents outright and asks that yours
 #: identify you; set SEC_USER_AGENT to "project (you@example.com)".
@@ -55,6 +56,18 @@ def get_alphavantage_api_key() -> str:
     api_key = _first_env(ALPHAVANTAGE_KEY_NAMES)
     if not api_key:
         raise ValueError("Missing ALPHAVANTAGE_API_KEY environment variable.")
+    return api_key
+
+
+def get_tiingo_api_key() -> str:
+    """Return the Tiingo API token from the environment or ``.env``."""
+    load_dotenv()
+    api_key = _first_env(TIINGO_KEY_NAMES)
+    if not api_key:
+        raise ValueError(
+            "Missing TIINGO_API_KEY in the environment or .env -- "
+            "free key at https://www.tiingo.com/account/api/token"
+        )
     return api_key
 
 
