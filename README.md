@@ -375,3 +375,56 @@ only through SPY), `weak`, `poor`, `insufficient`.
 No proxy exists for `ANTHROPIC` and `OPENAI` (pre-IPO, no listing anywhere), or
 for `BBX`, which is a US contract whose Yahoo ticker the universe run could not
 resolve -- a mapping gap rather than an untradable name.
+
+## Themes and their leaders
+
+```bash
+PYTHONPATH=src python scripts/select_theme_leaders.py --outdir out/tradfi
+```
+
+Scores each hand-labelled theme in `savi_uz.seed_groups` against the measured
+correlation panel and picks the two or three names that actually carry it.
+
+### Scoring
+
+Themes are scored by **factor strength**, the first principal component's
+eigenvalue rescaled to `(lambda1 - 1) / (n - 1)`. Average pairwise correlation
+is the obvious statistic and it fails here twice:
+
+- **Signs.** "Vol / rates diversifiers" holds `TMF` (3x long Treasuries) and
+  `TBT` (2x short). A signed average reports **-0.29** and buries a perfectly
+  tight factor. Eigenvalues are unchanged by flipping a variable's sign, so the
+  same theme scores **0.44** and `TMF` is simply flagged as the inverse leg.
+- **Size.** A raw variance share cannot fall below `1/n`, so a two-name theme
+  scores at least 0.50 however unrelated its members are, while an eight-name
+  theme starts at 0.125. The rescaling puts every theme on one scale; under an
+  equicorrelation model it returns exactly the common correlation.
+
+Leaders are ranked by absolute PC1 loading, then deduplicated by underlying:
+Binance lists `TENCENT` and `HK0700` as separate contracts on the same stock,
+and two contracts on one company are one thing to track, not two.
+
+### Result
+
+15 of the 17 measurable themes hold together. Two do not:
+
+- **Healthcare** (0.15) -- `LLY` and `NVO` are one obesity-drug trade; `HIMS` is
+  telehealth. Different businesses wearing one label.
+- **Autos / mobility** (0.16) -- `TSLA`/`RIVN` (EV), `HYUNDAI` (legacy auto) and
+  `UBER` (rideshare) share a word, not a risk factor.
+
+### The hand labels are coarse
+
+The clustering found tighter groups than the seed table, and 81 of the 150
+instruments in the panel carry no hand label at all. Notably:
+
+| Data-driven cluster | Strength | vs. seed theme |
+|---|---:|---|
+| `HANMI, KODEX200, SAMSUNG, SKHYNIX, SAMSUNGEM` | 0.63 | "AI / semis Asia" scores 0.36 because it dilutes Korea with `TSM` and China names |
+| `AAOI, CIEN, COHR, LITE, GLW` | 0.61 | optical networking -- not in the seed table at all |
+| `SQQQ, TZA, UVXY` | 0.72 | inverse/vol, split across two seed groups |
+| `ALAB, CRDO, AVGO, GEV, VRT, NVDA` | 0.54 | AI infrastructure, distinct from semicap equipment |
+
+Output is `out/tradfi/theme_leaders.csv` and `theme_leaders.md`, with each pick
+carrying its US-tradable symbol and proxy verdict from the proxy map, so a
+US-only strategy can be built straight off the table.

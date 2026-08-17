@@ -139,6 +139,7 @@ def select_leaders(
     liquidity: pd.Series,
     count: int = DEFAULT_LEADER_COUNT,
     min_liquidity: float | None = None,
+    underlying: pd.Series | None = None,
 ) -> tuple[str, ...]:
     """The ``count`` names carrying most of the theme, subject to liquidity.
 
@@ -146,6 +147,11 @@ def select_leaders(
     theme. The liquidity floor is applied first and relaxed if it would empty
     the theme, because returning nothing is less useful than returning the
     tradable-but-thin name with its liquidity attached.
+
+    When ``underlying`` is supplied, only one contract per underlying security
+    is returned. Binance lists the same stock more than once -- ``TENCENT`` and
+    ``HK0700`` are both 0700.HK -- and two contracts on one company are one
+    thing to track, not two.
     """
     if loadings.empty:
         return ()
@@ -155,7 +161,21 @@ def select_leaders(
         eligible = [s for s in ranked.index if float(liquidity.get(s, float("-inf"))) >= min_liquidity]
         if eligible:
             ranked = ranked.loc[eligible]
-    return tuple(ranked.index[:count])
+
+    if underlying is None:
+        return tuple(ranked.index[:count])
+
+    picked: list[str] = []
+    seen: set[str] = set()
+    for symbol in ranked.index:
+        key = str(underlying.get(symbol, "") or symbol)
+        if key in seen:
+            continue
+        seen.add(key)
+        picked.append(symbol)
+        if len(picked) == count:
+            break
+    return tuple(picked)
 
 
 def summarise_theme(
@@ -176,7 +196,12 @@ def summarise_theme(
     loadings, explained = principal_component(submatrix)
     strength = factor_strength(explained, len(available))
     verdict = classify_theme(strength, len(available))
-    chosen = select_leaders(loadings, liquidity, count=count, min_liquidity=min_liquidity)
+    underlying = (
+        metadata["yahoo_ticker"] if "yahoo_ticker" in metadata.columns else None
+    )
+    chosen = select_leaders(
+        loadings, liquidity, count=count, min_liquidity=min_liquidity, underlying=underlying
+    )
 
     leaders = []
     for symbol in chosen:

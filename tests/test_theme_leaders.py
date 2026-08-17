@@ -170,5 +170,49 @@ class SummariseThemeTests(unittest.TestCase):
         self.assertEqual(leader.proxy_verdict, "strong")
 
 
+
+class DeduplicationTests(unittest.TestCase):
+    """Binance lists some companies twice; two contracts on one stock is one bet."""
+
+    def setUp(self):
+        self.loadings = pd.Series({"TENCENTUSDT": 0.9, "HK0700USDT": 0.88, "KUAISHOUUSDT": 0.6,
+                                   "MEITUANUSDT": 0.5})
+        self.liquidity = pd.Series({k: 6.0 for k in self.loadings.index})
+        self.underlying = pd.Series({
+            "TENCENTUSDT": "0700.HK", "HK0700USDT": "0700.HK",
+            "KUAISHOUUSDT": "1024.HK", "MEITUANUSDT": "3690.HK",
+        })
+
+    def test_duplicate_underlyings_are_collapsed(self):
+        picks = select_leaders(
+            self.loadings, self.liquidity, count=3, underlying=self.underlying
+        )
+        self.assertEqual(picks, ("TENCENTUSDT", "KUAISHOUUSDT", "MEITUANUSDT"))
+
+    def test_the_higher_loading_contract_survives(self):
+        picks = select_leaders(
+            self.loadings, self.liquidity, count=1, underlying=self.underlying
+        )
+        self.assertEqual(picks, ("TENCENTUSDT",))
+
+    def test_without_the_mapping_duplicates_are_kept(self):
+        picks = select_leaders(self.loadings, self.liquidity, count=3)
+        self.assertEqual(picks, ("TENCENTUSDT", "HK0700USDT", "KUAISHOUUSDT"))
+
+    def test_summarise_theme_deduplicates_via_metadata(self):
+        names = list(self.loadings.index)
+        corr = _equicorrelated(names, 0.7)
+        metadata = pd.DataFrame(
+            {
+                "base_asset": [n.replace("USDT", "") for n in names],
+                "region": ["HK"] * len(names),
+                "yahoo_ticker": [self.underlying[n] for n in names],
+            },
+            index=names,
+        )
+        summary = summarise_theme("China internet", names, corr, self.liquidity, metadata, {}, count=3)
+        tickers = [self.underlying[leader.symbol] for leader in summary.leaders]
+        self.assertEqual(len(tickers), len(set(tickers)))
+
 if __name__ == "__main__":
     unittest.main()
