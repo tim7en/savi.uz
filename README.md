@@ -6,6 +6,8 @@ Data ingestion scaffold for a daily strategy that combines:
 - US options chains for major symbols like `SPY` and `QQQ` (AlphaVantage)
 - Macro datasets including Fed policy rate and yield-based forward-rate proxy (AlphaVantage)
 - CFTC Commitments of Traders positioning, all six reports, back to 2000 (or 1986 for legacy)
+- Earnings and valuation: Shiller's 1871- CAPE history, SEC XBRL company fundamentals,
+  index prices, and the FactSet Earnings Insight forward-estimate series
 - Binance trad-FI perpetuals, mapped to their Yahoo Finance underlyings and clustered
   for uncorrelated position selection
 
@@ -101,6 +103,7 @@ in ~6 minutes.
 | `labor` | Payrolls, U-3, U-6, claims, continuing claims, participation, JOLTS openings and quits, AHE, hours |
 | `credit` | ICE BofA OAS (HY, CCC, IG, BBB), Moody's Baa/Aaa spreads, Chicago Fed NFCI and subindices, StL stress index, VIX |
 | `balance_sheet` | WALCL, securities held outright, reserves, TGA, ON RRP volume and award rate, discount window |
+| `corporate_profits` | BEA corporate profits (CP, CPATAX, CPROFIT, pre-tax), profits/GDP, GDP and real GDP — quarterly to 1947 |
 
 ### Release and vintage timestamps
 
@@ -229,3 +232,146 @@ full history), so re-runs over past years cost nothing.
   the date rather than assuming a fixed weekday. The archives carry no
   publication timestamp, so unlike the FRED tables there is no vintage dimension
   here; for backtests, lag the report date by three days to avoid look-ahead.
+
+## Earnings and valuation
+
+```bash
+PYTHONPATH=src python scripts/download_earnings_history.py --db data/equity/equity.db
+```
+
+Four sources, none of which covers the whole picture, into one database.
+
+| Source | Table | Coverage | Rows |
+|---|---|---|---|
+| Shiller | `shiller_monthly` | 1871-01 to 2024-09, monthly | 1,845 |
+| Yahoo index closes | `index_prices` | 2000-01-03 to today, daily | 26,776 |
+| SEC XBRL frames | `sec_facts` | 2009-02-19 onward, quarterly | 2,731,125 |
+| Alpha Vantage | `analyst_earnings` | needs a key | 0 |
+
+### What each one can and cannot reach
+
+**Shiller** is the only free source with S&P 500 earnings, dividends, CPI and CAPE
+back to 1871. Two things to know. It is maintained by hand and runs behind --
+and the mirrors disagree, the Yale copy ending a full year earlier than the one
+on shillerdata.com. `ShillerClient` fetches every mirror and keeps whichever has
+the later last observation, so a stale mirror costs end date rather than the
+whole download. Within a copy, price is filled before earnings: at the time of
+writing price runs to 2024-09 and earnings only to 2024-06. `shiller_earnings_gap()`
+reports that lag, which is what a CAPE calculation has to bridge.
+
+Shiller's date column is `YYYY.MM` stored as a float, so **October arrives as
+`1871.1`, not `1871.10`**. Parsed naively it becomes January and silently
+corrupts every October in a 154-year series. The parser formats to two decimals
+first; the month histogram comes out 153-154 apiece rather than 307 Januaries.
+
+**SEC XBRL cannot reach 2000.** XBRL was phased in over 2009-2011: the 2009Q1
+frame holds 475 filers against 4,994 by 2023. There is no route to company
+fundamentals before 2009 through this API at any price, and a run started
+earlier reports the fact and begins at 2009.
+
+The download uses the `frames` endpoint -- one request returns every filer's
+value for a concept in a period -- rather than per-company `companyfacts`, which
+is what makes market-wide history affordable: 720 requests instead of ~8,000.
+Revenue is collected under both `Revenues` and the ASC 606 tag, because filers
+migrated between them in 2018 and neither spans the period alone.
+
+`data.sec.gov` rejects default library user agents with a 403. `SEC_USER_AGENT`
+overrides the default; their fair-access policy asks that it identify you.
+
+**S&P 500 price does not come from FRED.** FRED's `SP500` only reaches back to
+2016 under a rolling ten-year licence window, the same restriction as the ICE
+BofA spreads. Yahoo `^GSPC` covers 1927 to today and is what fills
+`index_prices`, alongside `^SP500TR`, `^NDX` and `^RUT`.
+
+**Corporate profits** are FRED series and live in the macro database, not here:
+
+```bash
+PYTHONPATH=src python scripts/download_macro_history.py --groups corporate_profits
+```
+
+That group holds BEA's `CP`, `CPATAX`, `CPROFIT`, profits as a share of GDP and
+GDP itself, quarterly back to 1947 -- the macro counterpart to company earnings,
+measured from the national accounts rather than from filings, and reaching six
+decades further back than XBRL.
+
+**Alpha Vantage** estimates need `ALPHAVANTAGE_API_KEY`; the step prints a note
+and skips when it is absent. The free tier is roughly 25 calls a day, so the
+universe is a short list rather than the market -- override with `--tickers`.
+Quota exhaustion arrives as HTTP 200 with an explanatory body rather than an
+error status, so it is detected from the JSON and stops the loop.
+
+## US proxy map
+
+```bash
+PYTHONPATH=src python scripts/build_us_proxy_map.py --outdir out/tradfi
+```
+
+For testing strategies that can only trade US hours: maps every Binance trad-FI
+contract to a US-listed instrument, and **measures** how well each proxy tracks
+its real underlying rather than assuming an ADR or a country ETF is good enough.
+
+132 contracts are US equities and map to themselves. 28 are scored against
+candidate proxies; 3 have nothing to map to.
+
+### How tracking is measured
+
+Three numbers, because one correlation hides the two things that matter:
+
+- **Daily over lags -1/0/+1.** Hong Kong closes at 08:00 UTC and Korea at 06:00,
+  the US at 20:00 or later. A US instrument's day-T return therefore carries
+  news the Asian market cannot reflect until T+1, so same-day correlation
+  understates the link and a real relationship shows up as the US proxy leading.
+- **Weekly.** Friday-to-Friday returns mostly remove the session offset. This is
+  the headline number and what the verdict is based on.
+- **SPY-neutral weekly.** Correlation of residuals after market beta is removed
+  from both sides. This separates a proxy that tracks *the name* from two things
+  that both follow the US market, and it demotes an otherwise good-looking
+  correlation to `market-beta` when nothing specific is left.
+
+Beta and R² are reported alongside, because a correlation with the wrong slope
+still does not size a position.
+
+### What the data says
+
+The session offset is real and large. Every Korean contract's best lag is **+1**
+-- the US instrument moves first -- and daily correlation badly understates the
+relationship that weekly returns recover:
+
+| Contract | Proxy | daily | weekly | best lag |
+|---|---|---:|---:|---:|
+| SAMSUNG | EWY | 0.36 | 0.63 | +1 |
+| KODEX200 | EWY | 0.43 | 0.75 | +1 |
+| SKHYNIX | MU | 0.46 | 0.71 | +1 |
+| HYUNDAI | EWY | 0.25 | 0.53 | +1 |
+
+Hong Kong ADRs and commodities are synchronous enough to peak at lag 0.
+
+**ADRs are near-substitutes.** Tencent via `TCEHY` is 0.92 weekly, Xiaomi via
+`XIACY` 0.94, Meituan via `MPNGY` 0.90, Pop Mart via `PMRTY` 0.81 -- and the
+SPY-neutral figure is the same or higher in each case, so the tracking is the
+company, not the market.
+
+**Commodities are effectively exact**: gold/`GLD` 0.98, silver/`SLV` 0.97,
+WTI/`USO` 0.99, copper/`CPER` 0.99, platinum/`PPLT` and palladium/`PALL` 0.98.
+
+**Korea is where the assumption breaks.** There is no liquid US ADR for Samsung
+or SK Hynix, so the routes are the memory peer (`MU`) or the country ETF
+(`EWY`), and they carry only part of the move: Samsung 0.63, SK Hynix 0.71.
+Below that, `NAVER` (0.24) and `LGELECTRONICS` (0.27) are not tradable through a
+US proxy at all -- `EWY` is a 100-name index and these are single stocks inside
+it. `KODEX200` is the exception at 0.75, because it is itself a KOSPI 200 index
+fund and `EWY` is the US equivalent exposure.
+
+`ZHONGJI` (0.33 against optical-module peers) and `GIGADEV` (0.38 against
+semiconductor ETFs) are sector-level only.
+
+### Output
+
+`out/tradfi/us_proxy_map.csv` has every candidate scored; `us_proxy_map.md` is
+the readable version with a best-proxy-per-contract table. Verdicts are
+`direct`, `strong` (>=0.80), `usable` (0.55-0.80), `market-beta` (correlated but
+only through SPY), `weak`, `poor`, `insufficient`.
+
+No proxy exists for `ANTHROPIC` and `OPENAI` (pre-IPO, no listing anywhere), or
+for `BBX`, which is a US contract whose Yahoo ticker the universe run could not
+resolve -- a mapping gap rather than an untradable name.
