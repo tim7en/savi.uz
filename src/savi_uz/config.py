@@ -9,6 +9,11 @@ from pathlib import Path
 FRED_KEY_NAMES = ("FRED_API_KEY", "FRED_API", "FRED_KEY")
 ALPHAVANTAGE_KEY_NAMES = ("ALPHAVANTAGE_API_KEY", "ALPHAVANTAGE_API")
 
+#: The SEC blocks default library user agents outright and asks that yours
+#: identify you; set SEC_USER_AGENT to "project (you@example.com)".
+SEC_USER_AGENT_NAMES = ("SEC_USER_AGENT", "SEC_UA")
+DEFAULT_SEC_USER_AGENT = "savi-uz-research/1.0"
+
 
 def load_dotenv(path: str | Path = ".env", override: bool = False) -> dict[str, str]:
     """Read a ``.env`` file into ``os.environ`` without taking a dependency.
@@ -51,6 +56,18 @@ def get_alphavantage_api_key() -> str:
     if not api_key:
         raise ValueError("Missing ALPHAVANTAGE_API_KEY environment variable.")
     return api_key
+
+
+def get_sec_user_agent() -> str:
+    """User-Agent for data.sec.gov.
+
+    Unlike the API keys this has a working default, because the SEC only
+    requires that the agent not be a default library string -- but their fair
+    -access policy asks for a contact address, so setting one is polite and
+    keeps you off the rate-limit blocklist.
+    """
+    load_dotenv()
+    return _first_env(SEC_USER_AGENT_NAMES) or DEFAULT_SEC_USER_AGENT
 
 
 def get_fred_api_key() -> str:

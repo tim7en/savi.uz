@@ -3,3 +3,7 @@
 numpy>=1.26
 pandas>=2.2
 yfinance>=0.2.40
+
+# Shiller publishes ie_data.xls in the legacy .xls format, which openpyxl
+# cannot read; xlrd 2.x reads .xls only, which is exactly what is needed.
+xlrd>=2.0

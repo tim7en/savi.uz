@@ -170,8 +170,28 @@ BALANCE_SHEET = _specs(
     VintagePolicy.FIRST,
 )
 
+#: BEA's corporate profits, the macro counterpart to company earnings: the same
+#: quantity measured from the national accounts rather than from filings, and
+#: available back to 1947 where XBRL only reaches 2009. Quarterly and revised
+#: hard, so first prints matter.
+CORPORATE_PROFITS = _specs(
+    "corporate_profits",
+    (
+        ("CP", "Corporate profits after tax (without IVA/CCAdj)"),
+        ("CPATAX", "Corporate profits after tax with IVA and CCAdj"),
+        ("CPROFIT", "Corporate profits with IVA"),
+        ("A053RC1Q027SBEA", "National income: corporate profits before tax"),
+        ("W273RE1A156NBEA", "Corporate profits as a share of GDP"),
+        ("NFCPATAX", "Nonfinancial corporate profits after tax"),
+        ("GDP", "Gross domestic product"),
+        ("GDPC1", "Real gross domestic product"),
+    ),
+    VintagePolicy.FIRST,
+)
+
 FRED_CATALOG: tuple[SeriesSpec, ...] = (
     POLICY_RATE + MARKET_IMPLIED_PATH + FED_SEP + INFLATION + LABOR + CREDIT + BALANCE_SHEET
+    + CORPORATE_PROFITS
 )
 
 GROUPS: tuple[str, ...] = tuple(dict.fromkeys(spec.group for spec in FRED_CATALOG))
