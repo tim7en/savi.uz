@@ -1,0 +1,1021 @@
+<title>Savi Data Room</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ground: #f4f4f1;
+    --surface: #fcfcfb;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --rule: #e1e0d9;
+    --axis: #c3c2b7;
+    --ring: rgba(11, 11, 11, 0.10);
+    --raise: rgba(11, 11, 11, 0.04);
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+    --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+    --pos: #2a78d6; --neg: #e34948; --mid: #f0efec;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7;
+      --muted: #898781; --rule: #2c2c2a; --axis: #383835;
+      --ring: rgba(255, 255, 255, 0.12); --raise: rgba(255, 255, 255, 0.05);
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+      --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+      --pos: #3987e5; --neg: #e66767; --mid: #383835;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #0d0d0d; --surface: #1a1a19; --ink: #ffffff; --ink-2: #c3c2b7;
+    --muted: #898781; --rule: #2c2c2a; --axis: #383835;
+    --ring: rgba(255, 255, 255, 0.12); --raise: rgba(255, 255, 255, 0.05);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+    --pos: #3987e5; --neg: #e66767; --mid: #383835;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* The rail is sticky and one viewport tall, so on a long page its column
+     would otherwise show the page ground below the fold. Painting the column
+     on the grid keeps the surface continuous the whole way down. */
+  .shell {
+    display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh;
+    background: linear-gradient(to right, var(--surface) 0 232px, var(--ground) 232px);
+  }
+
+  /* ---- rail ---- */
+  .rail {
+    border-right: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 22px 0 40px;
+    position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 26px;
+  }
+  .brand { padding: 0 20px; display: flex; flex-direction: column; gap: 3px; }
+  .brand b { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+  .brand span { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .navlist { display: flex; flex-direction: column; gap: 1px; }
+  .navbtn {
+    all: unset; cursor: pointer; display: grid; grid-template-columns: 1fr auto;
+    align-items: baseline; gap: 8px; padding: 9px 20px; border-left: 2px solid transparent;
+    color: var(--ink-2); font-size: 13.5px;
+  }
+  .navbtn:hover { background: var(--raise); color: var(--ink); }
+  .navbtn:focus-visible { outline: 2px solid var(--s1); outline-offset: -2px; }
+  .navbtn[aria-current="true"] { color: var(--ink); border-left-color: var(--s1); font-weight: 600; background: var(--raise); }
+  .navbtn em { font-family: var(--mono); font-size: 10.5px; font-style: normal; color: var(--muted); font-weight: 400; }
+  .railfoot { margin-top: auto; padding: 0 20px; font-family: var(--mono); font-size: 10.5px; color: var(--muted); line-height: 1.7; }
+
+  /* ---- page ---- */
+  main { padding: 30px 34px 72px; max-width: 1180px; }
+  .phead { display: flex; flex-direction: column; gap: 7px; margin-bottom: 6px; }
+  .eyebrow { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--muted); }
+  h1 { font-size: 26px; line-height: 1.2; margin: 0; font-weight: 650; letter-spacing: -0.02em; text-wrap: balance; }
+  .lede { color: var(--ink-2); max-width: 68ch; margin: 0; font-size: 14.5px; }
+  .prov {
+    display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 14px 0 0;
+    padding: 9px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+  }
+  .prov b { color: var(--ink-2); font-weight: 500; }
+
+  .filters { display: flex; align-items: center; gap: 8px; margin: 20px 0 4px; flex-wrap: wrap; }
+  .filters .lbl { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-right: 2px; }
+  .chip {
+    all: unset; cursor: pointer; font-family: var(--mono); font-size: 11.5px;
+    padding: 5px 11px; border: 1px solid var(--rule); border-radius: 999px; color: var(--ink-2);
+  }
+  .chip:hover { background: var(--raise); color: var(--ink); }
+  .chip:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); margin: 22px 0 0; }
+  .kpi { background: var(--surface); padding: 13px 15px; display: flex; flex-direction: column; gap: 3px; }
+  .kpi .k { font-size: 11.5px; color: var(--muted); }
+  .kpi .v { font-family: var(--mono); font-size: 21px; font-weight: 600; letter-spacing: -0.02em; }
+  .kpi .s { font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+
+  .card { background: var(--surface); border: 1px solid var(--rule); margin-top: 22px; }
+  .chead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 15px 17px 11px; }
+  .chead h2 { font-size: 14.5px; margin: 0 0 2px; font-weight: 620; letter-spacing: -0.005em; }
+  .chead p { margin: 0; font-size: 12.5px; color: var(--ink-2); max-width: 62ch; }
+  .toggle { all: unset; cursor: pointer; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 4px 8px; border: 1px solid var(--rule); white-space: nowrap; }
+  .toggle:hover { color: var(--ink); background: var(--raise); }
+  .toggle:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 0 17px 10px; }
+  .lgi { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); }
+  .lgi i { display: block; width: 14px; height: 2px; border-radius: 1px; flex: none; }
+  .lgi.rect i { height: 9px; width: 9px; border-radius: 2px; }
+
+  .plot { position: relative; padding: 0 8px 6px; }
+  .plot svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .grid line { stroke: var(--rule); stroke-width: 1; shape-rendering: crispEdges; }
+  .axis line { stroke: var(--axis); stroke-width: 1; shape-rendering: crispEdges; }
+  .tick { font-family: var(--mono); font-size: 10px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+  .zline { stroke: var(--axis); stroke-width: 1; shape-rendering: crispEdges; }
+  .dlabel { font-family: var(--mono); font-size: 10.5px; font-weight: 600; fill: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .xhair { stroke: var(--axis); stroke-width: 1; pointer-events: none; }
+
+  .tip {
+    position: absolute; pointer-events: none; z-index: 9; opacity: 0; transition: opacity .1s;
+    background: var(--surface); border: 1px solid var(--ring); box-shadow: 0 3px 14px rgba(0,0,0,.13);
+    padding: 8px 10px; min-width: 132px; font-size: 12px;
+  }
+  .tip.on { opacity: 1; }
+  .tip .tt { font-family: var(--mono); font-size: 10.5px; color: var(--muted); margin-bottom: 5px; }
+  .tip .tr { display: grid; grid-template-columns: 12px 1fr auto; align-items: center; gap: 7px; padding: 1.5px 0; }
+  .tip .tr i { display: block; width: 12px; height: 2px; border-radius: 1px; }
+  .tip .tr span { color: var(--ink-2); font-size: 11.5px; white-space: nowrap; }
+  .tip .tr b { font-family: var(--mono); font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  .tblwrap { display: none; max-height: 340px; overflow: auto; border-top: 1px solid var(--rule); }
+  .card.astable .tblwrap { display: block; }
+  .card.astable .plot, .card.astable .legend { display: none; }
+  table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  th, td { text-align: right; padding: 5px 12px; border-bottom: 1px solid var(--rule); font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  th { position: sticky; top: 0; background: var(--surface); color: var(--muted); font-weight: 500; font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; }
+  th:first-child, td:first-child { text-align: left; }
+
+  .note { margin: 12px 0 0; padding: 11px 14px; border-left: 2px solid var(--s4); background: var(--raise); font-size: 12.5px; color: var(--ink-2); }
+  .note b { color: var(--ink); font-weight: 600; }
+  .empty { padding: 34px 17px; color: var(--muted); font-size: 13px; }
+  .hide { display: none !important; }
+
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+    .rail { position: static; height: auto; flex-direction: row; align-items: center; gap: 12px; overflow-x: auto; padding: 12px; }
+    .navlist { flex-direction: row; }
+    .navbtn { border-left: none; border-bottom: 2px solid transparent; padding: 7px 12px; white-space: nowrap; }
+    .navbtn[aria-current="true"] { border-left-color: transparent; border-bottom-color: var(--s1); }
+    .railfoot, .navbtn em { display: none; }
+    main { padding: 20px 14px 60px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="shell">
+  <nav class="rail">
+    <div class="brand"><b>Savi Data Room</b><span id="stamp"></span></div>
+    <div class="navlist" id="nav"></div>
+    <div class="railfoot" id="foot"></div>
+  </nav>
+  <main id="main"></main>
+</div>
+
+<script id="payload" type="application/json">__DATA__</script>
+<script>
+(function () {
+  "use strict";
+  const DATA = JSON.parse(document.getElementById("payload").textContent);
+  const SERIES = ["--s1","--s2","--s3","--s4","--s5","--s6","--s7","--s8"];
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+  const fmt = (n, d) => n === null || n === undefined || Number.isNaN(n) ? "\u2014"
+    : n.toLocaleString("en-US", { minimumFractionDigits: d ?? 2, maximumFractionDigits: d ?? 2 });
+  const compact = (n) => {
+    if (n === null || n === undefined) return "\u2014";
+    const a = Math.abs(n);
+    if (a >= 1e6) return (n / 1e6).toFixed(2) + "M";
+    if (a >= 1e3) return (n / 1e3).toFixed(1) + "K";
+    return fmt(n, a < 10 ? 2 : 1);
+  };
+  const el = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text !== undefined) n.textContent = text;
+    return n;
+  };
+  const svgEl = (tag, attrs) => {
+    const n = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  };
+
+  /* Axis ticks land on round numbers rather than wherever the data min/max fell,
+     so the reader gets 0 / 2 / 4 instead of -0.56 / 1.48 / 3.51. */
+  function niceScale(lo, hi, count) {
+    if (!(hi > lo)) { hi = lo + 1; }
+    const raw = (hi - lo) / count;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const norm = raw / mag;
+    const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10) * mag;
+    const start = Math.floor(lo / step) * step;
+    const end = Math.ceil(hi / step) * step;
+    const ticks = [];
+    for (let v = start; v <= end + step / 2; v += step) ticks.push(Math.abs(v) < step / 1e6 ? 0 : v);
+    return { lo: start, hi: end, ticks };
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Line chart: shared X crosshair, one tooltip listing every series.
+   * ------------------------------------------------------------------ */
+  function lineChart(host, series, opt) {
+    opt = opt || {};
+    const wrap = el("div", "plot");
+    const tip = el("div", "tip");
+    host.appendChild(wrap);
+    wrap.appendChild(tip);
+
+    let raf = null;
+    const draw = () => {
+      wrap.querySelectorAll("svg").forEach((s) => s.remove());
+      const W = wrap.clientWidth || 760;
+      const H = opt.height || 250;
+      const m = { t: 12, r: opt.padRight ?? 54, b: 24, l: 52 };
+      const iw = Math.max(60, W - m.l - m.r);
+      const ih = H - m.t - m.b;
+
+      const live = series.filter((s) => s.points && s.points.length);
+      if (!live.length) return;
+      const xs = [], ys = [];
+      live.forEach((s) => s.points.forEach((p) => { xs.push(p[0]); ys.push(p[1]); }));
+      const keys = Array.from(new Set(xs)).sort();
+      const idx = new Map(keys.map((k, i) => [k, i]));
+      let rawLo = Math.min(...ys), rawHi = Math.max(...ys);
+      // Only cross zero when the data does. A series that never goes negative
+      // should not get a negative axis just from padding.
+      if (opt.includeZero) { rawLo = Math.min(0, rawLo); rawHi = Math.max(0, rawHi); }
+      if (rawLo >= 0) rawLo = Math.min(rawLo, rawLo * 0.98);
+      const scale = niceScale(rawLo, rawHi, 4);
+      const lo = rawLo >= 0 && scale.lo < 0 ? 0 : scale.lo;
+      const hi = scale.hi;
+
+      const X = (k) => m.l + (keys.length < 2 ? iw / 2 : (idx.get(k) / (keys.length - 1)) * iw);
+      const Y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih;
+
+      const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" });
+      svg.setAttribute("aria-label", opt.aria || "line chart");
+
+      const grid = svgEl("g", { class: "grid" });
+      scale.ticks.forEach((v) => {
+        if (v < lo - 1e-9 || v > hi + 1e-9) return;
+        const y = Y(v);
+        grid.appendChild(svgEl("line", { x1: m.l, x2: m.l + iw, y1: y, y2: y }));
+        const t = svgEl("text", { class: "tick", x: m.l - 8, y: y + 3.5, "text-anchor": "end" });
+        t.textContent = opt.fmtY ? opt.fmtY(v) : compact(v);
+        svg.appendChild(t);
+      });
+      svg.insertBefore(grid, svg.firstChild);
+
+      if ((opt.includeZero || opt.diverging) && lo < 0 && hi > 0) {
+        svg.appendChild(svgEl("line", { class: "zline", x1: m.l, x2: m.l + iw, y1: Y(0), y2: Y(0) }));
+      }
+
+      const xt = Math.min(6, keys.length);
+      for (let i = 0; i < xt; i++) {
+        const k = keys[Math.round((i / Math.max(1, xt - 1)) * (keys.length - 1))];
+        const t = svgEl("text", { class: "tick", x: X(k), y: H - 7, "text-anchor": i === 0 ? "start" : i === xt - 1 ? "end" : "middle" });
+        t.textContent = opt.fmtX ? opt.fmtX(k) : String(k).slice(0, 7);
+        svg.appendChild(t);
+      }
+      svg.appendChild(svgEl("line", { class: "axis", x1: m.l, x2: m.l + iw, y1: m.t + ih, y2: m.t + ih }));
+
+      live.forEach((s) => {
+        const col = css(s.token);
+        if (opt.area && live.length === 1) {
+          let d = "";
+          s.points.forEach((p, i) => { d += (i ? "L" : "M") + X(p[0]) + " " + Y(p[1]); });
+          d += `L${X(s.points[s.points.length - 1][0])} ${Y(Math.max(lo, 0))}L${X(s.points[0][0])} ${Y(Math.max(lo, 0))}Z`;
+          svg.appendChild(svgEl("path", { d, fill: col, "fill-opacity": 0.10, stroke: "none" }));
+        }
+        let d = "";
+        s.points.forEach((p, i) => { d += (i ? "L" : "M") + X(p[0]) + " " + Y(p[1]); });
+        svg.appendChild(svgEl("path", { d, fill: "none", stroke: col, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+
+        const last = s.points[s.points.length - 1];
+        svg.appendChild(svgEl("circle", { cx: X(last[0]), cy: Y(last[1]), r: 4, fill: col, stroke: css("--surface"), "stroke-width": 2 }));
+      });
+
+      // End labels only where the lines actually separate. Stacking them when
+      // series converge detaches the number from its line and reads as noise;
+      // the legend and tooltip carry those values instead.
+      if (opt.endLabels !== false && live.length <= 4) {
+        const placed = [];
+        live
+          .map((s) => ({ s, last: s.points[s.points.length - 1] }))
+          .sort((a, b) => Y(a.last[1]) - Y(b.last[1]))
+          .forEach(({ s, last }) => {
+            const y = Y(last[1]);
+            if (placed.some((py) => Math.abs(py - y) < 12)) return;
+            placed.push(y);
+            const t = svgEl("text", { class: "dlabel", x: X(last[0]) + 8, y: y + 3.5 });
+            t.textContent = opt.fmtY ? opt.fmtY(last[1]) : compact(last[1]);
+            svg.appendChild(t);
+          });
+      }
+
+      const hair = svgEl("line", { class: "xhair", y1: m.t, y2: m.t + ih, x1: -9, x2: -9 });
+      svg.appendChild(hair);
+      const dots = svgEl("g", {});
+      svg.appendChild(dots);
+      wrap.appendChild(svg);
+
+      const move = (ev) => {
+        const r = svg.getBoundingClientRect();
+        const px = ((ev.clientX - r.left) / r.width) * W;
+        const ratio = (px - m.l) / iw;
+        const i = Math.max(0, Math.min(keys.length - 1, Math.round(ratio * (keys.length - 1))));
+        const k = keys[i];
+        hair.setAttribute("x1", X(k)); hair.setAttribute("x2", X(k));
+        while (dots.firstChild) dots.removeChild(dots.firstChild);
+        tip.textContent = "";
+        const head = el("div", "tt", opt.fmtTipX ? opt.fmtTipX(k) : String(k));
+        tip.appendChild(head);
+        let any = false;
+        live.forEach((s) => {
+          const p = s.points.find((q) => q[0] === k);
+          if (!p) return;
+          any = true;
+          const col = css(s.token);
+          dots.appendChild(svgEl("circle", { cx: X(k), cy: Y(p[1]), r: 4, fill: col, stroke: css("--surface"), "stroke-width": 2 }));
+          const row = el("div", "tr");
+          const key = el("i"); key.style.background = col;
+          row.appendChild(key);
+          row.appendChild(el("span", null, s.name));
+          row.appendChild(el("b", null, (opt.fmtY ? opt.fmtY(p[1]) : compact(p[1])) + (opt.unit || "")));
+          tip.appendChild(row);
+        });
+        if (!any) { tip.classList.remove("on"); return; }
+        tip.classList.add("on");
+        const tw = tip.offsetWidth || 150;
+        const lx = (X(k) / W) * wrap.clientWidth;
+        tip.style.left = Math.max(2, Math.min(wrap.clientWidth - tw - 2, lx + 14)) + "px";
+        tip.style.top = "8px";
+      };
+      svg.addEventListener("pointermove", move);
+      svg.addEventListener("pointerleave", () => {
+        tip.classList.remove("on"); hair.setAttribute("x1", -9); hair.setAttribute("x2", -9);
+        while (dots.firstChild) dots.removeChild(dots.firstChild);
+      });
+    };
+
+    draw();
+    const ro = new ResizeObserver(() => { if (raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); });
+    ro.observe(wrap);
+    return wrap;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * Grouped column chart: the mark is the hit target, no crosshair.
+   * ------------------------------------------------------------------ */
+  function barChart(host, cats, series, opt) {
+    opt = opt || {};
+    const wrap = el("div", "plot");
+    const tip = el("div", "tip");
+    host.appendChild(wrap);
+    wrap.appendChild(tip);
+
+    let raf = null;
+    const draw = () => {
+      wrap.querySelectorAll("svg").forEach((s) => s.remove());
+      const W = wrap.clientWidth || 760;
+      const H = opt.height || 230;
+      const m = { t: 14, r: 14, b: 30, l: 54 };
+      const iw = Math.max(60, W - m.l - m.r), ih = H - m.t - m.b;
+      const vals = [];
+      series.forEach((s) => s.values.forEach((v) => { if (v !== null) vals.push(v); }));
+      if (!vals.length) return;
+      const scale = niceScale(Math.min(0, ...vals), Math.max(0, ...vals), 4);
+      const lo = scale.lo, hi = scale.hi;
+      const Y = (v) => m.t + ih - ((v - lo) / (hi - lo)) * ih;
+
+      const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" });
+      svg.setAttribute("aria-label", opt.aria || "column chart");
+      const grid = svgEl("g", { class: "grid" });
+      scale.ticks.forEach((v) => {
+        if (v < lo - 1e-9 || v > hi + 1e-9) return;
+        const y = Y(v);
+        grid.appendChild(svgEl("line", { x1: m.l, x2: m.l + iw, y1: y, y2: y }));
+        const t = svgEl("text", { class: "tick", x: m.l - 8, y: y + 3.5, "text-anchor": "end" });
+        t.textContent = opt.fmtY ? opt.fmtY(v) : fmt(v, 1);
+        svg.appendChild(t);
+      });
+      svg.appendChild(grid);
+
+      const band = iw / cats.length;
+      const gap = 2;                                   // the surface gap, not a stroke
+      const slot = Math.min(24, (band - 14) / series.length);
+      cats.forEach((c, ci) => {
+        const cx = m.l + band * ci + band / 2;
+        const total = slot * series.length + gap * (series.length - 1);
+        series.forEach((s, si) => {
+          const v = s.values[ci];
+          if (v === null || v === undefined) return;
+          const x = cx - total / 2 + si * (slot + gap);
+          const y0 = Y(0), y1 = Y(v);
+          const top = Math.min(y0, y1), h = Math.max(1, Math.abs(y1 - y0));
+          const col = css(s.token);
+          const r = Math.min(4, slot / 2);
+          const up = v >= 0;
+          const d = up
+            ? `M${x} ${top + h}L${x} ${top + r}Q${x} ${top} ${x + r} ${top}L${x + slot - r} ${top}Q${x + slot} ${top} ${x + slot} ${top + r}L${x + slot} ${top + h}Z`
+            : `M${x} ${top}L${x} ${top + h - r}Q${x} ${top + h} ${x + r} ${top + h}L${x + slot - r} ${top + h}Q${x + slot} ${top + h} ${x + slot} ${top + h - r}L${x + slot} ${top}Z`;
+          const path = svgEl("path", { d, fill: col });
+          const hit = svgEl("rect", { x: cx - band / 2, y: m.t, width: band, height: ih, fill: "transparent" });
+          hit.style.cursor = "crosshair";
+          const show = () => {
+            path.setAttribute("fill-opacity", "0.75");
+            tip.textContent = "";
+            tip.appendChild(el("div", "tt", opt.catLabel ? opt.catLabel(c) : String(c)));
+            series.forEach((s2) => {
+              const v2 = s2.values[ci];
+              if (v2 === null || v2 === undefined) return;
+              const row = el("div", "tr");
+              const key = el("i"); key.style.background = css(s2.token);
+              row.appendChild(key);
+              row.appendChild(el("span", null, s2.name));
+              row.appendChild(el("b", null, (opt.fmtY ? opt.fmtY(v2) : fmt(v2, 2)) + (opt.unit || "")));
+              tip.appendChild(row);
+            });
+            tip.classList.add("on");
+            const tw = tip.offsetWidth || 150;
+            const lx = (cx / W) * wrap.clientWidth;
+            tip.style.left = Math.max(2, Math.min(wrap.clientWidth - tw - 2, lx - tw / 2)) + "px";
+            tip.style.top = "6px";
+          };
+          const hide = () => { path.removeAttribute("fill-opacity"); tip.classList.remove("on"); };
+          hit.addEventListener("pointerenter", show);
+          hit.addEventListener("pointerleave", hide);
+          svg.appendChild(path);
+          if (si === 0) svg.appendChild(hit);
+        });
+        const t = svgEl("text", { class: "tick", x: cx, y: H - 9, "text-anchor": "middle" });
+        t.textContent = opt.catLabel ? opt.catLabel(c) : String(c);
+        svg.appendChild(t);
+      });
+      svg.appendChild(svgEl("line", { class: "axis", x1: m.l, x2: m.l + iw, y1: Y(0), y2: Y(0) }));
+      wrap.appendChild(svg);
+    };
+    draw();
+    const ro = new ResizeObserver(() => { if (raf) cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); });
+    ro.observe(wrap);
+    return wrap;
+  }
+
+  /* ---------------- card shell: legend + table twin ---------------- */
+  function card(title, blurb, series, build, tableSpec) {
+    const c = el("div", "card");
+    const head = el("div", "chead");
+    const left = el("div");
+    left.appendChild(el("h2", null, title));
+    if (blurb) left.appendChild(el("p", null, blurb));
+    head.appendChild(left);
+    const btn = el("button", "toggle", "Table");
+    btn.type = "button";
+    btn.setAttribute("aria-pressed", "false");
+    btn.addEventListener("click", () => {
+      const on = c.classList.toggle("astable");
+      btn.setAttribute("aria-pressed", String(on));
+      btn.textContent = on ? "Chart" : "Table";
+    });
+    head.appendChild(btn);
+    c.appendChild(head);
+
+    if (series && series.length > 1) {
+      const lg = el("div", "legend");
+      series.forEach((s) => {
+        const i = el("div", "lgi" + (s.rect ? " rect" : ""));
+        const sw = el("i"); sw.style.background = css(s.token);
+        i.appendChild(sw);
+        i.appendChild(el("span", null, s.name));
+        lg.appendChild(i);
+      });
+      c.appendChild(lg);
+    }
+    build(c);
+
+    const tw = el("div", "tblwrap");
+    const tbl = el("table");
+    const thead = el("thead"), hr = el("tr");
+    tableSpec.head.forEach((h) => hr.appendChild(el("th", null, h)));
+    thead.appendChild(hr); tbl.appendChild(thead);
+    const tb = el("tbody");
+    tableSpec.rows.slice(0, 400).forEach((r) => {
+      const tr = el("tr");
+      r.forEach((v) => tr.appendChild(el("td", null, v === null || v === undefined ? "\u2014" : String(v))));
+      tb.appendChild(tr);
+    });
+    tbl.appendChild(tb);
+    tw.appendChild(tbl);
+    c.appendChild(tw);
+    return c;
+  }
+
+  const kpiRow = (items) => {
+    const g = el("div", "kpis");
+    items.forEach((it) => {
+      const k = el("div", "kpi");
+      k.appendChild(el("div", "k", it.label));
+      k.appendChild(el("div", "v", it.value));
+      if (it.sub) k.appendChild(el("div", "s", it.sub));
+      g.appendChild(k);
+    });
+    return g;
+  };
+  const provenance = (bits) => {
+    const p = el("div", "prov");
+    bits.forEach((b) => {
+      const s = el("span");
+      s.appendChild(el("b", null, b[0] + " "));
+      s.appendChild(document.createTextNode(b[1]));
+      p.appendChild(s);
+    });
+    return p;
+  };
+  const header = (eyebrow, title, lede) => {
+    const h = el("div", "phead");
+    h.appendChild(el("div", "eyebrow", eyebrow));
+    h.appendChild(el("h1", null, title));
+    if (lede) h.appendChild(el("p", "lede", lede));
+    return h;
+  };
+  const note = (html) => {
+    const n = el("div", "note");
+    n.innerHTML = html;                       // authored copy only, never source data
+    return n;
+  };
+  const emptyCard = (msg) => {
+    const c = el("div", "card");
+    c.appendChild(el("div", "empty", msg));
+    return c;
+  };
+
+  /* -------- shared time filter: one row, scopes the whole page -------- */
+  let RANGE = "all";
+  const RANGES = [["all", "All"], ["25y", "25Y"], ["10y", "10Y"], ["5y", "5Y"], ["1y", "1Y"]];
+  const cutoffFor = (r) => {
+    if (r === "all") return null;
+    const years = { "25y": 25, "10y": 10, "5y": 5, "1y": 1 }[r];
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - years);
+    return d.toISOString().slice(0, 10);
+  };
+  const clip = (points) => {
+    const c = cutoffFor(RANGE);
+    if (!c) return points;
+    return points.filter((p) => String(p[0]) >= c.slice(0, String(p[0]).length));
+  };
+  const filterRow = (onChange) => {
+    const f = el("div", "filters");
+    f.appendChild(el("span", "lbl", "Range"));
+    RANGES.forEach(([key, label]) => {
+      const b = el("button", "chip", label);
+      b.type = "button";
+      b.setAttribute("aria-pressed", String(RANGE === key));
+      b.addEventListener("click", () => {
+        RANGE = key;
+        f.querySelectorAll(".chip").forEach((x, i) => x.setAttribute("aria-pressed", String(RANGES[i][0] === key)));
+        onChange();
+      });
+      f.appendChild(b);
+    });
+    return f;
+  };
+
+  const S = (name, points, slot, extra) => Object.assign({ name, points, token: SERIES[slot] }, extra || {});
+  const lastOf = (pts) => (pts && pts.length ? pts[pts.length - 1] : null);
+  const zip = (map, names) => {
+    const keys = new Set();
+    names.forEach((n) => (map[n] || []).forEach((p) => keys.add(p[0])));
+    const idx = names.map((n) => new Map((map[n] || []).map((p) => [p[0], p[1]])));
+    return Array.from(keys).sort().map((k) => [k].concat(idx.map((m) => (m.has(k) ? m.get(k) : null))));
+  };
+
+  /* =========================== PAGES =========================== */
+  const PAGES = [];
+
+  /* ---- 1. Fed policy ---- */
+  PAGES.push({
+    id: "fed", label: "Fed policy", count: () => Object.keys((DATA.fed || {}).policy || {}).length + Object.keys((DATA.fed || {}).balance || {}).length,
+    render(root) {
+      const d = DATA.fed || {};
+      root.appendChild(header("Page 1 \u00b7 FRED + NY Fed", "What the Fed sets",
+        "The administered rates the Committee controls directly, and the balance sheet behind them. Everything here is a policy decision, not a market price."));
+      if (!d.policy || !Object.keys(d.policy).length) { root.appendChild(emptyCard("Macro database not present \u2014 run download_macro_history.py.")); return; }
+
+      const dff = d.policy.DFF || [];
+      const walcl = d.balance.WALCL || [];
+      const rrp = d.balance.RRPONTSYD || [];
+      root.appendChild(provenance([
+        ["source", "FRED / ALFRED"], ["series", String(Object.keys(d.policy).length + Object.keys(d.balance).length)],
+        ["span", (dff[0] ? dff[0][0] : "\u2014") + " \u2192 " + (lastOf(dff) ? lastOf(dff)[0] : "\u2014")],
+      ]));
+      root.appendChild(kpiRow([
+        { label: "Fed funds effective", value: lastOf(dff) ? fmt(lastOf(dff)[1], 2) + "%" : "\u2014", sub: lastOf(dff) ? lastOf(dff)[0] : "" },
+        { label: "Interest on reserves", value: lastOf(d.policy.IORB) ? fmt(lastOf(d.policy.IORB)[1], 2) + "%" : "\u2014", sub: "IORB" },
+        { label: "SOFR", value: lastOf(d.policy.SOFR) ? fmt(lastOf(d.policy.SOFR)[1], 2) + "%" : "\u2014", sub: "secured overnight" },
+        { label: "Balance sheet", value: lastOf(walcl) ? "$" + (lastOf(walcl)[1] / 1e3).toFixed(2) + "T" : "\u2014", sub: "total assets" },
+        { label: "Overnight RRP", value: lastOf(rrp) ? "$" + fmt(lastOf(rrp)[1], 0) + "B" : "\u2014", sub: "Treasuries sold" },
+      ]));
+
+      const mount = el("div");
+      const paint = () => {
+        mount.textContent = "";
+        const corridor = [
+          S("Target upper", clip(d.policy.DFEDTARU || []), 3),
+          S("Target lower", clip(d.policy.DFEDTARL || []), 3),
+          S("Fed funds effective", clip(dff), 0),
+          S("SOFR", clip(d.policy.SOFR || []), 1),
+        ].filter((s) => s.points.length);
+        mount.appendChild(card("Policy corridor", "The target range and where overnight money actually printed inside it.",
+          corridor, (c) => lineChart(c, corridor, { height: 260, unit: "%", fmtY: (v) => fmt(v, 2), aria: "Policy rates over time" }),
+          { head: ["Date", "Upper", "Lower", "EFFR", "SOFR"],
+            rows: zip({ a: clip(d.policy.DFEDTARU || []), b: clip(d.policy.DFEDTARL || []), c: clip(dff), e: clip(d.policy.SOFR || []) }, ["a", "b", "c", "e"]) }));
+
+        const bs = [S("Total assets", clip(walcl), 0)];
+        mount.appendChild(card("Balance sheet \u2014 total assets", "Weekly H.4.1. Plotted alone because it is an order of magnitude above its own liabilities.",
+          bs, (c) => lineChart(c, bs, { height: 210, area: true, fmtY: (v) => "$" + (v / 1e3).toFixed(1) + "T", aria: "Fed total assets" }),
+          { head: ["Date", "$M"], rows: clip(walcl).map((p) => [p[0], fmt(p[1], 0)]) }));
+
+        const liab = [
+          S("Reserve balances", clip(d.balance.WRESBAL || []), 0),
+          S("Treasury general account", clip(d.balance.WTREGEN || []), 1),
+          S("Overnight reverse repo", clip(rrp), 2),
+        ].filter((s) => s.points.length);
+        mount.appendChild(card("Where the liabilities sit", "Reserves, the Treasury's account and the RRP facility \u2014 the three claims that move against each other.",
+          liab, (c) => lineChart(c, liab, { height: 230, fmtY: (v) => "$" + fmt(v, 0) + "B", aria: "Fed liabilities" }),
+          { head: ["Date", "Reserves", "TGA", "RRP"], rows: zip({ a: clip(d.balance.WRESBAL || []), b: clip(d.balance.WTREGEN || []), c: clip(rrp) }, ["a", "b", "c"]) }));
+      };
+      root.appendChild(filterRow(paint));
+      root.appendChild(mount);
+      paint();
+      root.appendChild(note("<b>Stored three ways.</b> Every series here also carries its first print and release date in <code>first_release</code>, so a backtest can ask what was known on the day rather than what was later revised to."));
+    },
+  });
+
+  /* ---- 2. Market-implied macro ---- */
+  PAGES.push({
+    id: "market", label: "Market macro", count: () => Object.keys((DATA.market || {}).curve || {}).length + Object.keys((DATA.market || {}).breakeven || {}).length,
+    render(root) {
+      const d = DATA.market || {};
+      root.appendChild(header("Page 2 \u00b7 FRED + Board GSW curve", "What the market prices",
+        "The same economy, valued rather than administered: the Treasury curve, the inflation the market pays for, and the policy path it implies."));
+      if (!d.curve || !Object.keys(d.curve).length) { root.appendChild(emptyCard("Macro database not present \u2014 run download_macro_history.py.")); return; }
+
+      const ten = d.curve.DGS10 || [], spread = d.spread.T10Y2Y || [];
+      root.appendChild(provenance([
+        ["source", "FRED + feds200628"], ["curve", "1m\u201330y"],
+        ["span", (ten[0] ? ten[0][0] : "\u2014") + " \u2192 " + (lastOf(ten) ? lastOf(ten)[0] : "\u2014")],
+      ]));
+      root.appendChild(kpiRow([
+        { label: "2-year", value: lastOf(d.curve.DGS2) ? fmt(lastOf(d.curve.DGS2)[1], 2) + "%" : "\u2014" },
+        { label: "10-year", value: lastOf(ten) ? fmt(lastOf(ten)[1], 2) + "%" : "\u2014" },
+        { label: "30-year", value: lastOf(d.curve.DGS30) ? fmt(lastOf(d.curve.DGS30)[1], 2) + "%" : "\u2014" },
+        { label: "2s10s", value: lastOf(spread) ? fmt(lastOf(spread)[1], 2) + "%" : "\u2014", sub: lastOf(spread) && lastOf(spread)[1] < 0 ? "inverted" : "positive" },
+        { label: "10y breakeven", value: lastOf(d.breakeven.T10YIE) ? fmt(lastOf(d.breakeven.T10YIE)[1], 2) + "%" : "\u2014" },
+      ]));
+
+      const mount = el("div");
+      const paint = () => {
+        mount.textContent = "";
+        const curve = [
+          S("2-year", clip(d.curve.DGS2 || []), 0),
+          S("10-year", clip(ten), 1),
+          S("30-year", clip(d.curve.DGS30 || []), 2),
+        ].filter((s) => s.points.length);
+        mount.appendChild(card("Treasury curve", "Three points on the nominal curve. Level and shape in one frame.",
+          curve, (c) => lineChart(c, curve, { height: 250, unit: "%", fmtY: (v) => fmt(v, 2), aria: "Treasury yields" }),
+          { head: ["Date", "2Y", "10Y", "30Y"], rows: zip({ a: clip(d.curve.DGS2 || []), b: clip(ten), c: clip(d.curve.DGS30 || []) }, ["a", "b", "c"]) }));
+
+        const sp = [S("10y minus 2y", clip(spread), 0)];
+        mount.appendChild(card("2s10s \u2014 the recession tell", "Below the zero line the curve is inverted. Plotted against a real zero baseline, not a floating one.",
+          sp, (c) => lineChart(c, sp, { height: 210, includeZero: true, unit: "%", fmtY: (v) => fmt(v, 2), aria: "Ten year minus two year spread" }),
+          { head: ["Date", "2s10s"], rows: clip(spread).map((p) => [p[0], fmt(p[1], 2)]) }));
+
+        const be = [
+          S("5-year breakeven", clip(d.breakeven.T5YIE || []), 0),
+          S("10-year breakeven", clip(d.breakeven.T10YIE || []), 1),
+          S("5y5y forward", clip(d.breakeven.T5YIFR || []), 2),
+        ].filter((s) => s.points.length);
+        mount.appendChild(card("Inflation the market is paying for", "TIPS breakevens and the 5y5y forward \u2014 expectations with a risk premium baked in, not a survey.",
+          be, (c) => lineChart(c, be, { height: 230, unit: "%", fmtY: (v) => fmt(v, 2), aria: "Inflation breakevens" }),
+          { head: ["Date", "5Y", "10Y", "5y5y"], rows: zip({ a: clip(d.breakeven.T5YIE || []), b: clip(d.breakeven.T10YIE || []), c: clip(d.breakeven.T5YIFR || []) }, ["a", "b", "c"]) }));
+
+        const fp = ["3m", "12m", "24m", "60m"].map((k, i) => S(k + " forward", clip(d.fed_path[k] || []), i)).filter((s) => s.points.length);
+        if (fp.length) {
+          mount.appendChild(card("Market-implied forward path", "Instantaneous forwards from the Board's fitted Svensson curve, at four horizons.",
+            fp, (c) => lineChart(c, fp, { height: 230, unit: "%", fmtY: (v) => fmt(v, 2), aria: "Forward rates" }),
+            { head: ["Date", "3m", "12m", "24m", "60m"], rows: zip({ a: clip(d.fed_path["3m"] || []), b: clip(d.fed_path["12m"] || []), c: clip(d.fed_path["24m"] || []), e: clip(d.fed_path["60m"] || []) }, ["a", "b", "c", "e"]) }));
+        }
+
+        const st = [S("Chicago Fed NFCI", clip(d.nfci.NFCI || []), 0)];
+        if (st[0].points.length) {
+          mount.appendChild(card("Financial conditions", "Positive is tighter than average, negative is looser. Zero is the long-run norm, so the baseline means something.",
+            st, (c) => lineChart(c, st, { height: 200, includeZero: true, fmtY: (v) => fmt(v, 2), aria: "Financial conditions index" }),
+            { head: ["Date", "NFCI"], rows: clip(d.nfci.NFCI || []).map((p) => [p[0], fmt(p[1], 3)]) }));
+        }
+      };
+      root.appendChild(filterRow(paint));
+      root.appendChild(mount);
+      paint();
+      root.appendChild(note("<b>This is a Treasury forward curve, not an OIS path.</b> It carries a term premium, so it overstates the expected policy rate at long horizons. <code>THREEFYTP10</code> is stored alongside so the premium can be netted off."));
+    },
+  });
+
+  /* ---- 3. Volatility ---- */
+  PAGES.push({
+    id: "volatility", label: "Volatility", count: () => Object.keys((DATA.volatility || {}).equity || {}).length + Object.keys((DATA.volatility || {}).cross || {}).length,
+    render(root) {
+      const d = DATA.volatility || {};
+      root.appendChild(header("Page 3 \u00b7 CBOE via FRED", "What the option market charges for fear",
+        "Implied volatility is a price, not a forecast \u2014 the premium sellers demand for carrying risk. Level matters less than the term structure: when near-dated vol is bid above far-dated, the market is paying up for protection it wants now."));
+      if (!d.equity || !d.equity.VIXCLS) { root.appendChild(emptyCard("Volatility series not present \u2014 run download_macro_history.py --groups volatility.")); return; }
+
+      const vix = d.equity.VIXCLS, vix3m = d.equity.VXVCLS || [], sp = d.spread || [];
+      const peak = (d.history || []).reduce((a, b) => (b[1] > a[1] ? b : a), (d.history || [[null, 0]])[0]);
+      root.appendChild(provenance([
+        ["source", "CBOE via FRED"],
+        ["span", (d.history && d.history.length ? d.history[0][0] : "\u2014") + " \u2192 " + (lastOf(vix) ? lastOf(vix)[0] : "\u2014")],
+        ["series", String(Object.keys(d.equity).length + Object.keys(d.cross || {}).length)],
+      ]));
+      root.appendChild(kpiRow([
+        { label: "VIX, 30-day", value: lastOf(vix) ? fmt(lastOf(vix)[1], 2) : "\u2014", sub: lastOf(vix) ? lastOf(vix)[0] : "" },
+        { label: "VIX, 3-month", value: lastOf(vix3m) ? fmt(lastOf(vix3m)[1], 2) : "\u2014", sub: "VXV" },
+        { label: "Term structure", value: lastOf(sp) ? (lastOf(sp)[1] > 0 ? "+" : "") + fmt(lastOf(sp)[1], 2) : "\u2014",
+          sub: lastOf(sp) && lastOf(sp)[1] < 0 ? "inverted" : "normal" },
+        { label: "Days inverted", value: d.spread_days ? fmt((d.inverted_days / d.spread_days) * 100, 1) + "%" : "\u2014", sub: d.inverted_days + " of " + d.spread_days },
+        { label: "Highest close", value: peak ? fmt(peak[1], 2) : "\u2014", sub: peak ? peak[0] : "" },
+      ]));
+
+      const hist = [S("VIX, monthly high", d.history || [], 0)];
+      root.appendChild(card("VIX since 1990, monthly highs", "Monthly maxima rather than closes, because the spikes are the information and averaging flattens them. 2008 and March 2020 are the two that matter.",
+        hist, (c) => lineChart(c, hist, { height: 250, area: true, fmtY: (v) => fmt(v, 0), fmtX: (k) => String(k).slice(0, 4), fmtTipX: (k) => String(k), aria: "VIX monthly highs since 1990" }),
+        { head: ["Month", "High"], rows: (d.history || []).slice(-400).map((p) => [p[0], fmt(p[1], 2)]) }));
+
+      const mount = el("div");
+      const paint = () => {
+        mount.textContent = "";
+        const term = [S("VIX (30-day)", clip(vix), 0), S("VXV (3-month)", clip(vix3m), 1)].filter((s) => s.points.length);
+        mount.appendChild(card("Near-dated against far-dated", "The two tenors on one axis. They converge in calm markets and cross when the near end is bid.",
+          term, (c) => lineChart(c, term, { height: 240, fmtY: (v) => fmt(v, 0), aria: "VIX and three-month VIX" }),
+          { head: ["Date", "VIX", "VXV"], rows: zip({ a: clip(vix), b: clip(vix3m) }, ["a", "b"]) }));
+
+        const spr = [S("3-month minus 30-day", clip(sp), 0)];
+        mount.appendChild(card("Term structure \u2014 the stress signal", "Positive is the normal upward slope. Below zero the curve is inverted: the market is paying more for a month of protection than for three, which is what a genuine scare looks like rather than a drifting level.",
+          spr, (c) => lineChart(c, spr, { height: 220, includeZero: true, fmtY: (v) => fmt(v, 1), aria: "VIX term structure spread" }),
+          { head: ["Date", "VXV minus VIX"], rows: clip(sp).map((p) => [p[0], fmt(p[1], 3)]) }));
+
+        const cross = [
+          S("Nasdaq 100 (VXN)", clip((d.cross || {}).VXNCLS || []), 0),
+          S("Russell 2000 (RVX)", clip((d.cross || {}).RVXCLS || []), 1),
+          S("Crude oil (OVX)", clip((d.cross || {}).OVXCLS || []), 2),
+          S("Gold (GVZ)", clip((d.cross || {}).GVZCLS || []), 3),
+        ].filter((s) => s.points.length);
+        mount.appendChild(card("Volatility across asset classes", "Each of these has a counterpart elsewhere in this data room: VXN against the QQQ bars, OVX against the WTI positioning, GVZ against gold.",
+          cross, (c) => lineChart(c, cross, { height: 250, fmtY: (v) => fmt(v, 0), aria: "Cross asset implied volatility" }),
+          { head: ["Date", "VXN", "RVX", "OVX", "GVZ"], rows: zip({ a: clip((d.cross || {}).VXNCLS || []), b: clip((d.cross || {}).RVXCLS || []), c: clip((d.cross || {}).OVXCLS || []), e: clip((d.cross || {}).GVZCLS || []) }, ["a", "b", "c", "e"]) }));
+      };
+      root.appendChild(filterRow(paint));
+      root.appendChild(mount);
+      paint();
+      root.appendChild(note("<b>Three members of the complex are discontinued and stored anyway.</b> <code>VXO</code> is the original 1986 methodology and runs to 2021 \u2014 it is the only series here covering Black Monday. <code>VXTYN</code> (10y Treasury note vol) ended in 2020 and <code>EVZ</code> (euro) in March 2025. They are in the database under the <code>volatility</code> group even though nothing above plots them."));
+    },
+  });
+
+  /* ---- 4. CFTC positioning ---- */
+  PAGES.push({
+    id: "cftc", label: "CFTC positioning", count: () => Object.keys((DATA.cftc || {}).managed_money || {}).length + Object.keys((DATA.cftc || {}).leveraged_funds || {}).length,
+    render(root) {
+      const d = DATA.cftc || {};
+      root.appendChild(header("Page 4 \u00b7 CFTC Commitments of Traders", "Who is positioned, and how far",
+        "Speculative net length as a share of open interest. The share matters more than the contract count: open interest has grown for a decade, so raw net position is not comparable across time or across markets."));
+      if (!d.managed_money || !Object.keys(d.managed_money).length) { root.appendChild(emptyCard("CFTC database not present \u2014 run download_cftc_history.py.")); return; }
+
+      const cov = d.coverage || [];
+      const total = cov.reduce((a, r) => a + r[3], 0);
+      // Span across every report, not the first row: legacy starts in 2000 and
+      // the disaggregated reports only in 2006, so one row understates the set.
+      const firstReport = cov.length ? cov.map((r) => r[1]).sort()[0] : "\u2014";
+      const lastReport = cov.length ? cov.map((r) => r[2]).sort().slice(-1)[0] : "\u2014";
+      root.appendChild(provenance([
+        ["reports", String(cov.length)], ["rows", total.toLocaleString("en-US")],
+        ["span", firstReport + " \u2192 " + lastReport], ["cadence", "weekly, Tuesday"],
+      ]));
+
+      const last = (k, src) => { const s = (src[k] || []); return s.length ? s[s.length - 1] : null; };
+      root.appendChild(kpiRow(Object.keys(d.managed_money).slice(0, 4).map((k) => {
+        const l = last(k, d.managed_money);
+        return { label: k, value: l ? fmt(l[2], 1) + "%" : "\u2014", sub: l ? (l[1] > 0 ? "+" : "") + compact(l[1]) + " net" : "" };
+      })));
+
+      const mount = el("div");
+      const paint = () => {
+        mount.textContent = "";
+        const share = (arr) => clip(arr).map((r) => [r[0], r[2]]);
+        const mm = Object.keys(d.managed_money).map((k, i) => S(k, share(d.managed_money[k]), i)).filter((s) => s.points.length);
+        mount.appendChild(card("Managed money \u2014 net as % of open interest", "The disaggregated report's speculative cohort in physical commodities. Zero means flat; the sign is the direction of the crowd.",
+          mm, (c) => lineChart(c, mm, { height: 260, includeZero: true, unit: "%", fmtY: (v) => fmt(v, 1), aria: "Managed money net share" }),
+          { head: ["Date"].concat(Object.keys(d.managed_money)), rows: zip(Object.fromEntries(Object.entries(d.managed_money).map(([k, v]) => [k, share(v)])), Object.keys(d.managed_money)) }));
+
+        const lf = Object.keys(d.leveraged_funds).map((k, i) => S(k, share(d.leveraged_funds[k]), i)).filter((s) => s.points.length);
+        mount.appendChild(card("Leveraged funds \u2014 net as % of open interest", "The financial-futures report. This is the cohort that carries rates, equity index and FX positioning.",
+          lf, (c) => lineChart(c, lf, { height: 250, includeZero: true, unit: "%", fmtY: (v) => fmt(v, 1), aria: "Leveraged fund net share" }),
+          { head: ["Date"].concat(Object.keys(d.leveraged_funds)), rows: zip(Object.fromEntries(Object.entries(d.leveraged_funds).map(([k, v]) => [k, share(v)])), Object.keys(d.leveraged_funds)) }));
+      };
+      root.appendChild(filterRow(paint));
+      root.appendChild(mount);
+      paint();
+
+      const covCard = el("div", "card");
+      const ch = el("div", "chead"); const cl = el("div");
+      cl.appendChild(el("h2", null, "What is stored"));
+      cl.appendChild(el("p", null, "All six reports. The three regimes do not share a start date \u2014 the disaggregated and financial breakdowns did not exist before 2006."));
+      ch.appendChild(cl); covCard.appendChild(ch);
+      const tw = el("div", "tblwrap"); tw.style.display = "block";
+      const tb = el("table");
+      const hr = el("tr"); ["Report", "First", "Last", "Rows"].forEach((h) => hr.appendChild(el("th", null, h)));
+      const th = el("thead"); th.appendChild(hr); tb.appendChild(th);
+      const bd = el("tbody");
+      cov.forEach((r) => { const tr = el("tr"); tr.appendChild(el("td", null, r[0])); tr.appendChild(el("td", null, r[1])); tr.appendChild(el("td", null, r[2])); tr.appendChild(el("td", null, r[3].toLocaleString("en-US"))); bd.appendChild(tr); });
+      tb.appendChild(bd); tw.appendChild(tb); covCard.appendChild(tw);
+      root.appendChild(covCard);
+      root.appendChild(note("<b>Report dates are Tuesdays, published the Friday after.</b> 22 of the 1,390 legacy dates fall on another weekday around holidays, so derive the publication lag from the date rather than assuming a fixed offset. Lag by three days to avoid look-ahead."));
+    },
+  });
+
+  /* ---- 5. Earnings ---- */
+  PAGES.push({
+    id: "earnings", label: "Earnings & valuation", count: () => ((DATA.earnings || {}).cape || []).length,
+    render(root) {
+      const d = DATA.earnings || {};
+      root.appendChild(header("Page 5 \u00b7 Shiller \u00b7 FactSet \u00b7 SEC XBRL", "Earnings, realised and expected",
+        "A century and a half of realised valuation, and nine years of what analysts expected next. The two answer different questions and are kept apart."));
+      if (!d.cape || !d.cape.length) { root.appendChild(emptyCard("Equity database not present \u2014 run download_earnings_history.py.")); return; }
+
+      const peak = d.cape.reduce((a, b) => (b[1] > a[1] ? b : a), d.cape[0]);
+      const trough = d.cape.reduce((a, b) => (b[1] < a[1] ? b : a), d.cape[0]);
+      root.appendChild(provenance([
+        ["shiller", d.cape[0][0] + " \u2192 " + d.cape[d.cape.length - 1][0]],
+        ["factset", d.forward_pe.length ? d.forward_pe[0][0] + " \u2192 " + d.forward_pe[d.forward_pe.length - 1][0] : "\u2014"],
+        ["editions with P/E", String(d.forward_pe.length)],
+      ]));
+      root.appendChild(kpiRow([
+        { label: "CAPE, latest", value: fmt(d.cape[d.cape.length - 1][1], 1), sub: d.cape[d.cape.length - 1][0] },
+        { label: "CAPE peak", value: fmt(peak[1], 1), sub: peak[0] + " \u00b7 dot-com" },
+        { label: "CAPE trough", value: fmt(trough[1], 1), sub: trough[0] },
+        { label: "Forward P/E", value: d.forward_pe.length ? fmt(lastOf(d.forward_pe)[1], 1) : "\u2014", sub: "FactSet, 12m" },
+        { label: "EPS beat rate", value: d.beat_rate.length ? fmt(lastOf(d.beat_rate)[1], 0) + "%" : "\u2014", sub: "latest quarter" },
+      ]));
+
+      const capeS = [S("CAPE (P/E10)", d.cape, 0)];
+      root.appendChild(card("Shiller CAPE, 1871 to today", "Cyclically adjusted price/earnings on the S&P composite. One series, so the title does the identifying \u2014 no legend needed.",
+        capeS, (c) => lineChart(c, capeS, { height: 270, area: true, fmtY: (v) => fmt(v, 0), fmtX: (k) => String(k).slice(0, 4), fmtTipX: (k) => String(k), aria: "Shiller CAPE since 1871" }),
+        { head: ["Month", "CAPE"], rows: d.cape.slice(-400).map((p) => [p[0], fmt(p[1], 2)]) }));
+
+      const pe = [
+        S("Forward 12m P/E", d.forward_pe, 0),
+        S("5-year average", d.pe_5y, 1),
+        S("10-year average", d.pe_10y, 2),
+      ].filter((s) => s.points.length);
+      root.appendChild(card("FactSet forward P/E against its own averages", "Read weekly off page 1 of the Earnings Insight PDF. The averages are FactSet's own, not recomputed here.",
+        pe, (c) => lineChart(c, pe, { height: 240, fmtY: (v) => fmt(v, 1), aria: "Forward price earnings ratio" }),
+        { head: ["Date", "Fwd P/E", "5y avg", "10y avg"], rows: zip({ a: d.forward_pe, b: d.pe_5y, c: d.pe_10y }, ["a", "b", "c"]) }));
+
+      const gr = [
+        S("Blended (quarter under way)", d.blended_growth, 0),
+        S("Estimated (before reporting)", d.estimated_growth, 1),
+      ].filter((s) => s.points.length);
+      root.appendChild(card("Earnings growth \u2014 blended vs estimated", "Deliberately two series, not one. Blended mixes actuals reported so far with estimates for the rest; estimated is the pure forecast between seasons. Splicing them would concatenate two different measures.",
+        gr, (c) => lineChart(c, gr, { height: 230, includeZero: true, unit: "%", fmtY: (v) => fmt(v, 0), aria: "Earnings growth rate" }),
+        { head: ["Date", "Blended %", "Estimated %"], rows: zip({ a: d.blended_growth, b: d.estimated_growth }, ["a", "b"]) }));
+
+      root.appendChild(note("<b>Nothing here reaches 2000 on the company side.</b> SEC XBRL was phased in over 2009\u20132011 \u2014 the 2009Q1 frame holds 475 filers against 4,994 by 2023 \u2014 so company fundamentals start in 2009. Shiller carries the index-level record back to 1871 instead."));
+    },
+  });
+
+  /* ---- 6. Intraday ---- */
+  PAGES.push({
+    id: "intraday", label: "Intraday bars", count: () => ((DATA.intraday || {}).tickers || []).length,
+    render(root) {
+      const d = DATA.intraday || {};
+      root.appendChild(header("Page 6 \u00b7 Tiingo IEX", "The trading day, hour by hour",
+        "Hourly bars back to 2017. Both instruments are indexed to 100 at the first bar so they share one axis \u2014 two price scales on one plot would invent a relationship that is not in the data."));
+      if (!d.tickers || !d.tickers.length) { root.appendChild(emptyCard("Intraday database not present \u2014 run download_intraday_history.py.")); return; }
+
+      const st = d.stats || {};
+      // Span across every symbol, not the first one alphabetically: the symbols
+      // were downloaded at different times and a partial one would otherwise
+      // understate the whole page.
+      const spans = d.tickers.map((t) => st[t]).filter(Boolean);
+      const firstDay = spans.length ? spans.map((s) => s.first).sort()[0] : null;
+      const lastDay = spans.length ? spans.map((s) => s.last).sort().slice(-1)[0] : null;
+      const partial = d.tickers.filter((t) => st[t] && st[t].last < lastDay);
+      root.appendChild(provenance([
+        ["symbols", d.tickers.join(", ")],
+        ["span", firstDay ? firstDay + " \u2192 " + lastDay : "\u2014"],
+        ["sessions", spans.length ? String(Math.max.apply(null, spans.map((s) => s.days))) : "\u2014"],
+        ["adjustment", "raw \u2014 see note"],
+      ]));
+      root.appendChild(kpiRow(d.tickers.map((t) => ({
+        label: t + " bars", value: st[t] ? st[t].bars.toLocaleString("en-US") : "\u2014",
+        sub: st[t] ? st[t].days + " sessions \u00b7 " + st[t].no_volume + " no volume" : "",
+      })).concat([{ label: "Splits in range", value: String((d.splits || []).length), sub: "bars are unadjusted" }])));
+
+      const mount = el("div");
+      const paint = () => {
+        mount.textContent = "";
+        const idx = d.tickers.map((t, i) => S(t, clip(d.indexed[t] || []), i)).filter((s) => s.points.length);
+        mount.appendChild(card("Indexed to 100 at the first bar", "Daily last-hour close. Indexing is what puts two different price levels on a single axis honestly.",
+          idx, (c) => lineChart(c, idx, { height: 260, fmtY: (v) => fmt(v, 0), aria: "Indexed price" }),
+          { head: ["Date"].concat(d.tickers), rows: zip(Object.fromEntries(d.tickers.map((t) => [t, clip(d.indexed[t] || [])])), d.tickers) }));
+      };
+      root.appendChild(filterRow(paint));
+      root.appendChild(mount);
+      paint();
+
+      const hourLabel = (h) => (h % 12 === 0 ? 12 : h % 12) + (h < 12 ? "am" : "pm");
+      // Each chart derives its own buckets. The first bar of a session has no
+      // intraday return by definition, so the return chart legitimately has one
+      // fewer hour than the volume chart -- reusing one hour set for both drops
+      // the opening hour from volume, where it is the busiest of the day.
+      const hoursOf = (block) => Array.from(new Set([].concat(
+        ...d.tickers.map((t) => (block[t] || []).map((r) => r[0]))))).sort((a, b) => a - b);
+      // A series with nothing to draw must not sit in the legend claiming a colour.
+      const drawn = (block) => d.tickers.filter((t) => (block[t] || []).length);
+
+      const hours = hoursOf(d.hour_shape);
+      const retTickers = drawn(d.hour_shape);
+      const retSeries = retTickers.map((t) => ({
+        name: t, token: SERIES[d.tickers.indexOf(t)], rect: true,
+        values: hours.map((h) => { const r = (d.hour_shape[t] || []).find((x) => x[0] === h); return r ? r[1] : null; }),
+      }));
+      root.appendChild(card("Average return by New York hour", "Mean intraday move in basis points, bucketed by exchange-local hour. The stored timestamps are UTC and the session slides an hour with daylight saving, so they are converted before bucketing.",
+        retSeries, (c) => barChart(c, hours, retSeries, { height: 230, unit: " bp", fmtY: (v) => fmt(v, 1), catLabel: hourLabel, aria: "Average return by hour" }),
+        { head: ["Hour (ET)"].concat(retTickers), rows: hours.map((h, i) => [hourLabel(h)].concat(retSeries.map((s) => (s.values[i] === null ? null : fmt(s.values[i], 2))))) }));
+
+      const volHours = hoursOf(d.hour_volume);
+      const volTickers = drawn(d.hour_volume);
+      const volSeries = volTickers.map((t) => ({
+        name: t, token: SERIES[d.tickers.indexOf(t)], rect: true,
+        values: volHours.map((h) => { const r = (d.hour_volume[t] || []).find((x) => x[0] === h); return r ? r[1] : null; }),
+      }));
+      const missingVol = d.tickers.filter((t) => !volTickers.includes(t));
+      root.appendChild(card("Average IEX volume by hour",
+        "Thousands of shares. IEX is one venue with a low single-digit share of consolidated volume \u2014 this is a relative activity shape, not tradable size."
+          + (missingVol.length ? " " + missingVol.join(", ") + " is omitted: it was fetched before volume was requested and carries none." : ""),
+        volSeries, (c) => barChart(c, volHours, volSeries, { height: 220, unit: "K", fmtY: (v) => fmt(v, 0), catLabel: hourLabel, aria: "Average volume by hour" }),
+        { head: ["Hour (ET)"].concat(volTickers), rows: volHours.map((h, i) => [hourLabel(h)].concat(volSeries.map((s) => (s.values[i] === null ? null : fmt(s.values[i], 1))))) }));
+
+      const rec = d.tickers.map((t, i) => S(t, (d.recent[t] || []).map((p) => [p[0], p[1]]), i)).filter((s) => s.points.length);
+      if (rec.length) {
+        root.appendChild(card("Last ten weeks, hour by hour", "Raw closes at native resolution, where an hourly bar is actually legible.",
+          rec, (c) => lineChart(c, rec, { height: 240, fmtY: (v) => fmt(v, 0), fmtX: (k) => String(k).slice(5, 10), fmtTipX: (k) => String(k), aria: "Recent hourly closes" }),
+          { head: ["Timestamp (UTC)"].concat(d.tickers), rows: zip(Object.fromEntries(d.tickers.map((t) => [t, d.recent[t] || []])), d.tickers).slice(-400) }));
+      }
+
+      if (partial.length) {
+        root.appendChild(note("<b>" + partial.join(", ") + " is a partial download.</b> Its history stops at "
+          + st[partial[0]].last + " because that run was interrupted; rerun the downloader with <code>--refresh</code> to complete it and pick up volume."));
+      }
+      root.appendChild(note("<b>These bars are unadjusted.</b> NVDA's close goes 1,203 to 121 across its 10:1 split \u2014 a backtest on raw bars reads that as a 90% loss in a day. SPY and QQQ have never split, so they are clean here, but the <code>corporate_actions</code> table carries split and dividend factors for every symbol. Roughly 0.2% of bars also have a close a few cents outside their own high/low, an IEX resampling artefact left exactly as published."));
+    },
+  });
+
+  /* ------------------------- shell ------------------------- */
+  const nav = document.getElementById("nav");
+  const main = document.getElementById("main");
+  let active = PAGES[0].id;
+
+  function show(id) {
+    active = id;
+    nav.querySelectorAll(".navbtn").forEach((b) => b.setAttribute("aria-current", String(b.dataset.id === id)));
+    main.textContent = "";
+    const page = PAGES.find((p) => p.id === id);
+    page.render(main);
+    main.scrollIntoView({ block: "start" });
+  }
+
+  PAGES.forEach((p) => {
+    const b = el("button", "navbtn");
+    b.type = "button";
+    b.dataset.id = p.id;
+    b.appendChild(el("span", null, p.label));
+    b.appendChild(el("em", null, String(p.count())));
+    b.addEventListener("click", () => show(p.id));
+    nav.appendChild(b);
+  });
+
+  document.getElementById("stamp").textContent = (DATA.generated_at || "").slice(0, 16).replace("T", " ") + "Z";
+  const foot = document.getElementById("foot");
+  foot.appendChild(document.createTextNode("FRED \u00b7 NY Fed \u00b7 CFTC \u00b7 SEC XBRL \u00b7 Shiller \u00b7 FactSet \u00b7 Tiingo"));
+
+  show(active);
+  const repaint = () => show(active);
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", repaint);
+  new MutationObserver(repaint).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+})();
+</script>

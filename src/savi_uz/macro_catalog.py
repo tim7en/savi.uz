@@ -150,7 +150,9 @@ CREDIT = _specs(
         ("NFCICREDIT", "Chicago Fed financial conditions, credit subindex"),
         ("NFCILEVERAGE", "Chicago Fed financial conditions, leverage subindex"),
         ("STLFSI4", "St Louis Fed financial stress index"),
-        ("VIXCLS", "CBOE VIX close"),
+        # VIXCLS lives in the `volatility` group. A series carries exactly one
+        # group_name in the store, so listing it twice would mean the later
+        # group silently overwrote the earlier one.
     ),
     VintagePolicy.LATEST,
 )
@@ -189,9 +191,36 @@ CORPORATE_PROFITS = _specs(
     VintagePolicy.FIRST,
 )
 
+#: The CBOE volatility complex. Two things make it worth a group of its own
+#: rather than a line in `credit`: the 1-month against the 3-month gives a term
+#: structure, whose sign is the cleanest stress signal in the set; and the
+#: cross-asset members line up with instruments already tracked elsewhere here
+#: -- VXN with QQQ, OVX with the WTI positioning, GVZ with gold.
+#:
+#: Three members are discontinued and are kept deliberately: VXO is the original
+#: 1986-2021 methodology and the only vol series covering Black Monday, VXTYN is
+#: the only listed Treasury-note vol, and EVZ stopped in March 2025.
+VOLATILITY = _specs(
+    "volatility",
+    (
+        ("VIXCLS", "CBOE VIX, S&P 500 30-day implied vol"),
+        ("VXVCLS", "CBOE 3-month S&P 500 implied vol"),
+        ("VXNCLS", "CBOE Nasdaq 100 implied vol"),
+        ("RVXCLS", "CBOE Russell 2000 implied vol"),
+        ("VXDCLS", "CBOE Dow Jones implied vol"),
+        ("VXEEMCLS", "CBOE emerging markets implied vol"),
+        ("OVXCLS", "CBOE crude oil ETF implied vol"),
+        ("GVZCLS", "CBOE gold ETF implied vol"),
+        ("EVZCLS", "CBOE euro ETF implied vol (discontinued 2025-03)"),
+        ("VXOCLS", "CBOE S&P 100 implied vol, original method (discontinued 2021-09)"),
+        ("VXTYN", "CBOE 10y Treasury note vol (discontinued 2020-05)"),
+    ),
+    VintagePolicy.LATEST,
+)
+
 FRED_CATALOG: tuple[SeriesSpec, ...] = (
     POLICY_RATE + MARKET_IMPLIED_PATH + FED_SEP + INFLATION + LABOR + CREDIT + BALANCE_SHEET
-    + CORPORATE_PROFITS
+    + CORPORATE_PROFITS + VOLATILITY
 )
 
 GROUPS: tuple[str, ...] = tuple(dict.fromkeys(spec.group for spec in FRED_CATALOG))
