@@ -743,6 +743,30 @@ question and are not mixed into this study.
 Output is `out/strategy/donchian_<ticker>_<frequency>.md` and the complete event
 table beside it as CSV.
 
+## Multi-session profile breakouts and overnight holding
+
+```bash
+PYTHONPATH=src python scripts/run_composite_breakout_study.py --tickers SPY QQQ GLD
+```
+
+This study forms composite volume profiles from the immediately preceding 3 or
+5 completed sessions, then observes the first close outside either the 70%
+value area or the full composite high-low. Entry is at the next five-minute
+open. Relative volume is matched to the same bar slot over the prior 20
+sessions; an optional compression filter requires the prior range/daily-ATR
+ratio to be in its trailing 25th percentile. Every threshold uses older data.
+
+Holding horizons include the signal-session close, next regular open, and the
+following 1/3/5 session closes. Non-overlapping strategy variants compare
+intraday-ATR stops, daily-ATR stops, time exits, and delayed trailing stops.
+Because the feed contains regular hours only, the path through after-hours and
+pre-market is unknown. If the next regular open gaps through a stop, the model
+fills at that open rather than granting the unavailable stop price.
+
+The report also splits the portable 3-session value-area rule by direction.
+Outputs are `out/strategy/composite_breakout_<ticker>_5min.md` and matching CSV
+event tables.
+
 ## Overnight gaps: how much moves before the open, and does it hold
 
 ```bash

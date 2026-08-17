@@ -167,6 +167,38 @@ def _strategy_table(lines: list[str], configurations, sessions, split: str) -> N
                 )
 
 
+def _direction_table(lines: list[str], configurations, sessions, split: str) -> None:
+    """Show whether the portable 3-day signal is genuinely two-sided."""
+    events = next(
+        rows for label, rows in configurations if label == "3d value vol1 all"
+    )
+    lines += [
+        "", "## Direction robustness for the portable candidate", "",
+        "These rows use a 4x five-minute ATR stop, next-session-close time exit, one position",
+        "at a time, and gap-aware fills. Four five-minute ATRs are about 0.45 daily ATR in",
+        "the test sample across all three assets.", "",
+        "| Side | Period | n | Mean bp | Win | PF | $100 -> | CAGR | Max DD | Stop | Gap stop |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for direction, side in ((1, "long"), (-1, "short")):
+        for period, subset in (
+            ("train", [row for row in events if row.session < split and row.direction == direction]),
+            ("test", [row for row in events if row.session >= split and row.direction == direction]),
+        ):
+            results = non_overlapping_results(
+                subset, sessions, stop_atr=4.0, max_hold_sessions=1,
+                round_trip_cost=0.0002,
+            )
+            summary = summarise_trades(results)
+            lines.append(
+                f"| {side} | {period} | {summary.count:,} | "
+                f"{summary.mean_return * 10_000:+.2f} | {summary.win_rate * 100:.1f}% | "
+                f"{summary.profit_factor:.2f} | ${summary.ending_equity * 100:.2f} | "
+                f"{summary.cagr * 100:+.2f}% | {summary.max_drawdown * 100:.1f}% | "
+                f"{summary.stop_rate * 100:.1f}% | {summary.gap_stop_rate * 100:.1f}% |"
+            )
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     args.outdir.mkdir(parents=True, exist_ok=True)
@@ -202,6 +234,7 @@ def main(argv: list[str] | None = None) -> int:
         ]
         _event_table(lines, configurations, args.split)
         _strategy_table(lines, configurations, sessions, args.split)
+        _direction_table(lines, configurations, sessions, args.split)
 
         stem = f"composite_breakout_{ticker}_{args.frequency}"
         report = args.outdir / f"{stem}.md"
