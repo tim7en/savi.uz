@@ -35,6 +35,12 @@ from savi_uz.volume_profile import (
 #: Bars must be at least this far into the session before a profile is formed.
 MIN_PREFIX_BARS = MIN_BARS_FOR_PROFILE
 
+#: Share of the prefix that must actually carry volume. IEX reported no volume
+#: at all from August 2017 to April 2018, and partial volume either side of it.
+#: Without this floor a session with a handful of volumed bars out of seventy
+#: builds a profile that looks like a full session's and is nothing of the kind.
+MIN_VOLUME_COVERAGE = 0.60
+
 
 @dataclass(frozen=True)
 class Sample:
@@ -73,7 +79,12 @@ def group_sessions(bars: list[Bar]) -> dict[str, list[Bar]]:
     return dict(sessions)
 
 
-def build_samples(bars: list[Bar], bins: int = 24, min_prefix: int = MIN_PREFIX_BARS) -> list[Sample]:
+def build_samples(
+    bars: list[Bar],
+    bins: int = 24,
+    min_prefix: int = MIN_PREFIX_BARS,
+    min_volume_coverage: float = MIN_VOLUME_COVERAGE,
+) -> list[Sample]:
     """Walk every session forward, one decision point per closed bar.
 
     At bar ``t`` the profile is built from bars ``0..t`` inclusive -- all closed
@@ -99,6 +110,8 @@ def build_samples(bars: list[Bar], bins: int = 24, min_prefix: int = MIN_PREFIX_
 
             volumes = [b.volume for b in prefix if b.volume]
             if len(volumes) < 2 or not current.volume:
+                continue
+            if len(volumes) / len(prefix) < min_volume_coverage:
                 continue
             earlier = volumes[:-1]
             volume_ratio = current.volume / (sum(earlier) / len(earlier))

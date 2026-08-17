@@ -56,6 +56,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--min-prefix", type=int, default=3,
                         help="closed bars required before a profile is formed")
     parser.add_argument("--split", default="2023-01-01", help="train/test cutoff date")
+    parser.add_argument("--min-volume-coverage", type=float, default=0.60,
+                        help="share of the prefix that must carry volume (IEX reported none "
+                             "at all from Aug 2017 to Apr 2018)")
     parser.add_argument("--outdir", type=Path, default=Path("out/strategy"))
     return parser.parse_args(argv)
 
@@ -99,7 +102,8 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(f"error: no {args.frequency} bars for {args.ticker}")
 
     with_volume = sum(1 for b in bars if b.volume)
-    samples = build_samples(bars, bins=args.bins, min_prefix=args.min_prefix)
+    samples = build_samples(bars, bins=args.bins, min_prefix=args.min_prefix,
+                            min_volume_coverage=args.min_volume_coverage)
     if not samples:
         raise SystemExit("error: no samples built; check volume coverage and bar count")
 

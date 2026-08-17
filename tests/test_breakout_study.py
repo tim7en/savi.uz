@@ -299,3 +299,38 @@ class ThresholdLeakTests(unittest.TestCase):
     def test_edges_default_to_the_sample_when_not_supplied(self):
         rows = [self._s("2024-01-01", v / 100, 0.01) for v in range(100)]
         self.assertEqual(len(bucket_numeric(rows, lambda s: s.value_width, "V")), 5)
+
+
+class VolumeCoverageTests(unittest.TestCase):
+    """A profile built from a handful of volumed bars is not a session profile."""
+
+    def _sparse(self, day: str, n: int, volumed: set[int]) -> list[Bar]:
+        return [
+            _bar(f"{day}T{14 + i:02d}:00:00.000Z", 100 + i, 100.5 + i, 99.5 + i, 100 + i,
+                 1000.0 if i in volumed else None)
+            for i in range(n)
+        ]
+
+    def test_a_session_with_thin_volume_coverage_is_skipped(self):
+        bars = self._sparse("2024-01-02", 10, {0, 1, 9})     # 30% coverage
+        self.assertEqual(build_samples(bars, bins=12, min_prefix=3), [])
+
+    def test_a_well_covered_session_is_kept(self):
+        bars = self._sparse("2024-01-02", 10, set(range(10)))
+        self.assertGreater(len(build_samples(bars, bins=12, min_prefix=3)), 0)
+
+    def test_the_floor_is_configurable(self):
+        # Volume arrives only late, so every prefix sits between the two floors.
+        bars = self._sparse("2024-01-02", 10, {4, 5, 6, 7, 8, 9})
+        self.assertEqual(build_samples(bars, bins=12, min_prefix=3), [])
+        self.assertGreater(
+            len(build_samples(bars, bins=12, min_prefix=3, min_volume_coverage=0.4)), 0
+        )
+
+    def test_coverage_is_measured_on_the_prefix_not_the_session(self):
+        """Early bars carry volume, later ones do not: coverage must fall as the
+        prefix grows, so samples stop once the profile stops being real."""
+        bars = self._sparse("2024-01-02", 12, set(range(6)))
+        samples = build_samples(bars, bins=12, min_prefix=3, min_volume_coverage=0.6)
+        self.assertTrue(samples)
+        self.assertLessEqual(max(s.bars_elapsed for s in samples), 10)
