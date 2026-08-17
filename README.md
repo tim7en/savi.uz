@@ -527,3 +527,80 @@ of it.
 Downloaded so far: `SPY` and `QQQ`, 15,036 hourly bars each covering
 2017-01-03 to 2026-08-14 across 2,506 trading days, plus 2,417 days of
 adjustment factors apiece.
+
+## Volume-profile breakout study
+
+```bash
+PYTHONPATH=src python scripts/run_breakout_study.py --ticker SPY --frequency 5min
+```
+
+Does the shape of a session's volume profile, formed from the bars that have
+already closed, say anything about how far price travels in the *next* bar?
+
+### The rule the whole result rests on
+
+Price and volume are both known only when a bar closes. So a feature row
+observed at bar `t` may read **only** bars `1..t` of that session, and its target
+may read **only** bar `t+1`. This is enforced structurally -- `build_samples`
+walks each session forward and hands `build_profile` a prefix -- and asserted by
+a test that rewrites the final bar of a session and requires every earlier row's
+features to come back byte-identical.
+
+Three more choices keep the question honest:
+
+- **The last bar of each session is dropped.** Its next bar is the following
+  morning, so keeping it would mix an overnight gap into an intraday study.
+- **The split is chronological.** A random split leaks: adjacent bars in one
+  session share almost the same profile and would land on both sides.
+- **The target is the absolute move.** "Just before a breakout" is a claim about
+  magnitude. Testing direction would be a far stronger claim.
+
+### Controlling for the obvious
+
+The raw table is dominated by two effects that have nothing to do with volume
+profiles: sessions that have already travelled keep travelling (range-so-far
+quintile 5 lifts the next move by **2.57x**), and the last hour is busier than
+the middle (**1.32x**). Any profile feature correlated with either inherits that
+lift without adding information.
+
+So every bucket is also scored **within** its own range quintile *and* bar of the
+session, pooled across strata. That is the number worth reading, and it is much
+smaller than the raw one -- `Close vs POC` quintile 1 falls from 1.368 raw to
+1.127 controlled, so roughly two thirds of its apparent edge was borrowed.
+
+### What SPY hourly actually says
+
+6,655 decision points across 2,228 sessions, baseline next-bar move 19.9bp.
+Controlled lifts:
+
+| Setup | Lift | t |
+|---|---:|---:|
+| Close in top fifth of the developing range | **0.765** | -10.7 |
+| `B` shape (two separated distributions) | **0.763** | -9.8 |
+| Volume concentration in top quintile | 0.875 | -5.1 |
+| `P` shape (volume stacked high) | 0.881 | -3.7 |
+| Close well below POC (quintile 1) | 1.127 | +4.9 |
+| `b` shape (volume stacked low) | 1.103 | +3.9 |
+
+The reliable finding is the **negative** one, and it is the opposite of the
+usual framing: the profile identifies setups before a *quiet* bar far more
+sharply than before a violent one. Price sitting at the top of the developing
+range, or a session that has already built two separate distributions, precedes
+a next bar roughly a quarter smaller than a same-range, same-time peer, at
+t = -10. The breakout side is real but weaker -- price below the POC with volume
+stacked low runs about 10-13% hot.
+
+There is also a clear **asymmetry**: `b` (volume low, price working the bottom)
+is loud while `P` (volume high) is quiet. Downside exploration is faster than
+upside exploration, which is what the tails in the original question describe.
+
+### Resolution matters more than history here
+
+Hourly SPY gives six bars a session, and a six-observation volume profile is a
+crude instrument -- the `b`/`P`/`B` classification is doing a lot of work on very
+little. The same study at 5-minute bars has 78 observations a session and a
+genuinely shaped profile. `--frequency 5min` runs it there; the module is
+resolution-agnostic.
+
+Output is `out/strategy/breakout_<ticker>_<freq>.md` plus the full sample table
+as CSV, so the raw decision points can be re-cut without rerunning the study.

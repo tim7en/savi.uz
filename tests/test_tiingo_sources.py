@@ -298,3 +298,60 @@ class IntradayColumnTests(unittest.TestCase):
         with patch("savi_uz.tiingo_sources.urlopen", return_value=_Response(payload)):
             bars, _ = self.client.fetch_intraday("SPY", date(2024, 1, 1), date(2024, 12, 31))
         self.assertEqual(bars[0].volume, 150780.0)
+
+
+class MonthWindowTests(unittest.TestCase):
+    """Sub-hourly frequencies overflow a calendar year, so chunking is in months."""
+
+    def test_five_minute_bars_need_sub_year_chunks(self):
+        from savi_uz.tiingo_sources import BARS_PER_YEAR, max_safe_months, max_safe_years
+        self.assertGreater(BARS_PER_YEAR["5min"], MAX_ROWS_PER_REQUEST)
+        self.assertEqual(max_safe_years("5min"), 0)
+        self.assertGreaterEqual(max_safe_months("5min"), 1)
+
+    def test_a_safe_chunk_stays_under_the_row_cap(self):
+        from savi_uz.tiingo_sources import BARS_PER_YEAR, max_safe_months
+        for freq in ("1min", "5min", "15min", "30min", "1hour", "daily"):
+            with self.subTest(freq):
+                rows = BARS_PER_YEAR[freq] / 12.0 * max_safe_months(freq)
+                self.assertLess(rows, MAX_ROWS_PER_REQUEST)
+
+    def test_chunks_are_anchored_to_the_calendar_not_the_start_date(self):
+        """Two ranges must produce the same windows where they overlap, or the
+        disk cache misses on every resumed run with a different start."""
+        from savi_uz.tiingo_sources import month_windows
+        a = month_windows(date(2020, 1, 1), date(2020, 12, 31), 3)
+        b = month_windows(date(2020, 4, 1), date(2020, 12, 31), 3)
+        self.assertEqual(a[1:], b)
+
+    def test_quarterly_chunks_split_on_quarter_boundaries(self):
+        from savi_uz.tiingo_sources import month_windows
+        w = month_windows(date(2021, 1, 1), date(2021, 12, 31), 3)
+        self.assertEqual(len(w), 4)
+        self.assertEqual(w[0], (date(2021, 1, 1), date(2021, 3, 31)))
+        self.assertEqual(w[-1], (date(2021, 10, 1), date(2021, 12, 31)))
+
+    def test_a_partial_first_chunk_is_clipped_to_the_requested_start(self):
+        from savi_uz.tiingo_sources import month_windows
+        w = month_windows(date(2021, 2, 10), date(2021, 5, 31), 3)
+        self.assertEqual(w[0][0], date(2021, 2, 10))
+
+    def test_february_end_is_handled(self):
+        from savi_uz.tiingo_sources import month_windows
+        w = month_windows(date(2024, 2, 1), date(2024, 2, 29), 1)
+        self.assertEqual(w, [(date(2024, 2, 1), date(2024, 2, 29))])
+
+    def test_year_windows_still_delegate_correctly(self):
+        from savi_uz.tiingo_sources import year_windows
+        w = year_windows(date(2021, 1, 1), date(2023, 12, 31), 1)
+        self.assertEqual(len(w), 3)
+        self.assertEqual(w[0], (date(2021, 1, 1), date(2021, 12, 31)))
+
+    def test_an_inverted_range_is_empty(self):
+        from savi_uz.tiingo_sources import month_windows
+        self.assertEqual(month_windows(date(2021, 6, 1), date(2021, 1, 1), 3), [])
+
+    def test_a_nonsense_chunk_size_is_rejected(self):
+        from savi_uz.tiingo_sources import month_windows
+        with self.assertRaises(ValueError):
+            month_windows(date(2021, 1, 1), date(2021, 12, 31), 0)

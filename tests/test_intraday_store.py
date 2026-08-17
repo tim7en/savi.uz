@@ -59,40 +59,44 @@ class IntradayStoreTests(unittest.TestCase):
         self.assertEqual(row, ("PINK", 0, "China internet", "2008-11-03"))
 
     def test_completed_windows_drive_the_resume(self):
-        self.store.mark_window("SPY", "1hour", 2024, [_bar("SPY", "2024-03-01T15:00:00.000Z", 1.0)], False, "t")
-        self.store.mark_window("SPY", "1hour", 2025, [_bar("SPY", "2025-03-01T15:00:00.000Z", 1.0)], False, "t")
+        self.store.mark_window("SPY", "1hour", date(2024, 3, 1), date(2024, 3, 31),
+                               [_bar("SPY", "2024-03-01T15:00:00.000Z", 1.0)], False, "t")
+        self.store.mark_window("SPY", "1hour", date(2025, 3, 1), date(2025, 3, 31),
+                               [_bar("SPY", "2025-03-01T15:00:00.000Z", 1.0)], False, "t")
         self.assertEqual(
-            self.store.completed_windows("1hour"), {("SPY", 2024), ("SPY", 2025)}
+            self.store.completed_windows("1hour"), {("SPY", 2024, 3), ("SPY", 2025, 3)}
         )
         self.assertEqual(self.store.completed_windows("daily"), set())
 
     def test_an_empty_window_is_still_marked_so_it_is_not_refetched(self):
-        """A year with no bars is a fact about the source, not a failure to retry."""
-        self.store.mark_window("RKLB", "1hour", 2017, [], False, "t")
-        self.assertIn(("RKLB", 2017), self.store.completed_windows("1hour"))
+        """A month with no bars is a fact about the source, not a failure to retry."""
+        self.store.mark_window("RKLB", "1hour", date(2017, 1, 1), date(2017, 1, 31), [], False, "t")
+        self.assertIn(("RKLB", 2017, 1), self.store.completed_windows("1hour"))
         row = self.store.connection.execute(
             "SELECT rows, first_ts FROM windows WHERE ticker = 'RKLB'"
         ).fetchone()
         self.assertEqual(row, (0, None))
 
     def test_truncated_windows_are_reported(self):
-        self.store.mark_window("SPY", "1hour", 2020, [_bar("SPY", "2020-03-01T15:00:00.000Z", 1.0)], True, "t")
-        self.store.mark_window("SPY", "1hour", 2021, [_bar("SPY", "2021-03-01T15:00:00.000Z", 1.0)], False, "t")
+        self.store.mark_window("SPY", "1hour", date(2020, 3, 1), date(2020, 3, 31),
+                               [_bar("SPY", "2020-03-01T15:00:00.000Z", 1.0)], True, "t")
+        self.store.mark_window("SPY", "1hour", date(2021, 3, 1), date(2021, 3, 31),
+                               [_bar("SPY", "2021-03-01T15:00:00.000Z", 1.0)], False, "t")
         truncated = self.store.truncated_windows()
         self.assertEqual(len(truncated), 1)
         self.assertEqual(truncated[0][0], "SPY")
-        self.assertEqual(truncated[0][2], 2020)
+        self.assertEqual(truncated[0][2], "2020-03")
 
     def test_window_bounds_come_from_the_bars(self):
         self.store.mark_window(
-            "SPY", "1hour", 2024,
-            [_bar("SPY", "2024-06-01T15:00:00.000Z", 1.0), _bar("SPY", "2024-01-02T15:00:00.000Z", 1.0)],
+            "SPY", "1hour", date(2024, 1, 1), date(2024, 1, 31),
+            [_bar("SPY", "2024-01-31T15:00:00.000Z", 1.0), _bar("SPY", "2024-01-02T15:00:00.000Z", 1.0)],
             False, "t",
         )
         row = self.store.connection.execute(
             "SELECT first_ts, last_ts, rows FROM windows"
         ).fetchone()
-        self.assertEqual(row, ("2024-01-02T15:00:00.000Z", "2024-06-01T15:00:00.000Z", 2))
+        self.assertEqual(row, ("2024-01-02T15:00:00.000Z", "2024-01-31T15:00:00.000Z", 2))
 
     def test_known_symbols_reports_intraday_capability(self):
         self.store.upsert_symbol(
@@ -113,34 +117,45 @@ class IntradayStoreTests(unittest.TestCase):
     def test_empty_write_is_a_no_op(self):
         self.assertEqual(self.store.write_bars([]), 0)
 
-    def test_a_multi_year_chunk_is_recorded_per_year(self):
-        """Resume state stays per-year so --years-per-request can change between runs."""
+    def test_a_multi_month_chunk_is_recorded_per_month(self):
+        """Per-month state is what lets a sub-year chunk size resume correctly."""
         bars = [
-            _bar("SPY", "2020-06-01T15:00:00.000Z", 1.0),
-            _bar("SPY", "2021-06-01T15:00:00.000Z", 2.0),
-            _bar("SPY", "2022-06-01T15:00:00.000Z", 3.0),
+            _bar("SPY", "2020-01-15T15:00:00.000Z", 1.0),
+            _bar("SPY", "2020-02-15T15:00:00.000Z", 2.0),
+            _bar("SPY", "2020-03-15T15:00:00.000Z", 3.0),
         ]
-        self.store.mark_window("SPY", "1hour", 2020, bars, False, "t", last_year=2022)
+        self.store.mark_window("SPY", "5min", date(2020, 1, 1), date(2020, 3, 31), bars, False, "t")
         self.assertEqual(
-            self.store.completed_windows("1hour"), {("SPY", 2020), ("SPY", 2021), ("SPY", 2022)}
+            self.store.completed_windows("5min"),
+            {("SPY", 2020, 1), ("SPY", 2020, 2), ("SPY", 2020, 3)},
         )
         rows = self.store.connection.execute(
-            "SELECT year, rows FROM windows ORDER BY year"
+            "SELECT month, rows FROM windows ORDER BY month"
         ).fetchall()
-        self.assertEqual(rows, [(2020, 1), (2021, 1), (2022, 1)])
+        self.assertEqual(rows, [(1, 1), (2, 1), (3, 1)])
 
-    def test_a_year_inside_a_chunk_with_no_bars_is_still_marked(self):
+    def test_a_month_inside_a_chunk_with_no_bars_is_still_marked(self):
+        """Otherwise a quiet month is re-requested on every resumed run."""
         self.store.mark_window(
-            "GEV", "1hour", 2020, [_bar("GEV", "2022-06-01T15:00:00.000Z", 1.0)],
-            False, "t", last_year=2022,
+            "GEV", "5min", date(2020, 1, 1), date(2020, 3, 31),
+            [_bar("GEV", "2020-03-02T15:00:00.000Z", 1.0)], False, "t",
         )
         self.assertEqual(
-            self.store.completed_windows("1hour"), {("GEV", 2020), ("GEV", 2021), ("GEV", 2022)}
+            self.store.completed_windows("5min"),
+            {("GEV", 2020, 1), ("GEV", 2020, 2), ("GEV", 2020, 3)},
+        )
+
+    def test_a_chunk_spanning_a_year_boundary_marks_both_years(self):
+        self.store.mark_window("SPY", "5min", date(2020, 11, 1), date(2021, 1, 31), [], False, "t")
+        self.assertEqual(
+            self.store.completed_windows("5min"),
+            {("SPY", 2020, 11), ("SPY", 2020, 12), ("SPY", 2021, 1)},
         )
 
     def test_an_unparseable_timestamp_does_not_crash_the_run(self):
-        self.store.mark_window("SPY", "1hour", 2024, [_bar("SPY", "bad-stamp", 1.0)], False, "t")
-        self.assertIn(("SPY", 2024), self.store.completed_windows("1hour"))
+        self.store.mark_window("SPY", "1hour", date(2024, 1, 1), date(2024, 1, 31),
+                               [_bar("SPY", "bad-stamp", 1.0)], False, "t")
+        self.assertIn(("SPY", 2024, 1), self.store.completed_windows("1hour"))
 
     def test_csv_export_writes_every_table(self):
         self.store.write_bars([_bar("SPY", "2024-01-02T15:00:00.000Z", 1.0)])
