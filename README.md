@@ -428,3 +428,65 @@ instruments in the panel carry no hand label at all. Notably:
 Output is `out/tradfi/theme_leaders.csv` and `theme_leaders.md`, with each pick
 carrying its US-tradable symbol and proxy verdict from the proxy map, so a
 US-only strategy can be built straight off the table.
+
+## Intraday bars from Tiingo
+
+```bash
+PYTHONPATH=src python scripts/download_intraday_history.py --plan
+PYTHONPATH=src python scripts/download_intraday_history.py --db data/intraday/bars.db
+```
+
+Hourly bars back to 2017 for the theme leaders -- the 46 US-tradable names that
+carry the themes, rather than the whole 163-contract universe.
+
+### Staying inside the quota
+
+The free tier allows 50 requests/hour, 1000/day and 500 unique symbols/month, so
+a full 2017- pull of 46 symbols is roughly 500 requests and does not fit in one
+sitting. The script is built to be stopped and resumed:
+
+- Pacing defaults to **45 requests/hour**, evenly spaced rather than bursted, so
+  an interrupted run has never exceeded the rolling budget. `--requests-per-hour`
+  raises it on a paid plan.
+- `--max-requests` caps one invocation (default 333, leaving room to run twice
+  more the same day).
+- Every response is cached on disk **and** every completed `(ticker, year)`
+  window is recorded in the `windows` table. A resumed run asks only for what is
+  missing; cached windows cost nothing and do not count against the budget.
+- A 429 stops the run immediately and reports where it got to. It never retries
+  into a block.
+- `--plan` prints the request count and estimated hours without spending
+  anything.
+
+One metadata request per symbol pays for itself: it returns the ticker's first
+date, so no requests are spent on years before a company listed. `RKLB` starts
+2021-08, `GEV` 2024-03.
+
+### Two source limits worth knowing
+
+**The 10,000-row cap is silent.** A request spanning more than about six years of
+hourly bars returns exactly 10,000 rows, no error, and it returns the *recent*
+end of the range. Asking for 2017-2026 in one call hands back 2020 onward and
+looks exactly like history starting in 2020 -- which is what it appeared to do
+until the range was chunked. Requests are split by calendar year (~1,550 hourly
+bars each) and any response arriving at the cap is flagged in the `windows`
+table and printed.
+
+**IEX intraday is exchange-listed only.** The OTC ADRs in this universe --
+`TCEHY`, `XIACY`, `MPNGY`, `PMRTY`, all on `PINK` -- return zero intraday bars
+for any window, recent or historic, while having years of daily history
+(`TCEHY` back to 2008). They fall back to daily bars automatically;
+`--no-daily-fallback` skips them instead.
+
+### A local TLS wrinkle
+
+On Windows the system trust store carries an expired root that Python selects
+for `api.tiingo.com`, so `urllib` fails verification while `curl` succeeds. The
+client pins certifi's bundle rather than weakening verification.
+
+### Output
+
+`data/intraday/bars.db` holds `bars` (keyed by ticker, frequency and timestamp,
+so hourly and daily coexist), `symbols` (exchange, listing date, which themes the
+name represents), `windows` (the resume state and truncation flags) and
+`fetch_log`. `--csv-dir` exports all of it.

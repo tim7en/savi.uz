@@ -48,11 +48,13 @@ from savi_uz.config import get_tiingo_api_key  # noqa: E402
 from savi_uz.intraday_store import IntradayStore  # noqa: E402
 from savi_uz.tiingo_sources import (  # noqa: E402
     DEFAULT_REQUESTS_PER_HOUR,
+    DEFAULT_YEARS_PER_REQUEST,
     FREE_TIER_REQUESTS_PER_DAY,
     SUPPORTED_FREQUENCIES,
     TiingoClient,
     TiingoError,
     TiingoRateLimitError,
+    max_safe_years,
     utc_now_iso,
     year_windows,
 )
@@ -82,6 +84,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--max-requests", type=int, default=DEFAULT_MAX_REQUESTS,
         help=f"stop after this many live requests in one run (default {DEFAULT_MAX_REQUESTS})",
     )
+    parser.add_argument(
+        "--years-per-request", type=int, default=DEFAULT_YEARS_PER_REQUEST,
+        help=f"calendar years per request (default {DEFAULT_YEARS_PER_REQUEST}); larger means "
+             "fewer requests but risks the 10,000-row cap",
+    )
     parser.add_argument("--refresh", action="store_true", help="ignore the cache and refetch")
     parser.add_argument("--plan", action="store_true",
                         help="print the request plan and quota estimate, then exit")
@@ -108,17 +115,26 @@ def print_plan(
     done: set[tuple[str, int]],
 ) -> None:
     years = list(range(args.start_year, args.end_year + 1))
+    chunks = year_windows(
+        date(args.start_year, 1, 1), date(args.end_year, 12, 31), args.years_per_request
+    )
     outstanding = 0
     metadata_needed = 0
     for symbol in symbols:
         if symbol not in known:
             metadata_needed += 1
-        outstanding += sum(1 for year in years if (symbol, year) not in done)
+        for first, last in chunks:
+            span = range(first.year, last.year + 1)
+            if any((symbol, year) not in done for year in span):
+                outstanding += 1
 
     total = metadata_needed + outstanding
     hours = total / max(args.requests_per_hour, 1)
     print(f"symbols                : {len(symbols)}")
     print(f"years                  : {years[0]}-{years[-1]} ({len(years)})")
+    safe = max_safe_years(args.frequency)
+    print(f"years per request      : {args.years_per_request} "
+          f"({len(chunks)} chunks; up to {safe} is safe for {args.frequency})")
     print(f"metadata requests due  : {metadata_needed}")
     print(f"bar-window requests due: {outstanding} (upper bound; pre-listing years are skipped)")
     print(f"total requests due     : {total}")
@@ -157,8 +173,9 @@ def download_symbol(
         return 0, 0
 
     total_bars = total_windows = 0
-    for first, last in year_windows(start, end):
-        if (symbol, first.year) in done and not args.refresh:
+    for first, last in year_windows(start, end, args.years_per_request):
+        span = range(first.year, last.year + 1)
+        if all((symbol, year) in done for year in span) and not args.refresh:
             continue
         if client.budget_exhausted():
             raise TiingoError("request budget reached")
@@ -169,13 +186,16 @@ def download_symbol(
             bars, truncated = client.fetch_intraday(symbol, first, last, frequency)
 
         written = store.write_bars(bars)
-        store.mark_window(symbol, frequency, first.year, bars, truncated, utc_now_iso())
+        store.mark_window(
+            symbol, frequency, first.year, bars, truncated, utc_now_iso(), last_year=last.year
+        )
         total_bars += written
         total_windows += 1
         if truncated:
-            print(f"[{symbol:<6}] {first.year} hit the {len(bars)}-row cap; window truncated")
-            store.log(run_id, utc_now_iso(), "TIINGO", f"{symbol}/{first.year}", written,
-                      "truncated", "response hit the row cap")
+            print(f"[{symbol:<6}] {first.year}-{last.year} hit the {len(bars)}-row cap; "
+                  "narrow --years-per-request and rerun with --refresh")
+            store.log(run_id, utc_now_iso(), "TIINGO", f"{symbol}/{first.year}-{last.year}",
+                      written, "truncated", "response hit the row cap")
 
     label = f"{frequency}{' (daily fallback)' if use_daily else ''}"
     print(f"[{symbol:<6}] {total_bars:>6,} bars over {total_windows:>2} window(s)  {label}"

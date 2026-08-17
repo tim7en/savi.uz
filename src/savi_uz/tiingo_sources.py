@@ -290,20 +290,52 @@ class TiingoClient:
         return bars, len(bars) >= MAX_ROWS_PER_REQUEST
 
 
-def year_windows(start: date, end: date) -> list[tuple[date, date]]:
-    """Split a range into calendar-year windows.
+#: Measured: a full year of hourly bars is about 1,566 rows.
+HOURLY_BARS_PER_YEAR = 1_566
 
-    A year of hourly bars is roughly 1,550 rows, comfortably inside the 10,000
-    cap, so one request per year per symbol never truncates.
+#: Three years is ~4,700 rows, comfortably under half the cap, and costs a third
+#: of the requests that single-year chunks do -- which is what decides whether a
+#: free-tier pull takes four hours or eleven.
+DEFAULT_YEARS_PER_REQUEST = 3
+
+
+def max_safe_years(frequency: str = "1hour", safety: float = 0.5) -> int:
+    """Largest chunk that stays under ``safety`` of the row cap for a frequency."""
+    if frequency == "daily":
+        return 20
+    per_year = {
+        "1hour": HOURLY_BARS_PER_YEAR,
+        "4hour": HOURLY_BARS_PER_YEAR // 4,
+        "30min": HOURLY_BARS_PER_YEAR * 2,
+        "15min": HOURLY_BARS_PER_YEAR * 4,
+        "5min": HOURLY_BARS_PER_YEAR * 12,
+        "1min": HOURLY_BARS_PER_YEAR * 60,
+    }.get(frequency, HOURLY_BARS_PER_YEAR)
+    return max(int(MAX_ROWS_PER_REQUEST * safety / per_year), 1)
+
+
+def year_windows(
+    start: date, end: date, years_per_chunk: int = 1
+) -> list[tuple[date, date]]:
+    """Split a range into chunks of whole calendar years.
+
+    Chunks are aligned to calendar years so a resumed run with the same setting
+    asks for exactly the windows it asked for before and hits the cache.
     """
     if start > end:
         return []
+    if years_per_chunk < 1:
+        raise ValueError("years_per_chunk must be at least 1")
+
     windows = []
-    for year in range(start.year, end.year + 1):
+    year = start.year
+    while year <= end.year:
+        chunk_end_year = min(year + years_per_chunk - 1, end.year)
         first = max(start, date(year, 1, 1))
-        last = min(end, date(year, 12, 31))
+        last = min(end, date(chunk_end_year, 12, 31))
         if first <= last:
             windows.append((first, last))
+        year = chunk_end_year + 1
     return windows
 
 

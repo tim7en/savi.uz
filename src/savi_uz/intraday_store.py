@@ -129,15 +129,34 @@ class IntradayStore:
         )
 
     def mark_window(
-        self, ticker: str, frequency: str, year: int, bars: list[Any],
-        truncated: bool, fetched_at: str,
+        self, ticker: str, frequency: str, first_year: int, bars: list[Any],
+        truncated: bool, fetched_at: str, last_year: int | None = None,
     ) -> None:
-        stamps = [bar.timestamp for bar in bars]
+        """Record a fetched chunk as one row per calendar year it covered.
+
+        Resume state is kept per year even when a request spans several, so
+        changing ``--years-per-request`` between runs does not invalidate work
+        already done: the downloader re-checks years, not request windows.
+        """
+        span_end = first_year if last_year is None else last_year
+        by_year: dict[int, list[str]] = {year: [] for year in range(first_year, span_end + 1)}
+        for bar in bars:
+            stamp = str(bar.timestamp)
+            # A timestamp that does not start with a year is attributed to the
+            # window's first year rather than crashing the run: losing the split
+            # is recoverable, losing the whole download is not.
+            head = stamp[:4]
+            year = int(head) if head.isdigit() else first_year
+            by_year.setdefault(year, []).append(stamp)
+
         self._write(
             "windows",
             ("ticker", "frequency", "year", "first_ts", "last_ts", "rows", "truncated", "fetched_at"),
-            [(ticker, frequency, year, min(stamps) if stamps else None,
-              max(stamps) if stamps else None, len(bars), int(truncated), fetched_at)],
+            [
+                (ticker, frequency, year, min(stamps) if stamps else None,
+                 max(stamps) if stamps else None, len(stamps), int(truncated), fetched_at)
+                for year, stamps in sorted(by_year.items())
+            ],
         )
 
     def completed_windows(self, frequency: str) -> set[tuple[str, int]]:
