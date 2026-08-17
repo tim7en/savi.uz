@@ -7,3 +7,7 @@ yfinance>=0.2.40
 # Shiller publishes ie_data.xls in the legacy .xls format, which openpyxl
 # cannot read; xlrd 2.x reads .xls only, which is exactly what is needed.
 xlrd>=2.0
+
+# FactSet Earnings Insight is published only as a PDF; pdfplumber keeps the
+# page-1 layout intact, which is what the Key Metrics patterns rely on.
+pdfplumber>=0.11

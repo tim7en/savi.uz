@@ -70,6 +70,30 @@ CREATE TABLE IF NOT EXISTS analyst_earnings (
     PRIMARY KEY (ticker, fiscal_ending)
 );
 
+CREATE TABLE IF NOT EXISTS factset_reports (
+    report_date                        TEXT PRIMARY KEY,
+    document_date                      TEXT,
+    source_url                          TEXT,
+    quarter                             TEXT,
+    pct_reported                        REAL,
+    pct_positive_eps                    REAL,
+    pct_positive_revenue                REAL,
+    blended_earnings_growth             REAL,
+    estimated_earnings_growth           REAL,
+    estimated_growth_at_quarter_start   REAL,
+    forward_12m_pe                      REAL,
+    pe_5y_average                       REAL,
+    pe_10y_average                      REAL,
+    negative_guidance_count             INTEGER,
+    positive_guidance_count             INTEGER,
+    index_price                         REAL,
+    forward_12m_eps                     REAL,
+    missing_fields                      TEXT,
+    missing_core_fields                 TEXT,
+    page_text                           TEXT,
+    fetched_at                          TEXT
+);
+
 CREATE TABLE IF NOT EXISTS fetch_log (
     run_id      TEXT NOT NULL,
     logged_at   TEXT NOT NULL,
@@ -92,7 +116,26 @@ EXPORT_TABLES = (
     "sec_frames",
     "index_prices",
     "analyst_earnings",
+    "factset_reports",
     "fetch_log",
+)
+
+#: Parsed numbers from page 1, in the order the table declares them.
+FACTSET_FIELDS: tuple[str, ...] = (
+    "quarter",
+    "pct_reported",
+    "pct_positive_eps",
+    "pct_positive_revenue",
+    "blended_earnings_growth",
+    "estimated_earnings_growth",
+    "estimated_growth_at_quarter_start",
+    "forward_12m_pe",
+    "pe_5y_average",
+    "pe_10y_average",
+    "negative_guidance_count",
+    "positive_guidance_count",
+    "index_price",
+    "forward_12m_eps",
 )
 
 
@@ -191,6 +234,50 @@ class EquityStore:
             ],
         )
 
+    def write_factset_report(self, metrics: Any, fetched_at: str) -> int:
+        """Store one weekly edition, parsed numbers and page text together.
+
+        The page text is kept so that an improved pattern can be replayed over
+        the whole history without re-downloading nine years of PDFs.
+        """
+        columns = (
+            "report_date", "document_date", "source_url", *FACTSET_FIELDS,
+            "missing_fields", "missing_core_fields", "page_text", "fetched_at",
+        )
+        row = (
+            _iso(metrics.report_date),
+            _iso(metrics.document_date),
+            metrics.source_url,
+            *(metrics.values.get(name) for name in FACTSET_FIELDS),
+            ",".join(metrics.missing),
+            ",".join(metrics.missing_core),
+            metrics.page_text,
+            fetched_at,
+        )
+        return self._write("factset_reports", columns, [row])
+
+    def factset_page_texts(self) -> list[tuple[str, str, str]]:
+        """(report_date, source_url, page_text) for offline re-parsing."""
+        return self.connection.execute(
+            "SELECT report_date, source_url, page_text FROM factset_reports "
+            "WHERE page_text IS NOT NULL AND page_text != '' ORDER BY report_date"
+        ).fetchall()
+
+    def factset_field_coverage(self) -> list[tuple[str, int]]:
+        """How many editions carry each field, to show where parsing thins out."""
+        total = self.connection.execute("SELECT COUNT(*) FROM factset_reports").fetchone()[0]
+        if not total:
+            return []
+        return [
+            (
+                name,
+                self.connection.execute(
+                    f"SELECT COUNT({name}) FROM factset_reports"
+                ).fetchone()[0],
+            )
+            for name in FACTSET_FIELDS
+        ]
+
     def log(self, run_id: str, logged_at: str, source: str, target: str, rows: int,
             status: str, message: str = "") -> None:
         self._write(
@@ -215,6 +302,7 @@ class EquityStore:
                 "estimates",
                 "SELECT MIN(fiscal_ending), MAX(fiscal_ending), COUNT(*) FROM analyst_earnings",
             ),
+            ("factset", "SELECT MIN(report_date), MAX(report_date), COUNT(*) FROM factset_reports"),
         ]
         summary = []
         for key, query in spans:
