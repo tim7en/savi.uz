@@ -208,6 +208,14 @@ def replay(trades, variant, regimes, funding, calendar, *, max_positions, seed,
         if day in curve_events:
             value = curve_events[day]
         path.append(value)
+    # NOTE: trading_nav only moves when a trade closes, so `path` is a step
+    # function between exits. Open-position value is invisible to it. Every risk
+    # metric below therefore describes the realised-P&L path, NOT a mark-to-
+    # market equity curve: the drawdown is a lower bound, and the Sharpe is not
+    # comparable to one computed on a marked path (exit marking both omits
+    # open-position variance and concentrates P&L into fewer, larger jumps, so
+    # the direction of the bias is not even predictable). Use the five-minute
+    # path replay for risk metrics; these are for return accounting only.
     peak = path[0]
     maxdd = 0.0
     for value in path:
@@ -223,7 +231,7 @@ def replay(trades, variant, regimes, funding, calendar, *, max_positions, seed,
     calmar = cagr / abs(maxdd) if maxdd else math.nan
     return {
         "path": path, "ending": path[-1], "cagr": cagr, "maxdd": maxdd,
-        "sharpe": sharpe, "calmar": calmar,
+        "sharpe": sharpe, "calmar": calmar, "metrics_basis": "exit-marked",
         "trades": accepted,
         "mean_size": weighted_multiplier / accepted if accepted else math.nan,
     }

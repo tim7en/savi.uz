@@ -278,11 +278,19 @@ def replay(trades, variant, regimes, funding, timeline, closes, prepared,
             position.risk_per_r * position.trade.net_r - position.financing
         )
     realized = np.cumsum(realized_delta)
-    exit_only_path = np.maximum(sleeve, 1000.0 + realized)
-    path = np.maximum(sleeve, 1000.0 + realized + unrealized)
+    # Flooring at the sleeve caps any reported drawdown at -(1 - sleeve/1000),
+    # i.e. -70% here, so a deeper excursion silently reads as exactly -70%.
+    # Keep an unfloored series for the risk metrics and floor only what is
+    # plotted, where the segregated sleeve genuinely is a floor.
+    exit_only_raw = 1000.0 + realized
+    raw = 1000.0 + realized + unrealized
+    exit_only_path = np.maximum(sleeve, exit_only_raw)
+    path = np.maximum(sleeve, raw)
+    censored = bool(np.min(raw) < sleeve)
 
-    result = metrics(path, exit_only_path, daily_indices)
+    result = metrics(raw, exit_only_raw, daily_indices)
     result.update({
+        "nav_hit_sleeve_floor": censored,
         "timeline": timeline, "trades": accepted,
         "mean_size": risk_sum / accepted if accepted else math.nan,
     })
