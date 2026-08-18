@@ -194,7 +194,7 @@ def metrics(path, exit_only_path, daily_indices):
 
 
 def replay(trades, variant, regimes, funding, timeline, closes, prepared,
-           daily_indices, *, seed, max_positions, broker_spread):
+           daily_indices, *, seed, max_positions, broker_spread, size_fn=None):
     entries = defaultdict(list)
     for trade in trades:
         entries[trade.entry].append(trade)
@@ -241,7 +241,8 @@ def replay(trades, variant, regimes, funding, timeline, closes, prepared,
             trading_nav = marked_nav(stamp, index)
             if trading_nav <= 0:
                 continue
-            size = multiplier(variant, trade.entry[:10], regimes)
+            size = (size_fn(variant, trade) if size_fn is not None
+                    else multiplier(variant, trade.entry[:10], regimes))
             requested_risk = trading_nav * 0.01 * size
             requested_gross = requested_risk * trade.initial_basis_r * 4
             active_gross = sum(item.reserved_gross for item in active.values())
