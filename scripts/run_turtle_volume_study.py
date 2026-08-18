@@ -93,6 +93,19 @@ def result_row(label: str, period: str, side: str, rows) -> str:
     )
 
 
+def slice_stats(results, label: str, split: str, period: str, side: str = "both"):
+    rows = results[label]
+    rows = [
+        row for row in rows
+        if (row.signal_timestamp[:10] < split) == (period == "train")
+    ]
+    if side == "long":
+        rows = [row for row in rows if row.direction > 0]
+    elif side == "short":
+        rows = [row for row in rows if row.direction < 0]
+    return stats(rows)
+
+
 def flatten(label, row):
     trade = asdict(row.trade)
     return {
@@ -253,6 +266,41 @@ def main(argv=None) -> int:
                     f"| {period} | {side} | {bucket} | {item['count']:,} | "
                     f"{fmt(item['pf'])} | {fmt(item['mean'], 3)} | {item['total']:+,.1f} |"
                 )
+
+    control_train = slice_stats(
+        results, "Matched close-confirmed control", args.split, "train"
+    )
+    control_test = slice_stats(
+        results, "Matched close-confirmed control", args.split, "test"
+    )
+    outside_train = slice_stats(results, "Outside prior value area", args.split, "train")
+    outside_test = slice_stats(results, "Outside prior value area", args.split, "test")
+    poc_train = slice_stats(results, "POC distance >= 1N", args.split, "train")
+    poc_test = slice_stats(results, "POC distance >= 1N", args.split, "test")
+    burst_train = slice_stats(results, "RVOL >= 1.5", args.split, "train")
+    burst_test = slice_stats(results, "RVOL >= 1.5", args.split, "test")
+    long_test = slice_stats(
+        results, "Matched close-confirmed control", args.split, "test", "long"
+    )
+    short_test = slice_stats(
+        results, "Matched close-confirmed control", args.split, "test", "short"
+    )
+    lines += [
+        "", "## Interpretation", "",
+        f"- Matched-control PF was **{fmt(control_train['pf'])}** in train and "
+        f"**{fmt(control_test['pf'])}** in test.",
+        f"- Requiring price outside the prior value area changed PF to "
+        f"**{fmt(outside_train['pf'])}** / **{fmt(outside_test['pf'])}** "
+        "(train/test).",
+        f"- Requiring at least 1N directional displacement from POC changed PF to "
+        f"**{fmt(poc_train['pf'])}** / **{fmt(poc_test['pf'])}**.",
+        f"- A raw RVOL >= 1.5 burst changed PF to **{fmt(burst_train['pf'])}** / "
+        f"**{fmt(burst_test['pf'])}**. This is the direct test of whether a large "
+        "volume burst improves breakout continuation.",
+        f"- In test, the unfiltered long/short PF split was **{fmt(long_test['pf'])}** "
+        f"versus **{fmt(short_test['pf'])}**. Side conclusions should therefore not be "
+        "hidden inside the pooled result.",
+    ]
 
     audit = audits["Matched close-confirmed control"]
     outside_share = sum(row.outside_value for row in control) / len(control) if control else math.nan
