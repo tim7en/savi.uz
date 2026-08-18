@@ -39,6 +39,7 @@ class TurtleConfig:
     add_atr: float = 0.5
     max_units: int = 4
     risk_fraction: float = 0.01
+    minimum_n_cost_multiple: float = 5.0
     skip_after_winner: bool = True
     round_trip_cost: float = 0.0002
     allow_overnight: bool = True
@@ -57,6 +58,8 @@ class TurtleConfig:
             raise ValueError("risk_fraction must be a fraction of equity")
         if self.round_trip_cost < 0:
             raise ValueError("round_trip_cost cannot be negative")
+        if self.minimum_n_cost_multiple < 0:
+            raise ValueError("minimum_n_cost_multiple cannot be negative")
         if not self.directions or set(self.directions) - {1, -1}:
             raise ValueError("directions must be a non-empty subset of (1, -1)")
 
@@ -86,7 +89,18 @@ class TurtleTrade:
     cost_r: float
     net_r: float
     equity_return: float
-    skipped_by_filter: bool = False
+    cost_basis_r: float = 0.0
+
+
+@dataclass(frozen=True)
+class TurtleAudit:
+    """Where every breakout went, so the trade list can be reconciled."""
+
+    bars: int
+    breakouts: int
+    skipped_after_winner: int
+    skipped_small_n: int
+    trades: int
 
 
 @dataclass(frozen=True)
@@ -213,8 +227,8 @@ class _Phantom:
 
 def run_turtle(
     bars: list[Bar], *, config: TurtleConfig = TurtleConfig(),
-) -> tuple[list[TurtleTrade], int]:
-    """Replay the system over ``bars``; returns the trades and the skip count."""
+) -> tuple[list[TurtleTrade], TurtleAudit]:
+    """Replay the system over ``bars``; returns the trades and an audit."""
     rows = sorted(bars, key=lambda bar: bar.timestamp)
     atr = wilder_atr(rows, config.atr_window)
     highs = [bar.high for bar in rows]
@@ -226,6 +240,8 @@ def run_turtle(
     warmup = max(config.entry_window, config.atr_window)
     trades: list[TurtleTrade] = []
     skipped = 0
+    skipped_small_n = 0
+    breakouts = 0
     last_breakout_won: dict[int, bool | None] = {1: None, -1: None}
 
     direction = 0
@@ -277,9 +293,8 @@ def run_turtle(
 
             if reason:
                 gross = sum(direction * (price - unit.price) / unit.n for unit in units)
-                cost = sum(
-                    config.round_trip_cost * unit.price / unit.n for unit in units
-                )
+                basis = sum(unit.price / unit.n for unit in units)
+                cost = config.round_trip_cost * basis
                 net = gross - cost
                 average = sum(unit.price for unit in units) / len(units)
                 sessions = len({
@@ -302,6 +317,7 @@ def run_turtle(
                     cost_r=cost,
                     net_r=net,
                     equity_return=net * config.risk_fraction,
+                    cost_basis_r=basis,
                 ))
                 direction = 0
                 units = []
@@ -325,6 +341,14 @@ def run_turtle(
             if math.isnan(level) or not _breached(bar, level, candidate):
                 continue
             fill = _stop_fill(level, bar, candidate)
+            breakouts += 1
+            # A 1N move must be able to pay for the round trips it takes to
+            # capture it. Wilder's N decays geometrically through flat bars, so
+            # at fine intervals it can collapse towards zero and make every R
+            # multiple derived from it meaningless.
+            if previous_n < config.minimum_n_cost_multiple * config.round_trip_cost * fill:
+                skipped_small_n += 1
+                break
             won = last_breakout_won[candidate]
             take = not (config.skip_after_winner and won is True)
             pending[candidate] = _Phantom(
@@ -346,7 +370,8 @@ def run_turtle(
     if direction:
         final = rows[-1]
         gross = sum(direction * (final.close - unit.price) / unit.n for unit in units)
-        cost = sum(config.round_trip_cost * unit.price / unit.n for unit in units)
+        basis = sum(unit.price / unit.n for unit in units)
+        cost = config.round_trip_cost * basis
         trades.append(TurtleTrade(
             entry_timestamp=units[0].timestamp,
             exit_timestamp=final.timestamp,
@@ -364,9 +389,13 @@ def run_turtle(
             cost_r=cost,
             net_r=gross - cost,
             equity_return=(gross - cost) * config.risk_fraction,
+            cost_basis_r=basis,
         ))
 
-    return trades, skipped
+    return trades, TurtleAudit(
+        bars=len(rows), breakouts=breakouts, skipped_after_winner=skipped,
+        skipped_small_n=skipped_small_n, trades=len(trades),
+    )
 
 
 def summarise_turtle(
