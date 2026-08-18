@@ -195,7 +195,7 @@ def metrics(path, exit_only_path, daily_indices):
 
 def replay(trades, variant, regimes, funding, timeline, closes, prepared,
            daily_indices, *, seed, max_positions, broker_spread, size_fn=None,
-           post_capacity_size=False):
+           post_capacity_size=False, return_full_path=False):
     entries = defaultdict(list)
     for trade in trades:
         entries[trade.entry].append(trade)
@@ -303,6 +303,8 @@ def replay(trades, variant, regimes, funding, timeline, closes, prepared,
         "timeline": timeline, "trades": accepted,
         "mean_size": risk_sum / accepted if accepted else math.nan,
     })
+    if return_full_path:
+        result["full_path"] = raw.tolist()
     return result
 
 
