@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import collections
 import csv
 import sqlite3
 import sys
@@ -14,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from savi_uz.sweep_engulf import resample_regular_session  # noqa: E402
 from savi_uz.swing_failure_strategy import (  # noqa: E402
     SfpConfig,
+    build_daily_biases,
     run_sfp_strategy,
     summarise_sfp,
 )
@@ -71,28 +73,28 @@ def main(argv: list[str] | None = None) -> int:
 
     locked = SfpConfig()
     variants = [
-        ("Locked A-grade PDH/PDL SFP", locked),
-        ("No break-even move", replace(locked, breakeven_trigger_r=None)),
-        ("One-leg daily HH/HL or LH/LL", replace(locked, daily_structure_legs=1)),
-        ("Require strong prior daily close", replace(locked, require_strong_daily_close=True)),
-        ("Relaxed hourly outside close", replace(locked, hourly_confirmation="outside")),
-        ("Directional hourly SFP", replace(locked, hourly_confirmation="directional SFP")),
-        ("Directional SFP, one-leg bias", replace(
-            locked, hourly_confirmation="directional SFP", daily_structure_legs=1
+        ("Core SFP (locked)", locked),
+        ("Core SFP, no break-even", replace(locked, breakeven_trigger_r=None)),
+        ("Core SFP, trend sessions only", replace(locked, trade_neutral_sessions=False)),
+        ("Core SFP, strong daily states only", replace(locked, require_strong_daily_close=True)),
+        ("Core SFP, opening hour excluded", replace(locked, allow_opening_hour=False)),
+        ("Core SFP, hold up to three sessions", replace(locked, max_hold_sessions=3)),
+        ("Core SFP at PD or weekly level", replace(locked, location_mode="previous day or week")),
+        ("Core SFP, no rapid-rejection filter", replace(locked, require_fast_rejection=False)),
+        ("Core SFP, minimum 1R instead of 2R", replace(locked, minimum_reward_risk=1.0)),
+        ("Core SFP, no minimum stop distance",
+         replace(locked, minimum_stop_cost_multiple=0.0)),
+        ("Confluence: + directional body", replace(locked, hourly_confirmation="directional")),
+        ("Confluence: + close through prior open",
+         replace(locked, hourly_confirmation="close through open")),
+        ("Confluence: + outside bar", replace(locked, hourly_confirmation="outside")),
+        ("Superseded: strong-outside conjunction",
+         replace(locked, hourly_confirmation="strong outside")),
+        ("Superseded: previous locked rule", replace(
+            locked, bias_mode="three-candle legs", daily_structure_legs=2,
+            hourly_confirmation="strong outside", trade_neutral_sessions=False,
+            allow_opening_hour=False,
         )),
-        ("Directional SFP at PD or weekly level", replace(
-            locked, hourly_confirmation="directional SFP", location_mode="previous day or week"
-        )),
-        ("Close-back SFP, strict daily bias", replace(
-            locked, hourly_confirmation="close-back SFP"
-        )),
-        ("Close-back SFP, one-leg bias", replace(
-            locked, hourly_confirmation="close-back SFP", daily_structure_legs=1
-        )),
-        ("No rapid-rejection filter", replace(locked, require_fast_rejection=False)),
-        ("PD or prior-week SFP location", replace(locked, location_mode="previous day or week")),
-        ("Hold up to three sessions", replace(locked, max_hold_sessions=3)),
-        ("Minimum 1R instead of 2R", replace(locked, minimum_reward_risk=1.0)),
     ]
 
     results = {}
@@ -102,27 +104,34 @@ def main(argv: list[str] | None = None) -> int:
         f"Source: **{len(source):,}** Tiingo five-minute regular-session bars, resampled to "
         f"**{len(daily):,}** daily, **{len(hourly):,}** hourly, and **{len(fifteen):,}** "
         f"15-minute bars. Chronological split: **{args.split}**.", "",
-        "## Locked A-grade rules", "",
-        "1. At the session open, use only the three preceding completed daily candles. Long bias "
-        "requires two consecutive higher-high/higher-low transitions; short bias requires two "
-        "lower-high/lower-low transitions.",
-        "2. The latest completed daily candle must close in the bias direction. An opposing candle "
-        "is classified as caution/retracement and skipped; an inside/neutral structure has no bias.",
-        "3. Mark untouched PDH and PDL before the session. A long setup can only sweep PDL in a bull "
-        "bias; a short can only sweep PDH in a bear bias. Any earlier touch consumes the pool and "
-        "invalidates that location.",
-        "4. The completed hourly failure candle must trade through the level, close back inside, "
-        "fully exceed the preceding hour's high and low, and close beyond the preceding hour's "
-        "opposite extreme in the bias direction.",
-        "5. At most one constituent 15-minute close may remain outside the swept level. This encodes "
-        "a quick rejection rather than an hour of acceptance beyond it.",
+        "## Locked rules", "",
+        "1. Before the session, classify the two completed daily candles that precede it. A close "
+        "beyond the prior candle's extreme after a higher-high/higher-low or lower-high/lower-low "
+        "transition is a strong state; the transition without that close is a weak state; a "
+        "transition that closes against itself is caution and is not traded; an inside candle is "
+        "neutral. An outside bar is resolved only by its close.",
+        "2. Strong and weak states supply the lean. A neutral session has no lean, so whichever "
+        "pool is raided first sets the side. Caution sessions are skipped.",
+        "3. Mark untouched PDH and PDL before the session. A long sweeps PDL, a short sweeps PDH. "
+        "Any earlier touch consumes the pool and invalidates that location.",
+        "4. The failure is defined against the level, not the candle body: the completed hourly bar "
+        "must trade through the pool and close back on the origin side of it. Hourly two-candle "
+        "patterns are recorded as confluence and reported as separate tiers.",
+        "5. At most one constituent 15-minute close may remain outside the swept level, which "
+        "encodes a quick rejection rather than an hour of acceptance beyond it.",
         "6. Enter at the following 15-minute open. Stop at the failure wick. Target the untouched "
         "opposite prior-day extreme. The actual fill must offer at least 2R.",
         "7. After a completed 15-minute candle reaches +1R, move the stop to entry for the following "
-        "bar. Exit any remainder at the regular-session close. Charge 2 bp round-trip cost.", "",
-        "The primary test cannot use Asia or London highs/lows because the ETF source contains only "
-        "US regular hours. Prior-week locations, relaxed confirmation, and overnight holding are "
-        "reported as diagnostics rather than silently folded into the locked rule.", "",
+        "bar. Exit any remainder at the regular-session close. Charge 2 bp round-trip cost.",
+        "8. Reject any setup whose stop sits closer than five round trips (10 bp) from the entry "
+        "fill. Such a stop cannot pay for its own costs, and the R multiples it produces are "
+        "arithmetic artefacts rather than trade outcomes.", "",
+        "The opening hour is a valid signal hour: it carries the majority of first raids on PDH and "
+        "PDL, and the level-defined failure needs no preceding same-session bar. Confluence tiers "
+        "that compare against a prior hour cannot be evaluated there and skip it.", "",
+        "This study cannot use Asia or London highs and lows because the ETF source contains only US "
+        "regular hours. That matters most in strongly trending sessions, where the prior-day extreme "
+        "on the far side is the least likely pool to be raided.", "",
         "## Chronological results", "",
         "| Variant | Period | Trades | L/S | Win | PF | Mean R | $100 -> | CAGR | Max DD | Stop | BE | Target | Time |",
         "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
@@ -137,41 +146,91 @@ def main(argv: list[str] | None = None) -> int:
         lines.append(summary_row(label, "train", train))
         lines.append(summary_row(label, "test", test))
 
-    primary_name = "Locked A-grade PDH/PDL SFP"
+    primary_name = "Core SFP (locked)"
     primary = results[primary_name]
     audit = audits[primary_name]
     lines += [
         "", "## Locked-rule funnel", "",
         f"- Hourly bars: **{audit.hourly_bars:,}**",
-        f"- Hours carrying a strict daily trend bias: **{audit.biased_hours:,}**",
-        f"- Rejected by opposing prior-day candle: **{audit.no_daily_alignment:,}**",
+        f"- Candidate signal hours in range: **{audit.candidate_hours:,}**",
+        f"- No completed two-candle daily record yet: **{audit.no_bias_record:,}**",
+        f"- Caution session, not traded: **{audit.caution_session:,}**",
+        f"- Neutral session skipped by configuration: **{audit.neutral_skipped:,}**",
+        f"- Rejected by daily candle alignment: **{audit.no_daily_alignment:,}**",
+        f"- Rejected by daily state strength: **{audit.no_daily_strength:,}**",
+        f"- Opening hour not usable by this tier: **{audit.opening_hour_skipped:,}**",
+        f"- Last hour of session, no entry bar follows: **{audit.no_entry_bar:,}**",
+        f"- Hourly bar not aligned to the 15-minute grid: **{audit.unaligned_15m_grid:,}**",
         f"- No still-untouched bias-aligned PDH/PDL: **{audit.no_untouched_location:,}**",
         f"- No sweep and reclaim: **{audit.no_swing_failure:,}**",
         f"- Sweep occurred but hourly confirmation was weak: **{audit.weak_hourly_confirmation:,}**",
         f"- Rejection was too slow: **{audit.slow_rejection:,}**",
         f"- Opposite daily target was no longer resting: **{audit.target_not_resting:,}**",
+        f"- Stop too tight to be tradeable: **{audit.stop_too_tight:,}**",
         f"- Invalid or below 2R: **{audit.invalid_or_low_reward:,}**",
+        f"- Overlapped an open position: **{audit.overlap_skipped:,}**",
         f"- Executed trades: **{audit.trades:,}**",
+        "",
+        f"Buckets sum to **{audit.accounted:,}** against **{audit.candidate_hours:,}** candidate "
+        f"hours: **{'reconciles' if audit.reconciles() else 'DOES NOT RECONCILE'}**.",
     ]
 
-    lower_name = "Close-back SFP, strict daily bias"
-    lower_train = summarise_sfp([
-        trade for trade in results[lower_name] if trade.session < args.split
-    ])
-    lower_test = summarise_sfp([
-        trade for trade in results[lower_name] if trade.session >= args.split
-    ])
+    biases = build_daily_biases(daily, locked)
+    in_range = {
+        session: bias for session, bias in biases.items() if session >= args.start
+    }
+    distribution = collections.Counter(bias.state for bias in in_range.values())
+    traded = collections.Counter(trade.bias_state for trade in primary)
+    lines += [
+        "", "## Daily state distribution and where the trades come from", "",
+        "| Daily state | Sessions | Share | Locked trades |",
+        "|---|---:|---:|---:|",
+    ]
+    for state, count in distribution.most_common():
+        share = count / len(in_range) if in_range else 0.0
+        lines.append(f"| {state} | {count:,} | {pct(share)} | {traded.get(state, 0)} |")
+
+    confluence = collections.Counter()
+    for trade in primary:
+        for tag in ("directional", "close through open", "outside", "close beyond extreme"):
+            if tag in trade.confluence:
+                confluence[tag] += 1
+    lines += [
+        "", "## Confluence carried by the locked trades", "",
+        "| Hourly confluence on the failure candle | Trades | Share |",
+        "|---|---:|---:|",
+    ]
+    for tag in ("directional", "close through open", "outside", "close beyond extreme"):
+        count = confluence.get(tag, 0)
+        share = count / len(primary) if primary else 0.0
+        lines.append(f"| {tag} | {count} | {pct(share)} |")
+    hour_counts = collections.Counter(trade.signal_session_hour for trade in primary)
+    lines += [
+        "",
+        "Signal hour within the session: "
+        + ", ".join(f"H{hour}={hour_counts[hour]}" for hour in sorted(hour_counts))
+        + ".",
+    ]
+
+    train_summary = summarise_sfp([t for t in primary if t.session < args.split])
+    test_summary = summarise_sfp([t for t in primary if t.session >= args.split])
+    superseded = results["Superseded: previous locked rule"]
     lines += [
         "", "## Interpretation", "",
-        f"The full A-grade conjunction produced **{len(primary)}** trades. A zero-trade result means "
-        "the written rules are not presently a strategy on this instrument; it must not be reported "
-        "as a high-win-rate setup.", "",
-        f"The separately labelled close-back tier produced **{lower_train.count}** development trades "
-        f"(PF **{lower_train.profit_factor:.2f}**) and **{lower_test.count}** holdout trades "
-        f"(PF **{lower_test.profit_factor:.2f}**). It omits the outside-bar requirement and therefore "
-        "is lower conviction, not a substitute definition selected after the result.", "",
-        "Any attractive result based on only a handful of trades is hypothesis-generating. Cross-asset "
-        "agreement and a new untouched time period are required before compounding or leverage tests.",
+        f"The locked rule produced **{train_summary.count}** development trades "
+        f"(PF **{train_summary.profit_factor:.2f}**, mean **{train_summary.mean_r:+.3f}R**) and "
+        f"**{test_summary.count}** holdout trades (PF **{test_summary.profit_factor:.2f}**, mean "
+        f"**{test_summary.mean_r:+.3f}R**).", "",
+        f"The previous specification produced **{len(superseded)}** trades. It required the hourly "
+        "failure candle to be an outside bar that also closed beyond the preceding hour's opposite "
+        "extreme, and it excluded both neutral sessions and the opening hour. The close-beyond-extreme "
+        "term belongs to the daily two-candle bias read, not to the entry trigger, and stacking it on "
+        "a level sweep made the conjunction unsatisfiable.", "",
+        "Confluence tiers are reported so the cost of each added hourly condition is visible. They "
+        "are diagnostics: the tier with the best statistics must not be relabelled as the locked rule "
+        "afterwards.", "",
+        "Any result on a few dozen trades is hypothesis-generating. Cross-asset agreement and a "
+        "genuinely untouched period are required before compounding or leverage tests.",
     ]
 
     lines += [
@@ -198,14 +257,18 @@ def main(argv: list[str] | None = None) -> int:
 
     lines += [
         "", "## Leakage and execution audit", "",
-        "- The daily bias for session D reads only daily candles ending before D.",
+        "- The daily state for session D reads only the two daily candles completed before D.",
         "- PDH/PDL and PWH/PWL are fixed before the session; a touch is evaluated only from bars "
         "that had already completed before the signal hour.",
+        "- On a neutral session the side is set by the pool the market actually raids, which is "
+        "known at the close of the failure candle, not in advance.",
         "- The hourly SFP becomes actionable at its close, and entry is the next 15-minute open.",
         "- Break-even activates only for the bar after a completed bar reaches +1R.",
         "- If stop and target are both inside one OHLC bar, the stop wins. Gaps fill at the observed open.",
-        "- The 2023+ period has now been observed for these variants and cannot remain a pristine "
-        "holdout for the next specification.",
+        "- Every candidate hour is bucketed exactly once, so the funnel above sums to the candidate count.",
+        "- The 2023+ period has been observed for earlier specifications of this study and is no "
+        "longer a pristine holdout. Treat the split above as development-versus-review, and reserve "
+        "a later period or a further instrument for a genuine out-of-sample test.",
     ]
 
     args.outdir.mkdir(parents=True, exist_ok=True)
