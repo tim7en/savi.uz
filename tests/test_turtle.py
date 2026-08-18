@@ -9,6 +9,7 @@ from savi_uz.turtle import (
     rolling_extremes,
     run_turtle,
     summarise_turtle,
+    trailing_mean,
     true_ranges,
     wilder_atr,
 )
@@ -319,6 +320,90 @@ class CostBasisTests(unittest.TestCase):
                 for free, paid in zip(base, priced):
                     self.assertAlmostEqual(paid.cost_r, rate * free.cost_basis_r)
                     self.assertAlmostEqual(paid.net_r, free.net_r - rate * free.cost_basis_r)
+
+
+class TrailingMeanTests(unittest.TestCase):
+    def test_is_nan_until_a_full_window_exists(self):
+        out = trailing_mean([1.0, 2.0, 3.0, 4.0], 3)
+        self.assertTrue(math.isnan(out[0]) and math.isnan(out[1]))
+        self.assertAlmostEqual(out[2], 2.0)
+        self.assertAlmostEqual(out[3], 3.0)
+
+    def test_matches_a_brute_force_mean(self):
+        import random
+        rng = random.Random(5)
+        values = [rng.uniform(-10, 10) for _ in range(200)]
+        for w in (2, 7, 50):
+            got = trailing_mean(values, w)
+            for i in range(w - 1, len(values)):
+                self.assertAlmostEqual(got[i], sum(values[i - w + 1:i + 1]) / w)
+
+    def test_a_value_never_depends_on_later_values(self):
+        values = [float(i) for i in range(60)]
+        short = trailing_mean(values[:40], 10)
+        full = trailing_mean(values, 10)
+        for i in range(40):
+            if math.isnan(short[i]):
+                self.assertTrue(math.isnan(full[i]))
+            else:
+                self.assertAlmostEqual(short[i], full[i])
+
+
+class TrendFilterTests(unittest.TestCase):
+    def rising(self):
+        rows = [bar(i, 100 + i, 101 + i, 99 + i, 100 + i) for i in range(120)]
+        return rows
+
+    def test_a_long_breakout_survives_an_uptrend(self):
+        rows = self.rising()
+        trades, audit = run_turtle(rows, config=TurtleConfig(
+            trend_filter="sma", trend_window=20, directions=(1,),
+        ))
+        self.assertTrue(trades)
+        self.assertEqual(audit.skipped_against_trend, 0)
+
+    def test_short_breakouts_are_refused_while_price_leads_its_mean(self):
+        # 120 bars climbing 100 -> 219 leaves the 100-bar mean near 170, so a
+        # sharp break of the 20-bar low still leaves price well above trend.
+        rows = self.rising()
+        rows.append(bar(120, 219, 219, 195, 196))   # breaches the 20-bar low at 199
+        for i in range(6):
+            rows.append(bar(121 + i, 196 - i * 2, 197 - i * 2, 192 - i * 2, 193 - i * 2))
+        _, filtered = run_turtle(rows, config=TurtleConfig(
+            trend_filter="sma", trend_window=100, directions=(-1,),
+        ))
+        _, plain = run_turtle(rows, config=TurtleConfig(
+            trend_window=100, directions=(-1,),
+        ))
+        self.assertGreater(plain.breakouts, 0)
+        self.assertGreater(filtered.skipped_against_trend, 0)
+        self.assertLess(filtered.trades, plain.trades)
+
+    def test_the_filter_can_only_remove_trades(self):
+        rows = flat_then_breakout()
+        price = rows[-1].close
+        for cycle in range(6):
+            for _ in range(11):
+                price += -4.0 if cycle % 2 == 0 else 4.0
+                rows.append(bar(len(rows), price, price + 2, price - 2, price))
+        on, _ = run_turtle(rows, config=TurtleConfig(trend_filter="sma", trend_window=30))
+        off, _ = run_turtle(rows, config=TurtleConfig(trend_window=30))
+        self.assertLessEqual(len(on), len(off))
+
+    def test_every_breakout_still_lands_in_one_bucket(self):
+        rows = flat_then_breakout()
+        _, audit = run_turtle(rows, config=TurtleConfig(
+            trend_filter="sma", trend_window=25,
+        ))
+        self.assertEqual(
+            audit.breakouts,
+            audit.skipped_after_winner + audit.skipped_small_n
+            + audit.skipped_against_trend + audit.trades,
+        )
+
+    def test_an_unknown_filter_is_rejected(self):
+        with self.assertRaises(ValueError):
+            TurtleConfig(trend_filter="magic")
 
 
 if __name__ == "__main__":

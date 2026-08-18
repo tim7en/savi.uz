@@ -48,6 +48,10 @@ class TurtleConfig:
     round_trip_cost: float = 0.0002
     allow_overnight: bool = True
     directions: tuple[int, ...] = (1, -1)
+    #: Higher-timeframe filter. "sma" takes a breakout only when it points the
+    #: same way as price sits relative to its ``trend_window`` mean.
+    trend_filter: str = "none"
+    trend_window: int = 200
 
     def __post_init__(self) -> None:
         if min(self.entry_window, self.exit_window, self.atr_window) < 2:
@@ -66,6 +70,10 @@ class TurtleConfig:
             raise ValueError("the N floor cannot be negative")
         if not self.directions or set(self.directions) - {1, -1}:
             raise ValueError("directions must be a non-empty subset of (1, -1)")
+        if self.trend_filter not in {"none", "sma"}:
+            raise ValueError("unknown trend_filter")
+        if self.trend_window < 2:
+            raise ValueError("trend_window must span at least two bars")
 
 
 @dataclass(frozen=True)
@@ -104,6 +112,7 @@ class TurtleAudit:
     breakouts: int
     skipped_after_winner: int
     skipped_small_n: int
+    skipped_against_trend: int
     trades: int
 
 
@@ -185,6 +194,23 @@ def rolling_extremes(
     return result
 
 
+def trailing_mean(values: list[float], window: int) -> list[float]:
+    """Mean of the ``window`` values ending at each index, NaN until filled.
+
+    Index ``i`` includes ``values[i]``, so a decision taken on bar ``i + 1`` may
+    read index ``i`` without seeing its own future.
+    """
+    result: list[float] = [math.nan] * len(values)
+    running = 0.0
+    for index, value in enumerate(values):
+        running += value
+        if index >= window:
+            running -= values[index - window]
+        if index >= window - 1:
+            result[index] = running / window
+    return result
+
+
 def _channel(bars: list[Bar], index: int, window: int) -> tuple[float, float]:
     """Highest high and lowest low over the ``window`` bars before ``index``."""
     window_bars = bars[index - window:index]
@@ -242,9 +268,16 @@ def run_turtle(
     exit_highs = rolling_extremes(highs, config.exit_window, True)
     exit_lows = rolling_extremes(lows, config.exit_window, False)
     warmup = max(config.entry_window, config.atr_window)
+    trend = (
+        trailing_mean([bar.close for bar in rows], config.trend_window)
+        if config.trend_filter == "sma" else None
+    )
+    if trend is not None:
+        warmup = max(warmup, config.trend_window)
     trades: list[TurtleTrade] = []
     skipped = 0
     skipped_small_n = 0
+    skipped_against_trend = 0
     breakouts = 0
     last_breakout_won: dict[int, bool | None] = {1: None, -1: None}
 
@@ -346,6 +379,16 @@ def run_turtle(
                 continue
             fill = _stop_fill(level, bar, candidate)
             breakouts += 1
+            if trend is not None:
+                # The filter reads the mean as at the previous close, so it is
+                # known before this bar opens.
+                reference = trend[index - 1]
+                if math.isnan(reference):
+                    skipped_against_trend += 1
+                    break
+                if (rows[index - 1].close > reference) != (candidate > 0):
+                    skipped_against_trend += 1
+                    break
             # A 1N move must be able to pay for the round trips it takes to
             # capture it. Wilder's N decays geometrically through flat bars, so
             # at fine intervals it can collapse towards zero and make every R
@@ -402,7 +445,8 @@ def run_turtle(
 
     return trades, TurtleAudit(
         bars=len(rows), breakouts=breakouts, skipped_after_winner=skipped,
-        skipped_small_n=skipped_small_n, trades=len(trades),
+        skipped_small_n=skipped_small_n,
+        skipped_against_trend=skipped_against_trend, trades=len(trades),
     )
 
 
