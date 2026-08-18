@@ -131,13 +131,22 @@ def main(argv: list[str] | None = None) -> int:
         universe.append((ticker, source))
     print(f"{len(universe)} instruments", flush=True)
 
+    # Resampling dominates the runtime, so every interval is built once and
+    # reused by the grid, the cost sweep and the overnight comparison.
+    series: dict[str, list[list[Bar]]] = {}
+    for label, minutes, _ in INTERVALS:
+        series[label] = [
+            resample_regular_session(source, minutes=minutes) for _, source in universe
+        ]
+        total = sum(len(bars) for bars in series[label])
+        print(f"  resampled {label:10s} {total:9,d} bars", flush=True)
+
     results: dict[tuple[str, str], list] = {}
     for label, minutes, _ in INTERVALS:
         for system, overrides in SYSTEMS:
             config = TurtleConfig(**overrides)
             pooled = []
-            for ticker, source in universe:
-                bars = resample_regular_session(source, minutes=minutes)
+            for bars in series[label]:
                 trades, _ = run_turtle(bars, config=config)
                 pooled.extend(trades)
             results[(label, system)] = pooled
@@ -212,8 +221,7 @@ def main(argv: list[str] | None = None) -> int:
         row = [f"| {label} "]
         for cost in (0.0, 0.0001, 0.0002, 0.0005, 0.001):
             total = 0.0
-            for ticker, source in universe:
-                bars = resample_regular_session(source, minutes=minutes)
+            for bars in series[label]:
                 trades, _ = run_turtle(bars, config=TurtleConfig(
                     entry_window=55, exit_window=20, atr_window=20,
                     skip_after_winner=False, round_trip_cost=cost,
@@ -237,8 +245,7 @@ def main(argv: list[str] | None = None) -> int:
         row = [f"| {label} "]
         for allow in (True, False):
             pooled = []
-            for ticker, source in universe:
-                bars = resample_regular_session(source, minutes=minutes)
+            for bars in series[label]:
                 trades, _ = run_turtle(bars, config=TurtleConfig(
                     entry_window=55, exit_window=20, atr_window=20,
                     skip_after_winner=False, allow_overnight=allow,
