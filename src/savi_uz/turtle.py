@@ -52,6 +52,19 @@ class TurtleConfig:
     #: same way as price sits relative to its ``trend_window`` mean.
     trend_filter: str = "none"
     trend_window: int = 200
+    #: "stop" fills intrabar at the channel edge, which is the original rule
+    #: but leaves the breakout bar's volume unknowable at entry. "close
+    #: confirm" waits for the bar to close beyond the channel and enters at
+    #: the next open, giving up entry price to make that volume observable.
+    entry_mode: str = "stop"
+    min_relative_volume: float = 0.0
+    volume_window: int = 20
+    #: Exit extensions. A chandelier is based on the most favourable completed
+    #: bar since entry and the N observed before entry. Any tightened stop only
+    #: becomes active on the following bar.
+    use_channel_exit: bool = True
+    chandelier_atr: float | None = None
+    breakeven_trigger_n: float | None = None
 
     def __post_init__(self) -> None:
         if min(self.entry_window, self.exit_window, self.atr_window) < 2:
@@ -74,6 +87,23 @@ class TurtleConfig:
             raise ValueError("unknown trend_filter")
         if self.trend_window < 2:
             raise ValueError("trend_window must span at least two bars")
+        if self.entry_mode not in {"stop", "close confirm"}:
+            raise ValueError("unknown entry_mode")
+        if self.min_relative_volume < 0:
+            raise ValueError("min_relative_volume cannot be negative")
+        if self.min_relative_volume and self.entry_mode != "close confirm":
+            raise ValueError(
+                "a volume filter needs close-confirmed entry: a stop order fills "
+                "before the breakout bar's volume is known"
+            )
+        if self.volume_window < 2:
+            raise ValueError("volume_window must span at least two bars")
+        if self.chandelier_atr is not None and self.chandelier_atr <= 0:
+            raise ValueError("chandelier_atr must be positive")
+        if self.breakeven_trigger_n is not None and self.breakeven_trigger_n <= 0:
+            raise ValueError("breakeven_trigger_n must be positive")
+        if not self.use_channel_exit and self.chandelier_atr is None:
+            raise ValueError("at least one trailing exit must be enabled")
 
 
 @dataclass(frozen=True)
@@ -113,6 +143,7 @@ class TurtleAudit:
     skipped_after_winner: int
     skipped_small_n: int
     skipped_against_trend: int
+    skipped_thin_volume: int
     trades: int
 
 
@@ -194,6 +225,20 @@ def rolling_extremes(
     return result
 
 
+def relative_volume(bars: list[Bar], window: int) -> list[float]:
+    """Each bar's volume against the mean of the ``window`` bars before it."""
+    result: list[float] = [math.nan] * len(bars)
+    running = 0.0
+    for index, bar in enumerate(bars):
+        if index >= window:
+            mean = running / window
+            if mean > 0 and bar.volume is not None:
+                result[index] = bar.volume / mean
+            running -= bars[index - window].volume or 0.0
+        running += bar.volume or 0.0
+    return result
+
+
 def trailing_mean(values: list[float], window: int) -> list[float]:
     """Mean of the ``window`` values ending at each index, NaN until filled.
 
@@ -268,6 +313,12 @@ def run_turtle(
     exit_highs = rolling_extremes(highs, config.exit_window, True)
     exit_lows = rolling_extremes(lows, config.exit_window, False)
     warmup = max(config.entry_window, config.atr_window)
+    volumes = (
+        relative_volume(rows, config.volume_window)
+        if config.min_relative_volume else None
+    )
+    if volumes is not None:
+        warmup = max(warmup, config.volume_window + 1)
     trend = (
         trailing_mean([bar.close for bar in rows], config.trend_window)
         if config.trend_filter == "sma" else None
@@ -278,6 +329,7 @@ def run_turtle(
     skipped = 0
     skipped_small_n = 0
     skipped_against_trend = 0
+    skipped_thin_volume = 0
     breakouts = 0
     last_breakout_won: dict[int, bool | None] = {1: None, -1: None}
 
@@ -285,7 +337,9 @@ def run_turtle(
     units: list[TurtleUnit] = []
     entry_index = 0
     stop = 0.0
+    stop_reason = "stop"
     n_at_entry = 0.0
+    favourable_extreme = 0.0
     pending: dict[int, _Phantom | None] = {1: None, -1: None}
 
     index = warmup
@@ -308,7 +362,9 @@ def run_turtle(
                 pending[side] = None
 
         if direction:
-            channel_level = exit_lows[index] if direction > 0 else exit_highs[index]
+            channel_level = (
+                exit_lows[index] if direction > 0 else exit_highs[index]
+            ) if config.use_channel_exit else math.nan
             session_end = (
                 not config.allow_overnight
                 and (index + 1 >= len(rows)
@@ -319,7 +375,7 @@ def run_turtle(
             # The stop is checked first: inside one bar the adverse level is
             # assumed to trade before the favourable one.
             if _breached(bar, stop, -direction):
-                reason, price = "stop", _stop_fill(stop, bar, -direction)
+                reason, price = stop_reason, _stop_fill(stop, bar, -direction)
             elif not math.isnan(channel_level) and _breached(
                 bar, channel_level, -direction
             ):
@@ -358,6 +414,7 @@ def run_turtle(
                 ))
                 direction = 0
                 units = []
+                stop_reason = "stop"
                 index += 1
                 continue
 
@@ -370,15 +427,62 @@ def run_turtle(
                 fill = _stop_fill(target, bar, direction)
                 units.append(TurtleUnit(bar.timestamp, fill, n_at_entry))
                 stop = fill - direction * config.stop_atr * n_at_entry
+                stop_reason = "stop"
+
+            # These levels are calculated only after this bar has completed.
+            # They therefore become executable on the next bar, avoiding the
+            # common error of using a bar's high to create a stop and then
+            # claiming that same bar also filled it.
+            favourable_extreme = (
+                max(favourable_extreme, bar.high) if direction > 0
+                else min(favourable_extreme, bar.low)
+            )
+            if config.chandelier_atr is not None:
+                candidate_stop = (
+                    favourable_extreme
+                    - direction * config.chandelier_atr * n_at_entry
+                )
+                tighter = (
+                    candidate_stop > stop if direction > 0 else candidate_stop < stop
+                )
+                if tighter:
+                    stop = candidate_stop
+                    stop_reason = "chandelier"
+            if config.breakeven_trigger_n is not None:
+                first_entry = units[0].price
+                progress_n = direction * (favourable_extreme - first_entry) / n_at_entry
+                average = sum(unit.price for unit in units) / len(units)
+                tighter = average > stop if direction > 0 else average < stop
+                if progress_n >= config.breakeven_trigger_n and tighter:
+                    stop = average
+                    stop_reason = "breakeven"
             index += 1
             continue
 
         for candidate in config.directions:
-            level = entry_highs[index] if candidate > 0 else entry_lows[index]
-            if math.isnan(level) or not _breached(bar, level, candidate):
-                continue
-            fill = _stop_fill(level, bar, candidate)
+            if config.entry_mode == "close confirm":
+                # The signal bar is the one that already closed; entry is here,
+                # at this bar's open, so nothing is read before it happens.
+                signal = index - 1
+                level = entry_highs[signal] if candidate > 0 else entry_lows[signal]
+                if math.isnan(level):
+                    continue
+                closed_beyond = (rows[signal].close > level if candidate > 0
+                                 else rows[signal].close < level)
+                if not closed_beyond:
+                    continue
+                fill = bar.open
+            else:
+                level = entry_highs[index] if candidate > 0 else entry_lows[index]
+                if math.isnan(level) or not _breached(bar, level, candidate):
+                    continue
+                fill = _stop_fill(level, bar, candidate)
             breakouts += 1
+            if volumes is not None:
+                observed = volumes[index - 1]
+                if math.isnan(observed) or observed < config.min_relative_volume:
+                    skipped_thin_volume += 1
+                    break
             if trend is not None:
                 # The filter reads the mean as at the previous close, so it is
                 # known before this bar opens.
@@ -414,6 +518,8 @@ def run_turtle(
             n_at_entry = previous_n
             units = [TurtleUnit(bar.timestamp, fill, previous_n)]
             stop = fill - candidate * config.stop_atr * previous_n
+            stop_reason = "stop"
+            favourable_extreme = bar.high if candidate > 0 else bar.low
             entry_index = index
             break
         index += 1
@@ -446,7 +552,8 @@ def run_turtle(
     return trades, TurtleAudit(
         bars=len(rows), breakouts=breakouts, skipped_after_winner=skipped,
         skipped_small_n=skipped_small_n,
-        skipped_against_trend=skipped_against_trend, trades=len(trades),
+        skipped_against_trend=skipped_against_trend,
+        skipped_thin_volume=skipped_thin_volume, trades=len(trades),
     )
 
 

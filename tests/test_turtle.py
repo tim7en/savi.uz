@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 from savi_uz.turtle import (
     TurtleConfig,
+    relative_volume,
     rolling_extremes,
     run_turtle,
     summarise_turtle,
@@ -94,6 +95,42 @@ class EntryAndExitTests(unittest.TestCase):
         trades, _ = run_turtle(rows, config=TurtleConfig(directions=(1,)))
         self.assertIn(trades[0].exit_reason, {"channel", "stop"})
         self.assertLess(trades[0].exit, rows[69].close)
+
+    def test_a_chandelier_uses_completed_bars_and_can_replace_the_channel(self):
+        rows = flat_then_breakout(drive=20)
+        peak = rows[-1].close
+        rows.extend([
+            bar(len(rows), peak, peak + 1, peak - 1, peak),
+            bar(len(rows) + 1, peak - 4, peak - 3, peak - 8, peak - 7),
+        ])
+        trades, _ = run_turtle(rows, config=TurtleConfig(
+            directions=(1,), max_units=1, use_channel_exit=False,
+            chandelier_atr=2.0,
+        ))
+        self.assertTrue(trades)
+        self.assertEqual(trades[0].exit_reason, "chandelier")
+
+    def test_break_even_is_armed_for_the_following_bar(self):
+        rows = flat_then_breakout(drive=10)
+        entry_probe, _ = run_turtle(rows, config=TurtleConfig(
+            directions=(1,), max_units=1,
+        ))
+        entry = entry_probe[0].entry
+        trigger = rows[-1].close
+        # The arm bar trades through the future break-even level but remains
+        # above the original protective/channel exits. A same-bar activation
+        # would therefore be an impossible hindsight fill.
+        arm = bar(len(rows), trigger, trigger + 5, entry - 1, trigger + 2)
+        following = bar(len(rows) + 1, entry, entry + 1, entry - 2, entry - 1)
+        rows.extend([arm, following])
+        trades, _ = run_turtle(rows, config=TurtleConfig(
+            directions=(1,), max_units=1, use_channel_exit=False,
+            chandelier_atr=100.0, breakeven_trigger_n=11.0,
+        ))
+        self.assertTrue(trades)
+        self.assertEqual(trades[0].exit_reason, "breakeven")
+        self.assertEqual(trades[0].exit_timestamp, following.timestamp)
+        self.assertAlmostEqual(trades[0].exit, trades[0].average_entry)
 
 
 class PyramidTests(unittest.TestCase):
@@ -196,6 +233,8 @@ class ConfigTests(unittest.TestCase):
             {"risk_fraction": 0.0}, {"risk_fraction": 1.0}, {"max_units": 0},
             {"stop_atr": 0.0}, {"entry_window": 1}, {"directions": ()},
             {"round_trip_cost": -0.1},
+            {"chandelier_atr": 0.0}, {"breakeven_trigger_n": 0.0},
+            {"use_channel_exit": False},
         ):
             with self.subTest(**kwargs):
                 with self.assertRaises(ValueError):
@@ -404,6 +443,78 @@ class TrendFilterTests(unittest.TestCase):
     def test_an_unknown_filter_is_rejected(self):
         with self.assertRaises(ValueError):
             TurtleConfig(trend_filter="magic")
+
+
+class RelativeVolumeTests(unittest.TestCase):
+    def rows(self, volumes):
+        return [Bar(bar(i, 100, 101, 99, 100).timestamp, 100, 101, 99, 100, v)
+                for i, v in enumerate(volumes)]
+
+    def test_is_nan_until_a_full_window_exists(self):
+        out = relative_volume(self.rows([10.0] * 6), 3)
+        self.assertTrue(all(math.isnan(v) for v in out[:3]))
+        self.assertAlmostEqual(out[3], 1.0)
+
+    def test_a_burst_reads_above_one_and_a_lull_below(self):
+        out = relative_volume(self.rows([10, 10, 10, 10, 40, 2]), 4)
+        self.assertAlmostEqual(out[4], 4.0)
+        self.assertGreater(out[5], 0.0)
+        self.assertLess(out[5], 1.0)
+
+    def test_a_bar_never_sees_volume_that_comes_after_it(self):
+        base = [10.0] * 12
+        short = relative_volume(self.rows(base[:8]), 4)
+        full = relative_volume(self.rows(base[:8] + [900.0] * 4), 4)
+        for i in range(8):
+            if math.isnan(short[i]):
+                self.assertTrue(math.isnan(full[i]))
+            else:
+                self.assertAlmostEqual(short[i], full[i])
+
+
+class EntryModeTests(unittest.TestCase):
+    def test_a_volume_filter_without_close_confirmation_is_refused(self):
+        # A stop order fills before the breakout bar's volume is known, so the
+        # combination would be lookahead and must not be constructible.
+        with self.assertRaises(ValueError):
+            TurtleConfig(min_relative_volume=1.5, entry_mode="stop")
+
+    def test_close_confirmation_fills_at_the_next_open_not_the_channel(self):
+        rows = flat_then_breakout()
+        stop, _ = run_turtle(rows, config=TurtleConfig(directions=(1,)))
+        conf, _ = run_turtle(rows, config=TurtleConfig(
+            directions=(1,), entry_mode="close confirm"))
+        self.assertTrue(stop and conf)
+        self.assertAlmostEqual(stop[0].entry, 101.0)
+        # The confirmed entry waits a bar, so it pays up in a rising market.
+        self.assertGreater(conf[0].entry, stop[0].entry)
+
+    def test_the_volume_filter_only_removes_trades(self):
+        rows = []
+        for i in range(140):
+            v = 1000.0 if i % 3 else 50.0
+            b = bar(i, 100 + i * 0.4, 101 + i * 0.4, 99 + i * 0.4, 100 + i * 0.4)
+            rows.append(Bar(b.timestamp, b.open, b.high, b.low, b.close, v))
+        loose, a = run_turtle(rows, config=TurtleConfig(entry_mode="close confirm"))
+        tight, b2 = run_turtle(rows, config=TurtleConfig(
+            entry_mode="close confirm", min_relative_volume=1.5))
+        self.assertLessEqual(len(tight), len(loose))
+        self.assertGreaterEqual(b2.skipped_thin_volume, 0)
+        self.assertEqual(a.skipped_thin_volume, 0)
+
+    def test_every_breakout_still_lands_in_exactly_one_bucket(self):
+        rows = []
+        for i in range(160):
+            v = 900.0 if i % 4 else 40.0
+            b = bar(i, 100 + i * 0.3, 101 + i * 0.3, 99 + i * 0.3, 100 + i * 0.3)
+            rows.append(Bar(b.timestamp, b.open, b.high, b.low, b.close, v))
+        _, audit = run_turtle(rows, config=TurtleConfig(
+            entry_mode="close confirm", min_relative_volume=1.2))
+        self.assertEqual(
+            audit.breakouts,
+            audit.skipped_after_winner + audit.skipped_small_n
+            + audit.skipped_against_trend + audit.skipped_thin_volume + audit.trades,
+        )
 
 
 if __name__ == "__main__":
