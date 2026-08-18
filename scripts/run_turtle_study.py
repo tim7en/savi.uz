@@ -142,14 +142,20 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  resampled {label:10s} {total:9,d} bars", flush=True)
 
     results: dict[tuple[str, str], list] = {}
+    audits: dict[tuple[str, str], tuple[int, int, int]] = {}
     for label, minutes, _ in INTERVALS:
         for system, overrides in SYSTEMS:
             config = TurtleConfig(**overrides)
             pooled = []
+            breakouts = small_n = filtered = 0
             for bars in series[label]:
-                trades, _ = run_turtle(bars, config=config)
+                trades, audit = run_turtle(bars, config=config)
                 pooled.extend(trades)
+                breakouts += audit.breakouts
+                small_n += audit.skipped_small_n
+                filtered += audit.skipped_after_winner
             results[(label, system)] = pooled
+            audits[(label, system)] = (breakouts, filtered, small_n)
             print(f"  {label:10s} {system:28s} {len(pooled):6d} trades", flush=True)
 
     lines = [
@@ -211,6 +217,23 @@ def main(argv: list[str] | None = None) -> int:
             )
 
     lines += [
+        "", "## Breakouts rejected because N had collapsed", "",
+        "Wilder's N decays geometrically through bars with no range, so a long dead stretch drives "
+        "it towards zero. Because R is measured per N, such a trade reports an arbitrarily large "
+        "multiple that is an artefact of the divisor rather than a result. A breakout is therefore "
+        "only taken when a 1N move can pay for at least five round trips.", "",
+        "| Interval | Breakouts | Skipped after a winner | Skipped for collapsed N | Taken |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for label, minutes, _ in INTERVALS:
+        breakouts, filtered, small_n = audits[(label, "System 1 (20/10, filtered)")]
+        taken = len(results[(label, "System 1 (20/10, filtered)")])
+        lines.append(
+            f"| {label} | {breakouts:,} | {filtered:,} | {small_n:,} "
+            f"({small_n / max(breakouts, 1):.1%}) | {taken:,} |"
+        )
+
+    lines += [
         "", "## Cost sensitivity", "",
         "Total R for System 2 at each interval, as the round trip is varied. Zero cost is not a "
         "tradeable assumption; it is there to separate the signal from the friction.", "",
@@ -218,16 +241,22 @@ def main(argv: list[str] | None = None) -> int:
         "|---|---:|---:|---:|---:|---:|",
     ]
     for label, minutes, _ in INTERVALS:
+        # One pass with the N floor pinned to an absolute fraction, so varying
+        # the commission re-prices the same trades instead of also reselecting
+        # them. Cost is linear in the rate, so it is applied afterwards.
+        pooled = []
+        for bars in series[label]:
+            trades, _ = run_turtle(bars, config=TurtleConfig(
+                entry_window=55, exit_window=20, atr_window=20,
+                skip_after_winner=False, round_trip_cost=0.0,
+                minimum_n_cost_multiple=0.0, minimum_n_fraction=0.001,
+            ))
+            pooled.extend(trades)
+        gross = sum(t.gross_r for t in pooled)
+        basis = sum(t.cost_basis_r for t in pooled)
         row = [f"| {label} "]
         for cost in (0.0, 0.0001, 0.0002, 0.0005, 0.001):
-            total = 0.0
-            for bars in series[label]:
-                trades, _ = run_turtle(bars, config=TurtleConfig(
-                    entry_window=55, exit_window=20, atr_window=20,
-                    skip_after_winner=False, round_trip_cost=cost,
-                ))
-                total += sum(t.net_r for t in trades)
-            row.append(f"| {total:+,.0f} ")
+            row.append(f"| {gross - cost * basis:+,.0f} ")
         lines.append("".join(row) + "|")
 
     lines += [

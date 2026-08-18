@@ -123,11 +123,11 @@ class SkipFilterTests(unittest.TestCase):
             for i in range(12):
                 price += -3.0 if cycle % 2 == 0 else 3.0
                 rows.append(bar(len(rows), price, price + 1.5, price - 1.5, price))
-        filtered, skipped = run_turtle(rows, config=TurtleConfig(skip_after_winner=True))
-        unfiltered, none = run_turtle(rows, config=TurtleConfig(skip_after_winner=False))
-        self.assertEqual(none, 0)
+        filtered, on = run_turtle(rows, config=TurtleConfig(skip_after_winner=True))
+        unfiltered, off = run_turtle(rows, config=TurtleConfig(skip_after_winner=False))
+        self.assertEqual(off.skipped_after_winner, 0)
         self.assertLessEqual(len(filtered), len(unfiltered))
-        self.assertGreaterEqual(skipped, 0)
+        self.assertGreaterEqual(on.skipped_after_winner, 0)
 
 
 class OvernightTests(unittest.TestCase):
@@ -178,8 +178,8 @@ class SummaryTests(unittest.TestCase):
 
     def test_totals_agree_with_the_trade_list(self):
         rows = flat_then_breakout()
-        trades, skipped = run_turtle(rows, config=TurtleConfig(directions=(1,)))
-        result = summarise_turtle(trades, skipped)
+        trades, audit = run_turtle(rows, config=TurtleConfig(directions=(1,)))
+        result = summarise_turtle(trades, audit.skipped_after_winner)
         self.assertEqual(result.trades, len(trades))
         self.assertAlmostEqual(result.total_r, sum(t.net_r for t in trades))
         self.assertEqual(result.units, sum(t.units for t in trades))
@@ -261,6 +261,64 @@ class FilterLeakageTests(unittest.TestCase):
                 self.assertTrue(settled)
                 for trade in settled:
                     self.assertIn(trade, full)
+
+
+class DegenerateVolatilityTests(unittest.TestCase):
+    """Wilder's N decays through flat bars and can reach zero at fine intervals."""
+
+    def flat_then_move(self):
+        # Real range first so N seeds positive, then a long dead stretch that
+        # decays it by (19/20) per bar towards zero without ever reaching it.
+        rows = [bar(i, 100, 101, 99, 100) for i in range(30)]
+        rows += [bar(30 + i, 100, 100, 100, 100) for i in range(300)]
+        rows.append(bar(330, 100, 140, 100, 138))
+        for i in range(20):
+            rows.append(bar(331 + i, 138 + i, 140 + i, 137 + i, 139 + i))
+        return rows
+
+    def test_the_fixture_really_does_collapse_n(self):
+        rows = self.flat_then_move()
+        n = wilder_atr(rows, 20)[329]
+        self.assertGreater(n, 0.0)
+        self.assertLess(n, 1e-4)
+
+    def test_a_collapsed_n_does_not_produce_an_astronomical_r(self):
+        rows = self.flat_then_move()
+        trades, audit = run_turtle(rows, config=TurtleConfig(directions=(1,)))
+        self.assertTrue(audit.skipped_small_n)
+        for trade in trades:
+            self.assertLess(abs(trade.net_r), 1000)
+
+    def test_disabling_the_floor_reproduces_the_blow_up(self):
+        rows = self.flat_then_move()
+        trades, _ = run_turtle(rows, config=TurtleConfig(
+            directions=(1,), minimum_n_cost_multiple=0.0,
+        ))
+        self.assertTrue(trades)
+        self.assertGreater(max(abs(t.net_r) for t in trades), 1e6)
+
+    def test_every_breakout_lands_in_exactly_one_bucket(self):
+        rows = flat_then_breakout()
+        _, audit = run_turtle(rows, config=TurtleConfig())
+        self.assertEqual(
+            audit.breakouts,
+            audit.skipped_after_winner + audit.skipped_small_n + audit.trades,
+        )
+
+
+class CostBasisTests(unittest.TestCase):
+    def test_cost_is_linear_in_the_rate_so_it_can_be_repriced(self):
+        rows = flat_then_breakout()
+        base, _ = run_turtle(rows, config=TurtleConfig(directions=(1,), round_trip_cost=0.0))
+        for rate in (0.0001, 0.0005, 0.002):
+            with self.subTest(rate=rate):
+                priced, _ = run_turtle(
+                    rows, config=TurtleConfig(directions=(1,), round_trip_cost=rate),
+                )
+                self.assertEqual(len(base), len(priced))
+                for free, paid in zip(base, priced):
+                    self.assertAlmostEqual(paid.cost_r, rate * free.cost_basis_r)
+                    self.assertAlmostEqual(paid.net_r, free.net_r - rate * free.cost_basis_r)
 
 
 if __name__ == "__main__":

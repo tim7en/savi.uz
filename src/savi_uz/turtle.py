@@ -39,7 +39,11 @@ class TurtleConfig:
     add_atr: float = 0.5
     max_units: int = 4
     risk_fraction: float = 0.01
+    #: The N floor is the larger of an absolute fraction of price and a
+    #: multiple of the round trip. Holding the absolute one fixed lets a cost
+    #: sweep vary pricing without also changing which trades are taken.
     minimum_n_cost_multiple: float = 5.0
+    minimum_n_fraction: float = 0.0
     skip_after_winner: bool = True
     round_trip_cost: float = 0.0002
     allow_overnight: bool = True
@@ -58,8 +62,8 @@ class TurtleConfig:
             raise ValueError("risk_fraction must be a fraction of equity")
         if self.round_trip_cost < 0:
             raise ValueError("round_trip_cost cannot be negative")
-        if self.minimum_n_cost_multiple < 0:
-            raise ValueError("minimum_n_cost_multiple cannot be negative")
+        if self.minimum_n_cost_multiple < 0 or self.minimum_n_fraction < 0:
+            raise ValueError("the N floor cannot be negative")
         if not self.directions or set(self.directions) - {1, -1}:
             raise ValueError("directions must be a non-empty subset of (1, -1)")
 
@@ -346,7 +350,11 @@ def run_turtle(
             # capture it. Wilder's N decays geometrically through flat bars, so
             # at fine intervals it can collapse towards zero and make every R
             # multiple derived from it meaningless.
-            if previous_n < config.minimum_n_cost_multiple * config.round_trip_cost * fill:
+            floor = max(
+                config.minimum_n_fraction,
+                config.minimum_n_cost_multiple * config.round_trip_cost,
+            )
+            if previous_n < floor * fill:
                 skipped_small_n += 1
                 break
             won = last_breakout_won[candidate]
