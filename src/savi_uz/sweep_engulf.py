@@ -110,6 +110,19 @@ class SweepTrade:
 
 
 @dataclass(frozen=True)
+class SweepSignal:
+    bar_index: int
+    timestamp: str
+    available_timestamp: str
+    pattern: str
+    direction: int
+    signal_close: float
+    atr: float
+    base_stop: float
+    target: float
+
+
+@dataclass(frozen=True)
 class SweepSummary:
     count: int
     longs: int
@@ -190,6 +203,71 @@ def _fill_on_bar(
     if hit_target:
         return target, "target", False
     return None
+
+
+def build_signals(
+    bars: list[Bar],
+    config: SweepConfig = SweepConfig(),
+    *,
+    start: str | None = None,
+    end: str | None = None,
+) -> list[SweepSignal]:
+    """Return every raw completed-bar sweep signal, without position filtering.
+
+    ``available_timestamp`` is the next bar's start.  It is the first instant
+    at which the completed higher-timeframe bar can safely influence a lower-
+    timeframe strategy.
+    """
+    rows = sorted(bars, key=lambda bar: bar.timestamp)
+    if len(rows) < max(config.atr_length, 2) + 1:
+        return []
+    atrs = _wilder(_true_ranges(rows), config.atr_length)
+    emas = _ema([bar.close for bar in rows], config.ema_length)
+    signals: list[SweepSignal] = []
+    for index in range(1, len(rows) - 1):
+        current, previous = rows[index], rows[index - 1]
+        day = current.timestamp[:10]
+        if (start and day < start) or (end and day > end) or atrs[index] is None:
+            continue
+        previous_bullish = previous.close > previous.open
+        previous_bearish = previous.close < previous.open
+        bullish = (
+            current.low < previous.low
+            and current.close > previous.high
+            and (config.previous_candle == "Any" or previous_bullish)
+            and (not config.use_ema or current.close > emas[index])
+        )
+        bearish = (
+            current.high > previous.high
+            and current.close < previous.low
+            and (config.previous_candle == "Any" or previous_bearish)
+            and (not config.use_ema or current.close < emas[index])
+        )
+        if not (bullish or bearish):
+            continue
+        pattern = "bullish" if bullish else "bearish"
+        pattern_direction = 1 if bullish else -1
+        direction = -pattern_direction if config.invert_trades else pattern_direction
+        atr = float(atrs[index])
+        if config.stop_type == "ATR":
+            stop = current.close - direction * atr * config.stop_atr
+        else:
+            stop = current.low if direction > 0 else current.high
+        risk = abs(current.close - stop)
+        signals.append(
+            SweepSignal(
+                bar_index=index,
+                timestamp=current.timestamp,
+                available_timestamp=rows[index + 1].timestamp,
+                pattern=pattern,
+                direction=direction,
+                signal_close=current.close,
+                atr=atr,
+                base_stop=stop,
+                target=current.close + direction * risk * config.reward_risk,
+            )
+        )
+    return signals
 
 
 def run_strategy(
