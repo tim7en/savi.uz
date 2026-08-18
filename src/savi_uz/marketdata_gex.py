@@ -163,6 +163,15 @@ class ChainResponse:
     message: str = ""
 
 
+def _credit_usage(headers: Any) -> CreditUsage:
+    return CreditUsage(*(
+        _integer(headers.get(name)) for name in (
+            "X-Api-Ratelimit-Consumed", "X-Api-Ratelimit-Remaining",
+            "X-Api-Ratelimit-Limit", "X-Api-Ratelimit-Reset",
+        )
+    ))
+
+
 class MarketDataClient:
     def __init__(self, token: str, timeout: float = 60.0):
         if not token.strip():
@@ -196,18 +205,20 @@ class MarketDataClient:
                 headers = response.headers
         except HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")[:500]
+            try:
+                error_payload = json.loads(body)
+            except json.JSONDecodeError:
+                error_payload = {}
+            if exc.code == 404 and error_payload.get("s") == "no_data":
+                message = error_payload.get("errmsg") or error_payload.get("message") or ""
+                return ChainResponse("no_data", (), _credit_usage(exc.headers), str(message))
             if exc.code == 429:
                 raise MarketDataRateLimitError(f"HTTP 429 credit limit: {body}") from exc
             raise MarketDataError(f"HTTP {exc.code}: {body}") from exc
         except (URLError, TimeoutError, json.JSONDecodeError) as exc:
             raise MarketDataError(f"MarketData.app request failed: {exc}") from exc
 
-        credits = CreditUsage(*(
-            _integer(headers.get(name)) for name in (
-                "X-Api-Ratelimit-Consumed", "X-Api-Ratelimit-Remaining",
-                "X-Api-Ratelimit-Limit", "X-Api-Ratelimit-Reset",
-            )
-        ))
+        credits = _credit_usage(headers)
         status = str(payload.get("s", "error"))
         if status == "no_data":
             return ChainResponse(status, (), credits)
