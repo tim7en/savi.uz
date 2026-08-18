@@ -23,7 +23,7 @@ from savi_uz.multitimeframe_retest import (
     execute_retest_exit,
     prior_liquidity_levels,
 )
-from savi_uz.volume_profile import Bar
+from savi_uz.volume_profile import Bar, build_profile
 
 #: Confirmation tiers, from the bare level-defined failure up to the strictest
 #: hourly candle conjunction.  The last two names are legacy aliases kept so
@@ -57,6 +57,11 @@ class SfpConfig:
     hourly_confirmation: str = "core"
     allow_opening_hour: bool = True
     location_mode: str = "previous day"
+    target_mode: str = "opposite extreme"
+    profile_sessions: int = 5
+    require_outside_value: bool = False
+    trend_lookback: int = 20
+    require_trend_alignment: bool = False
     require_fast_rejection: bool = True
     max_outside_15m_closes: int = 1
     minimum_reward_risk: float = 2.0
@@ -72,8 +77,15 @@ class SfpConfig:
             raise ValueError("unknown bias_mode")
         if self.hourly_confirmation not in CONFIRMATIONS:
             raise ValueError("unknown hourly_confirmation")
-        if self.location_mode not in {"previous day", "previous day or week"}:
+        if self.location_mode not in {"previous day", "previous day or week",
+                                      "previous day or value edge"}:
             raise ValueError("unknown location_mode")
+        if self.target_mode not in {"opposite extreme", "profile poc"}:
+            raise ValueError("unknown target_mode")
+        if self.profile_sessions < 1:
+            raise ValueError("profile_sessions must be positive")
+        if self.trend_lookback < 2:
+            raise ValueError("trend_lookback must be at least two sessions")
         if self.max_outside_15m_closes < 0:
             raise ValueError("max_outside_15m_closes cannot be negative")
         if self.minimum_reward_risk <= 0 or self.max_hold_sessions < 1:
@@ -105,6 +117,10 @@ class SfpTrade:
     location_kind: str
     location: float
     target_kind: str
+    value_high: float
+    value_low: float
+    poc: float
+    trend: int
     signal_timestamp: str
     available_timestamp: str
     signal_session_hour: int
@@ -149,6 +165,9 @@ class SfpAudit:
     weak_hourly_confirmation: int
     slow_rejection: int
     target_not_resting: int
+    no_profile: int
+    against_trend: int
+    inside_value_area: int
     stop_too_tight: int
     invalid_or_low_reward: int
     overlap_skipped: int
@@ -163,7 +182,8 @@ class SfpAudit:
             + self.opening_hour_skipped + self.no_entry_bar + self.unaligned_15m_grid
             + self.no_untouched_location + self.no_swing_failure
             + self.weak_hourly_confirmation + self.slow_rejection
-            + self.target_not_resting + self.stop_too_tight + self.invalid_or_low_reward
+            + self.target_not_resting + self.no_profile + self.against_trend
+            + self.inside_value_area + self.stop_too_tight + self.invalid_or_low_reward
             + self.overlap_skipped + self.trades
         )
 
@@ -366,6 +386,64 @@ def _session_hours(hourly: list[Bar]) -> list[int]:
     return result
 
 
+def session_trend(daily_bars: list[Bar], lookback: int) -> dict[str, int]:
+    """Longer-horizon lean for each session, from strictly earlier closes only.
+
+    +1 when the last completed close sits above the mean of the ``lookback``
+    closes before it, -1 below, 0 when there is not yet enough history.  This is
+    deliberately coarser than the two-candle state: it answers "which way has
+    this market been going" rather than "what did yesterday do".
+    """
+    rows = sorted(daily_bars, key=lambda bar: bar.timestamp)
+    result: dict[str, int] = {}
+    for index in range(len(rows)):
+        session = rows[index].timestamp[:10]
+        if index < lookback + 1:
+            result[session] = 0
+            continue
+        window = [bar.close for bar in rows[index - lookback - 1:index - 1]]
+        last = rows[index - 1].close
+        average = sum(window) / len(window)
+        result[session] = 1 if last > average else (-1 if last < average else 0)
+    return result
+
+
+@dataclass(frozen=True)
+class SessionProfile:
+    """Composite value area formed from sessions completed before the session."""
+
+    value_high: float
+    value_low: float
+    poc: float
+
+
+def composite_profiles(
+    bars: list[Bar], sessions_back: int,
+) -> dict[str, SessionProfile]:
+    """Composite volume profile of the ``sessions_back`` sessions before each one."""
+    grouped: list[tuple[str, list[Bar]]] = []
+    for bar in bars:
+        day = bar.timestamp[:10]
+        if not grouped or grouped[-1][0] != day:
+            grouped.append((day, [bar]))
+        else:
+            grouped[-1][1].append(bar)
+    result: dict[str, SessionProfile] = {}
+    for index in range(sessions_back, len(grouped)):
+        window: list[Bar] = []
+        for _, rows in grouped[index - sessions_back:index]:
+            window.extend(rows)
+        profile = build_profile(window)
+        if profile is None:
+            continue
+        result[grouped[index][0]] = SessionProfile(
+            value_high=profile.value_high,
+            value_low=profile.value_low,
+            poc=profile.poc,
+        )
+    return result
+
+
 def run_sfp_strategy(
     daily_bars: list[Bar], hourly_bars: list[Bar], fifteen_bars: list[Bar],
     *, config: SfpConfig = SfpConfig(), start: str | None = None,
@@ -377,13 +455,15 @@ def run_sfp_strategy(
     biases = build_daily_biases(daily_bars, config)
     levels_by_day = prior_liquidity_levels(fifteen)
     session_hours = _session_hours(hourly)
+    trends = session_trend(daily_bars, config.trend_lookback)
+    profiles = composite_profiles(fifteen, config.profile_sessions)
     trades: list[SfpTrade] = []
     counters = dict.fromkeys((
         "no_bias_record", "caution_session", "neutral_skipped", "no_daily_alignment",
         "no_daily_strength", "opening_hour_skipped", "no_entry_bar", "unaligned_15m_grid",
         "no_untouched_location", "no_swing_failure", "weak_hourly_confirmation",
-        "slow_rejection", "target_not_resting", "stop_too_tight", "invalid_or_low_reward",
-        "overlap_skipped",
+        "slow_rejection", "target_not_resting", "no_profile", "against_trend",
+        "inside_value_area", "stop_too_tight", "invalid_or_low_reward", "overlap_skipped",
     ), 0)
     candidate_hours = 0
     unavailable_until = ""
@@ -432,12 +512,31 @@ def run_sfp_strategy(
             counters["unaligned_15m_grid"] += 1
             continue
 
+        profile = profiles.get(session)
+        needs_profile = (
+            config.require_outside_value
+            or config.target_mode == "profile poc"
+            or config.location_mode == "previous day or value edge"
+        )
+        if needs_profile and profile is None:
+            counters["no_profile"] += 1
+            continue
+        trend = trends.get(session, 0)
+
         levels = levels_by_day.get(session, ())
+        if config.location_mode == "previous day or value edge" and profile is not None:
+            levels = levels + (
+                LiquidityLevel("VAH", "high", profile.value_high, first_15),
+                LiquidityLevel("VAL", "low", profile.value_low, first_15),
+            )
         # A neutral session has no lean; whichever pool is raided sets the side.
         directions = (bias.direction,) if bias.direction else (1, -1)
         outcome = None
         reason = "no_untouched_location"
         for direction in directions:
+            if config.require_trend_alignment and trend != direction:
+                reason = "against_trend"
+                continue
             locations = [
                 level
                 for level in _candidate_locations(levels, direction, config.location_mode)
@@ -461,16 +560,36 @@ def run_sfp_strategy(
             )
             if config.require_fast_rejection and outside_closes > config.max_outside_15m_closes:
                 continue
+            reason = "inside_value_area"
+            if config.require_outside_value and profile is not None:
+                # The raid must have reached beyond accepted value, so the
+                # failure rejects an out-of-value excursion rather than noise
+                # inside the balance area.
+                beyond = (
+                    location.price < profile.value_low if direction > 0
+                    else location.price > profile.value_high
+                )
+                if not beyond:
+                    continue
             reason = "target_not_resting"
-            target_kind = "PDH" if direction > 0 else "PDL"
-            target_level = next((level for level in levels if level.kind == target_kind), None)
-            if target_level is None or not _is_resting(target_level, fifteen, entry_index - 1):
-                continue
+            if config.target_mode == "profile poc" and profile is not None:
+                target_kind = "POC"
+                target_price = profile.poc
+            else:
+                target_kind = "PDH" if direction > 0 else "PDL"
+                target_level = next(
+                    (level for level in levels if level.kind == target_kind), None
+                )
+                if target_level is None or not _is_resting(
+                    target_level, fifteen, entry_index - 1
+                ):
+                    continue
+                target_price = target_level.price
             reason = "stop_too_tight"
             entry = fifteen[entry_index].open
             stop = signal.low if direction > 0 else signal.high
             risk = direction * (entry - stop)
-            reward = direction * (target_level.price - entry)
+            reward = direction * (target_price - entry)
             # A stop closer than a few multiples of the round trip is not a
             # tradeable stop: costs alone would exceed 1R and the R multiples
             # reported downstream stop meaning anything.
@@ -483,14 +602,14 @@ def run_sfp_strategy(
             planned_rr = reward / risk
             if planned_rr < config.minimum_reward_risk:
                 continue
-            outcome = (direction, location, target_kind, target_level, entry, stop,
+            outcome = (direction, location, target_kind, target_price, entry, stop,
                        planned_rr, outside_closes, tags)
             break
 
         if outcome is None:
             counters[reason] += 1
             continue
-        (direction, location, target_kind, target_level, entry, stop,
+        (direction, location, target_kind, target_price, entry, stop,
          planned_rr, outside_closes, tags) = outcome
         if available <= unavailable_until:
             counters["overlap_skipped"] += 1
@@ -508,7 +627,7 @@ def run_sfp_strategy(
             direction=direction,
             entry=entry,
             stop=stop,
-            target=target_level.price,
+            target=target_price,
             breakeven_trigger_r=config.breakeven_trigger_r,
         )
         gross = direction * (exit_price / entry - 1.0)
@@ -522,6 +641,10 @@ def run_sfp_strategy(
             location_kind=location.kind,
             location=location.price,
             target_kind=target_kind,
+            value_high=profile.value_high if profile else math.nan,
+            value_low=profile.value_low if profile else math.nan,
+            poc=profile.poc if profile else math.nan,
+            trend=trend,
             signal_timestamp=signal.timestamp,
             available_timestamp=available,
             signal_session_hour=session_hours[index],
@@ -535,7 +658,7 @@ def run_sfp_strategy(
             entry_timestamp=fifteen[entry_index].timestamp,
             entry=entry,
             stop=stop,
-            target=target_level.price,
+            target=target_price,
             planned_reward_risk=planned_rr,
             breakeven_activated=breakeven_activated,
             breakeven_activation_timestamp=activation_timestamp,

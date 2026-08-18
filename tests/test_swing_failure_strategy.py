@@ -6,8 +6,10 @@ from datetime import datetime, timedelta, timezone
 from savi_uz.swing_failure_strategy import (
     SfpConfig,
     build_daily_biases,
+    composite_profiles,
     daily_state,
     run_sfp_strategy,
+    session_trend,
     summarise_sfp,
 )
 from savi_uz.volume_profile import Bar
@@ -184,6 +186,91 @@ class AuditTests(unittest.TestCase):
                     audit.reconciles(),
                     f"{audit.accounted} bucketed vs {audit.candidate_hours} candidates",
                 )
+
+
+class TrendFilterTests(unittest.TestCase):
+    def series(self, closes):
+        first = datetime(2024, 1, 1, 14, 30, tzinfo=timezone.utc)
+        return [
+            bar(first + timedelta(days=i), c, c + 1, c - 1, c)
+            for i, c in enumerate(closes)
+        ]
+
+    def test_trend_reads_only_sessions_before_the_one_it_labels(self):
+        rows = self.series(list(range(1, 30)))
+        session = rows[-1].timestamp[:10]
+        original = session_trend(rows, lookback=5)[session]
+        # Rewriting the labelled session itself must not move its own trend.
+        tampered = rows[:-1] + [Bar(rows[-1].timestamp, -500, -400, -600, -500, 100.0)]
+        self.assertEqual(session_trend(tampered, lookback=5)[session], original)
+
+    def test_a_rising_series_is_an_uptrend_and_a_falling_one_is_not(self):
+        rising = session_trend(self.series(list(range(1, 30))), lookback=5)
+        falling = session_trend(self.series(list(range(30, 1, -1))), lookback=5)
+        self.assertEqual(rising[sorted(rising)[-1]], 1)
+        self.assertEqual(falling[sorted(falling)[-1]], -1)
+
+    def test_early_sessions_have_no_trend_rather_than_a_guessed_one(self):
+        trend = session_trend(self.series(list(range(1, 30))), lookback=20)
+        self.assertEqual(trend[sorted(trend)[0]], 0)
+
+    def test_counter_trend_setups_are_rejected_when_alignment_is_required(self):
+        daily, hourly, fifteen = StrongSetupTests().fixture()
+        # Two daily candles of history cannot establish a 20-session trend, so
+        # the trend is 0 and nothing aligns with it.
+        trades, audit = run_sfp_strategy(
+            daily, hourly, fifteen, config=SfpConfig(require_trend_alignment=True),
+        )
+        self.assertEqual(trades, [])
+        self.assertTrue(audit.against_trend)
+
+    def test_a_trend_agreeing_with_the_setup_still_allows_it(self):
+        daily, hourly, fifteen = StrongSetupTests().fixture()
+        trades, _ = run_sfp_strategy(
+            daily, hourly, fifteen,
+            config=SfpConfig(require_trend_alignment=True, trend_lookback=2),
+        )
+        self.assertEqual(len(trades), 1)
+        self.assertEqual(trades[0].trend, 1)
+
+
+class CompositeProfileTests(unittest.TestCase):
+    def test_the_profile_for_a_session_excludes_that_session(self):
+        first = datetime(2024, 1, 1, 14, 30, tzinfo=timezone.utc)
+        rows = []
+        for day in range(6):
+            for slot in range(4):
+                stamp = first + timedelta(days=day, minutes=15 * slot)
+                rows.append(Bar(stamp.isoformat(), 10, 11, 9, 10, 100.0))
+        # A wild final session must not appear in its own composite.
+        stamp = first + timedelta(days=6)
+        rows.append(Bar(stamp.isoformat(), 900, 1000, 800, 900, 5000.0))
+        profiles = composite_profiles(rows, sessions_back=3)
+        last = stamp.isoformat()[:10]
+        self.assertIn(last, profiles)
+        self.assertLess(profiles[last].value_high, 100)
+
+    def test_sessions_without_enough_history_have_no_profile(self):
+        first = datetime(2024, 1, 1, 14, 30, tzinfo=timezone.utc)
+        rows = [
+            Bar((first + timedelta(days=day)).isoformat(), 10, 11, 9, 10, 100.0)
+            for day in range(2)
+        ]
+        self.assertEqual(composite_profiles(rows, sessions_back=5), {})
+
+
+class ExtendedAuditTests(unittest.TestCase):
+    def test_reconciles_with_the_profile_and_trend_gates_active(self):
+        daily, hourly, fifteen = StrongSetupTests().fixture()
+        for config in (
+            SfpConfig(require_trend_alignment=True),
+            SfpConfig(require_outside_value=True),
+            SfpConfig(target_mode="profile poc"),
+            SfpConfig(location_mode="previous day or value edge"),
+        ):
+            with self.subTest(config=config):
+                _, audit = run_sfp_strategy(daily, hourly, fifteen, config=config)
+                self.assertTrue(audit.reconciles())
 
 
 if __name__ == "__main__":

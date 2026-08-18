@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import collections
 import csv
+import random
+import statistics
 import sqlite3
 import sys
 from dataclasses import asdict, replace
@@ -61,6 +63,39 @@ def summary_row(label: str, period: str, trades) -> str:
     )
 
 
+def bootstrap_profit_factor(trades, draws: int = 2000, seed: int = 20240817):
+    """Percentile interval for profit factor, resampling trades with replacement."""
+    returns = [trade.net_return for trade in trades]
+    if len(returns) < 5:
+        return None
+    rng = random.Random(seed)
+    samples = []
+    for _ in range(draws):
+        pick = [returns[rng.randrange(len(returns))] for _ in range(len(returns))]
+        gains = sum(value for value in pick if value > 0)
+        losses = -sum(value for value in pick if value < 0)
+        samples.append(gains / losses if losses else float("inf"))
+    finite = sorted(value for value in samples if value != float("inf"))
+    if not finite:
+        return None
+    low = finite[int(0.05 * len(finite))]
+    high = finite[min(int(0.95 * len(finite)), len(finite) - 1)]
+    share = sum(1 for value in samples if value > 1.0) / len(samples)
+    return low, high, share
+
+
+def mean_r_interval(trades, draws: int = 2000, seed: int = 20240817):
+    values = [trade.net_r for trade in trades]
+    if len(values) < 5:
+        return None
+    rng = random.Random(seed)
+    means = sorted(
+        statistics.mean(values[rng.randrange(len(values))] for _ in range(len(values)))
+        for _ in range(draws)
+    )
+    return means[int(0.05 * len(means))], means[min(int(0.95 * len(means)), len(means) - 1)]
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     ticker = args.ticker.upper()
@@ -88,6 +123,18 @@ def main(argv: list[str] | None = None) -> int:
         ("Confluence: + close through prior open",
          replace(locked, hourly_confirmation="close through open")),
         ("Confluence: + outside bar", replace(locked, hourly_confirmation="outside")),
+        ("Trend: aligned with the 20-session mean",
+         replace(locked, require_trend_alignment=True)),
+        ("Profile: sweep must reach beyond value",
+         replace(locked, require_outside_value=True)),
+        ("Profile: target the composite POC",
+         replace(locked, target_mode="profile poc")),
+        ("Profile: value edges are also pools",
+         replace(locked, location_mode="previous day or value edge")),
+        ("Profile + trend + POC target", replace(
+            locked, require_trend_alignment=True, require_outside_value=True,
+            target_mode="profile poc",
+        )),
         ("Superseded: strong-outside conjunction",
          replace(locked, hourly_confirmation="strong outside")),
         ("Superseded: previous locked rule", replace(
@@ -232,6 +279,81 @@ def main(argv: list[str] | None = None) -> int:
         "Any result on a few dozen trades is hypothesis-generating. Cross-asset agreement and a "
         "genuinely untouched period are required before compounding or leverage tests.",
     ]
+
+    lines += [
+        "", "## Robustness of the locked rule", "",
+        "Profit factor is a ratio of two small sums here, so it is reported with a 5-95 percentile "
+        "interval from 2,000 bootstrap resamples of the trade list, together with the share of "
+        "resamples that clear 1.0. An interval that straddles 1.0 means the sample cannot "
+        "distinguish this rule from a coin flip after costs.", "",
+        "| Period | Trades | PF | PF 5-95% | P(PF > 1) | Mean R | Mean R 5-95% |",
+        "|---|---:|---:|---:|---:|---:|---:|",
+    ]
+    for period, subset in (
+        ("train", [t for t in primary if t.session < args.split]),
+        ("test", [t for t in primary if t.session >= args.split]),
+        ("all", primary),
+    ):
+        item = summarise_sfp(subset)
+        interval = bootstrap_profit_factor(subset)
+        r_interval = mean_r_interval(subset)
+        if not item.count or interval is None or r_interval is None:
+            lines.append(f"| {period} | {item.count} | — | — | — | — | — |")
+            continue
+        low, high, share = interval
+        lines.append(
+            f"| {period} | {item.count} | {item.profit_factor:.2f} | "
+            f"{low:.2f} - {high:.2f} | {share:.0%} | {item.mean_r:+.3f} | "
+            f"{r_interval[0]:+.3f} - {r_interval[1]:+.3f} |"
+        )
+
+    lines += [
+        "", "### Walk-forward folds", "",
+        "Each fold trades a year that the preceding folds never touched. A rule with an edge should "
+        "be positive in most folds, not carried by one.", "",
+        "| Year | Trades | Win | PF | Mean R | Sum R |",
+        "|---|---:|---:|---:|---:|---:|",
+    ]
+    years = sorted({trade.session[:4] for trade in primary})
+    positive = 0
+    for year in years:
+        subset = [trade for trade in primary if trade.session[:4] == year]
+        item = summarise_sfp(subset)
+        total_r = sum(trade.net_r for trade in subset)
+        positive += total_r > 0
+        lines.append(
+            f"| {year} | {item.count} | {pct(item.win_rate)} | {item.profit_factor:.2f} | "
+            f"{item.mean_r:+.3f} | {total_r:+.2f} |"
+        )
+    lines.append("")
+    lines.append(
+        f"Positive folds: **{positive} of {len(years)}**."
+    )
+
+    ranked = sorted(
+        (
+            (label, summarise_sfp([t for t in trades if t.session >= args.split]))
+            for label, trades in results.items()
+        ),
+        key=lambda row: (row[1].profit_factor if row[1].count >= 10 else -1.0),
+        reverse=True,
+    )
+    lines += [
+        "", "### Variants ranked on the review period", "",
+        f"**{len(variants)}** specifications were evaluated. With that many, the best holdout "
+        "profit factor is expected to look good even if none of them has an edge, so the ranking "
+        "below is a description of this sample and not a selection procedure. Only variants with at "
+        "least ten review-period trades are ranked; the rest are too small to compare.", "",
+        "| Variant | Review trades | Win | PF | Mean R |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for label, item in ranked:
+        if item.count < 10:
+            continue
+        lines.append(
+            f"| {label} | {item.count} | {pct(item.win_rate)} | "
+            f"{item.profit_factor:.2f} | {item.mean_r:+.3f} |"
+        )
 
     lines += [
         "", "## Two-year stability of the locked rule", "",
