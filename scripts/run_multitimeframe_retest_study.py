@@ -48,11 +48,13 @@ def pct(value: float) -> str:
 
 def summary_row(label: str, period: str, trades) -> str:
     result = summarise_retests(trades)
+    if result.count == 0:
+        return f"| {label} | {period} | 0 | 0/0 | — | — | — | — | — | — | — | — | — | — |"
     return (
         f"| {label} | {period} | {result.count:,} | {result.longs}/{result.shorts} | "
         f"{pct(result.win_rate)} | {result.profit_factor:.2f} | {result.mean_r:+.3f} | "
         f"${100 * result.ending_equity:.2f} | {pct(result.cagr)} | "
-        f"{pct(result.max_drawdown)} | {pct(result.stop_rate)} | "
+        f"{pct(result.max_drawdown)} | {pct(result.stop_rate)} | {pct(result.breakeven_rate)} | "
         f"{pct(result.target_rate)} | {pct(result.overnight_rate)} |"
     )
 
@@ -72,15 +74,23 @@ def main(argv: list[str] | None = None) -> int:
     liquidity_rejection = replace(primary, entry_trigger="liquidity rejection")
     liquidity_stop = replace(primary, stop_method="resting liquidity")
     liquidity_target = replace(primary, target_method="resting liquidity")
+    breakeven = replace(primary, breakeven_trigger_r=1.0)
     variants = [
         ("Locked: 1h regression, 0.1 ATR buffer", pine, primary),
+        ("Break-even after completed-bar +1R", pine, breakeven),
         ("External liquidity rejection entry", pine, liquidity_rejection),
         ("External liquidity entry + target", pine, replace(
             liquidity_rejection, target_method="resting liquidity"
         )),
         ("Liquidity sweep/reclaim entry", pine, liquidity_sweep),
         ("Stop beyond resting D/W liquidity", pine, liquidity_stop),
+        ("Liquidity stop + break-even at 1R", pine, replace(
+            liquidity_stop, breakeven_trigger_r=1.0
+        )),
         ("Target nearest resting D/W liquidity", pine, liquidity_target),
+        ("Liquidity target + break-even at 1R", pine, replace(
+            liquidity_target, breakeven_trigger_r=1.0
+        )),
         ("Liquidity sweep entry + target", pine, replace(
             liquidity_sweep, target_method="resting liquidity"
         )),
@@ -121,6 +131,9 @@ def main(argv: list[str] | None = None) -> int:
         "fills at the observed open. One position at a time; 2 bp round-trip cost.", "",
         "Every level is frozen from completed bars. A rejection on the final cash-session candle is "
         "not accepted because its next open would be overnight.", "",
+        "The break-even variants activate an entry-price stop only after a completed 15-minute bar "
+        "has reached +1R. The new stop is executable from the following bar, and transaction costs "
+        "mean a nominal break-even exit is a small net loss.", "",
         "## External liquidity definitions", "",
         "- **PDH/PDL:** the immediately preceding completed regular-session high and low.",
         "- **PWH/PWL:** the preceding completed ISO trading week's high and low.",
@@ -136,8 +149,8 @@ def main(argv: list[str] | None = None) -> int:
         "- Because this database contains US regular hours, previous session and previous trading day "
         "are the same feature. Asia and London levels cannot be tested from this source.", "",
         "## Chronological results", "",
-        "| Variant | Period | Trades | L/S | Win | PF | Mean R | $100 -> | CAGR | Max DD | Stop | Target | Overnight |",
-        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| Variant | Period | Trades | L/S | Win | PF | Mean R | $100 -> | CAGR | Max DD | Stop | BE exit | Target | Overnight |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for label, htf_config, config in variants:
         trades, audit = run_retest_strategy(
@@ -150,9 +163,40 @@ def main(argv: list[str] | None = None) -> int:
         lines.append(summary_row(label, "test", test))
 
     locked = results["Locked: 1h regression, 0.1 ATR buffer"]
+    breakeven_trades = results["Break-even after completed-bar +1R"]
     audit = audits["Locked: 1h regression, 0.1 ATR buffer"]
     train_locked = [trade for trade in locked if trade.htf_signal_timestamp[:10] < args.split]
     test_locked = [trade for trade in locked if trade.htf_signal_timestamp[:10] >= args.split]
+    train_breakeven = [
+        trade for trade in breakeven_trades if trade.htf_signal_timestamp[:10] < args.split
+    ]
+    test_breakeven = [
+        trade for trade in breakeven_trades if trade.htf_signal_timestamp[:10] >= args.split
+    ]
+    lines += [
+        "", "## Effect of moving the stop to break-even at +1R", "",
+        "| Period | Base PF | BE PF | Base $100 -> | BE $100 -> | Base DD | BE DD | "
+        "BE activated | BE exit |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    for period, base_rows, be_rows in (
+        ("train", train_locked, train_breakeven),
+        ("test", test_locked, test_breakeven),
+    ):
+        base_summary = summarise_retests(base_rows)
+        be_summary = summarise_retests(be_rows)
+        activated = sum(trade.breakeven_activated for trade in be_rows) / len(be_rows) if be_rows else 0.0
+        lines.append(
+            f"| {period} | {base_summary.profit_factor:.2f} | {be_summary.profit_factor:.2f} | "
+            f"${100 * base_summary.ending_equity:.2f} | ${100 * be_summary.ending_equity:.2f} | "
+            f"{pct(base_summary.max_drawdown)} | {pct(be_summary.max_drawdown)} | "
+            f"{pct(activated)} | {pct(be_summary.breakeven_rate)} |"
+        )
+    lines += [
+        "", "The +1R rule is a capital-preservation overlay. It can reduce stop losses and drawdown, "
+        "but it also converts some eventual targets into small cost-adjusted losses. Profit factor "
+        "must remain above one on unseen data before treating the overlay as a tradable edge.",
+    ]
     lines += [
         "", "## Signal funnel", "",
         f"- Raw four-hour signals: **{audit.htf_signals:,}**",
@@ -174,7 +218,9 @@ def main(argv: list[str] | None = None) -> int:
         "External liquidity entry + target",
         "Liquidity sweep/reclaim entry",
         "Stop beyond resting D/W liquidity",
+        "Liquidity stop + break-even at 1R",
         "Target nearest resting D/W liquidity",
+        "Liquidity target + break-even at 1R",
         "Liquidity sweep entry + target",
         "Liquidity stop + target",
         "All liquidity rules",
@@ -191,6 +237,13 @@ def main(argv: list[str] | None = None) -> int:
     baseline_train = summarise([trade for trade in baseline if trade.signal_timestamp[:10] < args.split])
     baseline_test = summarise([trade for trade in baseline if trade.signal_timestamp[:10] >= args.split])
     locked_train, locked_test = summarise_retests(train_locked), summarise_retests(test_locked)
+    stop_name = "Stop beyond resting D/W liquidity"
+    stop_train = summarise_retests([
+        trade for trade in results[stop_name] if trade.htf_signal_timestamp[:10] < args.split
+    ])
+    stop_test = summarise_retests([
+        trade for trade in results[stop_name] if trade.htf_signal_timestamp[:10] >= args.split
+    ])
     lines += [
         "", "## Did lower-timeframe execution improve the four-hour edge?", "",
         "| Model | Train trades | Train PF | Train $100 -> | Test trades | Test PF | Test $100 -> |",
@@ -204,6 +257,18 @@ def main(argv: list[str] | None = None) -> int:
         "", "The tighter entry does not inherit the higher-timeframe win probability. Most retests "
         "are stopped before the distant four-hour target, so nominal planned R is high while realized "
         "expectancy is negative.",
+    ]
+
+    lines += [
+        "", "## What the external-liquidity rules changed", "",
+        "The exact trendline-plus-liquidity-sweep conjunction generated no entries. The independent "
+        "liquidity rejection trigger also generated no entries after the one-hour observation, slope, "
+        "candle-direction, and same-session requirements.", "",
+        f"The protected-stop version produced **{stop_train.count}** training and **{stop_test.count}** "
+        f"holdout trades (PF **{stop_train.profit_factor:.2f}** and **{stop_test.profit_factor:.2f}**). "
+        "That sample is too small to establish an edge even when both numbers exceed one.", "",
+        "The target-only and combined rules should be read directly from the chronological table. "
+        "No variant should be selected from its holdout result; this run has now consumed that holdout.",
     ]
 
     lines += ["", "## Two-year stability of the locked rule", "",
@@ -251,7 +316,38 @@ def main(argv: list[str] | None = None) -> int:
         if fields:
             writer.writeheader()
             writer.writerows(asdict(trade) for trade in locked)
-    print(f"wrote {report} and {trade_path} ({len(locked):,} locked trades)")
+    liquidity_path = args.outdir / f"{stem}_liquidity_variants.csv"
+    liquidity_names = set(liquidity_labels)
+    liquidity_rows = [
+        {"variant": label, **asdict(trade)}
+        for label, trades in results.items() if label in liquidity_names
+        for trade in trades
+    ]
+    with liquidity_path.open("w", newline="", encoding="utf-8") as handle:
+        fields = list(liquidity_rows[0].keys()) if liquidity_rows else ["variant"]
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(liquidity_rows)
+    breakeven_path = args.outdir / f"{stem}_breakeven_variants.csv"
+    breakeven_names = {
+        "Break-even after completed-bar +1R",
+        "Liquidity stop + break-even at 1R",
+        "Liquidity target + break-even at 1R",
+    }
+    breakeven_rows = [
+        {"variant": label, **asdict(trade)}
+        for label, trades in results.items() if label in breakeven_names
+        for trade in trades
+    ]
+    with breakeven_path.open("w", newline="", encoding="utf-8") as handle:
+        fields = list(breakeven_rows[0].keys()) if breakeven_rows else ["variant"]
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(breakeven_rows)
+    print(
+        f"wrote {report}, {trade_path}, {liquidity_path}, and {breakeven_path} "
+        f"({len(locked):,} locked trades)"
+    )
     return 0
 
 

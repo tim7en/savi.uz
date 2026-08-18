@@ -9,6 +9,7 @@ from savi_uz.multitimeframe_retest import (
     _is_resting,
     _swept_and_reclaimed,
     confirmed_pivots,
+    execute_retest_exit,
     prior_liquidity_levels,
     run_retest_strategy,
     summarise_retests,
@@ -107,6 +108,37 @@ class LiquidityTimingTests(unittest.TestCase):
         self.assertIsNone(_swept_and_reclaimed((level,), bars, 1, 1))
         fresh = LiquidityLevel("PDL", "low", 100, 1)
         self.assertEqual(_swept_and_reclaimed((fresh,), bars, 1, 1), fresh)
+
+
+class BreakevenExecutionTests(unittest.TestCase):
+    def test_one_r_activation_only_changes_the_following_bar(self):
+        first = datetime(2024, 1, 8, 14, 30, tzinfo=timezone.utc)
+        bars = [
+            at(first, 100, 101.1, 99.5, 100.8),
+            at(first + timedelta(minutes=15), 100.5, 100.7, 99.9, 100.1),
+        ]
+        result = execute_retest_exit(
+            bars, entry_index=0, last_index=1, direction=1,
+            entry=100, stop=99, target=102.5, breakeven_trigger_r=1.0,
+        )
+        exit_index, price, reason, _, activated, activation_timestamp = result
+        self.assertEqual(exit_index, 1)
+        self.assertEqual(price, 100)
+        self.assertEqual(reason, "breakeven")
+        self.assertTrue(activated)
+        self.assertEqual(activation_timestamp, bars[0].timestamp)
+
+    def test_original_stop_wins_if_touched_on_the_trigger_bar(self):
+        first = datetime(2024, 1, 8, 14, 30, tzinfo=timezone.utc)
+        bars = [at(first, 100, 101.1, 98.5, 100.8)]
+        result = execute_retest_exit(
+            bars, entry_index=0, last_index=0, direction=1,
+            entry=100, stop=99, target=102.5, breakeven_trigger_r=1.0,
+        )
+        _, price, reason, _, activated, _ = result
+        self.assertEqual(price, 99)
+        self.assertEqual(reason, "stop")
+        self.assertFalse(activated)
 
 
 if __name__ == "__main__":

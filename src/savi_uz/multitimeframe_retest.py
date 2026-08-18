@@ -41,6 +41,7 @@ class RetestConfig:
     require_external_liquidity_sweep: bool = False
     stop_method: str = "rejection"
     target_method: str = "four-hour"
+    breakeven_trigger_r: float | None = None
     round_trip_cost: float = 0.0002
 
     def __post_init__(self) -> None:
@@ -58,6 +59,8 @@ class RetestConfig:
             raise ValueError("unknown stop_method")
         if self.target_method not in {"four-hour", "resting liquidity"}:
             raise ValueError("unknown target_method")
+        if self.breakeven_trigger_r is not None and self.breakeven_trigger_r <= 0:
+            raise ValueError("breakeven_trigger_r must be positive")
 
 
 @dataclass(frozen=True)
@@ -103,6 +106,8 @@ class RetestTrade:
     holding_sessions: int
     held_overnight: bool
     both_touched: bool
+    breakeven_activated: bool
+    breakeven_activation_timestamp: str
     gross_return: float
     net_return: float
     net_r: float
@@ -138,6 +143,7 @@ class RetestSummary:
     profit_factor: float
     target_rate: float
     stop_rate: float
+    breakeven_rate: float
     time_exit_rate: float
     overnight_rate: float
     ending_equity: float
@@ -304,6 +310,41 @@ def _resting_target_anchor(
         return None
     return min(candidates, key=lambda level: level.price) if direction > 0 else max(
         candidates, key=lambda level: level.price
+    )
+
+
+def execute_retest_exit(
+    bars: list[Bar], *, entry_index: int, last_index: int, direction: int,
+    entry: float, stop: float, target: float, breakeven_trigger_r: float | None,
+) -> tuple[int, float, str, bool, bool, str]:
+    """Execute fixed orders with an optional completed-bar break-even update.
+
+    The original stop remains active throughout the bar that first reaches the
+    R trigger.  If that bar closes without an exit, the entry-price stop becomes
+    active on the following bar.  This makes OHLC ordering explicit instead of
+    assuming that the high occurred before the low.
+    """
+    active_stop = stop
+    initial_risk = direction * (entry - stop)
+    breakeven_active = False
+    activation_timestamp = ""
+    for index in range(entry_index, last_index + 1):
+        fill = _fill_on_bar(bars[index], direction, active_stop, target)
+        if fill is not None:
+            price, reason, both_touched = fill
+            if breakeven_active and reason == "stop":
+                reason = "breakeven"
+            return index, price, reason, both_touched, breakeven_active, activation_timestamp
+        if breakeven_trigger_r is not None and not breakeven_active:
+            trigger = entry + direction * initial_risk * breakeven_trigger_r
+            reached = bars[index].high >= trigger if direction > 0 else bars[index].low <= trigger
+            if reached:
+                active_stop = entry
+                breakeven_active = True
+                activation_timestamp = bars[index].timestamp
+    return (
+        last_index, bars[last_index].close, "time", False,
+        breakeven_active, activation_timestamp,
     )
 
 
@@ -499,16 +540,19 @@ def run_retest_strategy(
             continue
 
         last_index = _last_allowed_index(lower, entry_index, config.max_hold_sessions)
-        fill: tuple[float, str, bool] | None = None
-        exit_index = last_index
-        for index in range(entry_index, last_index + 1):
-            fill = _fill_on_bar(lower[index], signal.direction, stop, target)
-            if fill is not None:
-                exit_index = index
-                break
-        if fill is None:
-            fill = (lower[last_index].close, "time", False)
-        exit_price, reason, both_touched = fill
+        (
+            exit_index, exit_price, reason, both_touched,
+            breakeven_activated, breakeven_activation_timestamp,
+        ) = execute_retest_exit(
+            lower,
+            entry_index=entry_index,
+            last_index=last_index,
+            direction=signal.direction,
+            entry=entry,
+            stop=stop,
+            target=target,
+            breakeven_trigger_r=config.breakeven_trigger_r,
+        )
         gross = signal.direction * (exit_price / entry - 1.0)
         net = gross - config.round_trip_cost
         net_r = net * entry / risk
@@ -553,6 +597,8 @@ def run_retest_strategy(
                 holding_sessions=holding_sessions,
                 held_overnight=entry_day != exit_day,
                 both_touched=both_touched,
+                breakeven_activated=breakeven_activated,
+                breakeven_activation_timestamp=breakeven_activation_timestamp,
                 gross_return=gross,
                 net_return=net,
                 net_r=net_r,
@@ -565,7 +611,7 @@ def run_retest_strategy(
 
 def summarise_retests(trades: list[RetestTrade]) -> RetestSummary:
     if not trades:
-        return RetestSummary(0, 0, 0, *(math.nan for _ in range(13)))
+        return RetestSummary(0, 0, 0, *(math.nan for _ in range(14)))
     returns = [trade.net_return for trade in trades]
     gains = sum(value for value in returns if value > 0)
     losses = -sum(value for value in returns if value < 0)
@@ -592,6 +638,7 @@ def summarise_retests(trades: list[RetestTrade]) -> RetestSummary:
         profit_factor=gains / losses if losses else math.inf,
         target_rate=sum("target" in trade.exit_reason for trade in trades) / len(trades),
         stop_rate=sum("stop" in trade.exit_reason for trade in trades) / len(trades),
+        breakeven_rate=sum(trade.exit_reason == "breakeven" for trade in trades) / len(trades),
         time_exit_rate=sum(trade.exit_reason == "time" for trade in trades) / len(trades),
         overnight_rate=sum(trade.held_overnight for trade in trades) / len(trades),
         ending_equity=equity,
