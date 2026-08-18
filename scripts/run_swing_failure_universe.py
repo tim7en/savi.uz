@@ -21,6 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from savi_uz.split_adjust import adjust_bars, load_splits  # noqa: E402
 from savi_uz.sweep_engulf import resample_regular_session  # noqa: E402
 from savi_uz.swing_failure_strategy import (  # noqa: E402
     SfpConfig,
@@ -116,12 +117,13 @@ def binomial_tails(successes: int, trials: int) -> tuple[float, float]:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     config = SfpConfig()
+    splits = load_splits(args.db)
     per_ticker = {}
     skipped = []
     all_trades = []
 
     for ticker in tickers(args.db):
-        source = load_bars(args.db, ticker)
+        source = adjust_bars(load_bars(args.db, ticker), splits.get(ticker, []))
         if not source:
             continue
         daily = resample_regular_session(source, minutes=390)

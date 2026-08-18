@@ -23,6 +23,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from savi_uz.split_adjust import adjust_bars, load_splits  # noqa: E402
 from savi_uz.sweep_engulf import resample_regular_session  # noqa: E402
 from savi_uz.turtle import TurtleConfig, run_turtle, summarise_turtle  # noqa: E402
 from savi_uz.volume_profile import Bar  # noqa: E402
@@ -120,9 +121,12 @@ def session_block_bootstrap(trades, draws: int = 1000, seed: int = 20240817):
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    # The bar table stores prices as printed, so an unadjusted split reads as a
+    # 95% overnight collapse and corrupts every volatility and breakout measure.
+    splits = load_splits(args.db)
     universe = []
     for ticker in tickers(args.db):
-        source = load_bars(args.db, ticker, args.start, args.end)
+        source = adjust_bars(load_bars(args.db, ticker, args.start, args.end), splits.get(ticker, []))
         if not source:
             continue
         sessions = len({row.timestamp[:10] for row in source})
