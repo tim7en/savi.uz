@@ -9,6 +9,7 @@ from pathlib import Path
 FRED_KEY_NAMES = ("FRED_API_KEY", "FRED_API", "FRED_KEY")
 ALPHAVANTAGE_KEY_NAMES = ("ALPHAVANTAGE_API_KEY", "ALPHAVANTAGE_API")
 TIINGO_KEY_NAMES = ("TIINGO_API_KEY", "TIINGO_API", "TIINGO_TOKEN")
+MARKETDATA_KEY_NAMES = ("MARKETDATA_TOKEN", "MARKETDATA_API_KEY")
 
 #: The SEC blocks default library user agents outright and asks that yours
 #: identify you; set SEC_USER_AGENT to "project (you@example.com)".
@@ -69,6 +70,20 @@ def get_tiingo_api_key() -> str:
             "free key at https://www.tiingo.com/account/api/token"
         )
     return api_key
+
+
+def get_marketdata_token(env_name: str | None = None) -> str:
+    """Return the MarketData.app bearer token from environment or ``.env``."""
+    load_dotenv()
+    names = (env_name,) if env_name else MARKETDATA_KEY_NAMES
+    token = _first_env(names)
+    if not token:
+        requested = env_name or "MARKETDATA_TOKEN"
+        raise ValueError(
+            f"Missing {requested} in the environment or .env -- "
+            "token at https://www.marketdata.app/dashboard/"
+        )
+    return token
 
 
 def get_sec_user_agent() -> str:
