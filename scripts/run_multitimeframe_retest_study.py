@@ -68,8 +68,28 @@ def main(argv: list[str] | None = None) -> int:
     pine = SweepConfig()
     trend_ema = replace(pine, invert_trades=False, use_ema=True)
     primary = RetestConfig()
+    liquidity_sweep = replace(primary, require_external_liquidity_sweep=True)
+    liquidity_rejection = replace(primary, entry_trigger="liquidity rejection")
+    liquidity_stop = replace(primary, stop_method="resting liquidity")
+    liquidity_target = replace(primary, target_method="resting liquidity")
     variants = [
         ("Locked: 1h regression, 0.1 ATR buffer", pine, primary),
+        ("External liquidity rejection entry", pine, liquidity_rejection),
+        ("External liquidity entry + target", pine, replace(
+            liquidity_rejection, target_method="resting liquidity"
+        )),
+        ("Liquidity sweep/reclaim entry", pine, liquidity_sweep),
+        ("Stop beyond resting D/W liquidity", pine, liquidity_stop),
+        ("Target nearest resting D/W liquidity", pine, liquidity_target),
+        ("Liquidity sweep entry + target", pine, replace(
+            liquidity_sweep, target_method="resting liquidity"
+        )),
+        ("Liquidity stop + target", pine, replace(
+            primary, stop_method="resting liquidity", target_method="resting liquidity"
+        )),
+        ("All liquidity rules", pine, replace(
+            liquidity_sweep, stop_method="resting liquidity", target_method="resting liquidity"
+        )),
         ("Wider 0.5 ATR buffer", pine, replace(primary, stop_buffer_atr=0.5)),
         ("No slope-alignment filter", pine, replace(primary, require_aligned_slope=False)),
         ("Observe 30 minutes", pine, replace(primary, observation_bars=2)),
@@ -101,6 +121,20 @@ def main(argv: list[str] | None = None) -> int:
         "fills at the observed open. One position at a time; 2 bp round-trip cost.", "",
         "Every level is frozen from completed bars. A rejection on the final cash-session candle is "
         "not accepted because its next open would be overnight.", "",
+        "## External liquidity definitions", "",
+        "- **PDH/PDL:** the immediately preceding completed regular-session high and low.",
+        "- **PWH/PWL:** the preceding completed ISO trading week's high and low.",
+        "- A pool is *resting* only if no 15-minute bar has touched it since the level became known.",
+        "- A sweep entry pierces a resting adverse-side pool and closes back across it on the same "
+        "trendline-rejection candle.",
+        "- The external-liquidity entry instead lets that sweep/reclaim be the rejection trigger; "
+        "the close must remain on the directionally correct side of the frozen trendline.",
+        "- A liquidity stop sits 0.1 ATR beyond the nearest still-resting adverse pool, but is rejected "
+        "if it lies beyond the original four-hour invalidation.",
+        "- A liquidity target is the nearest still-resting directional pool inside the original "
+        "four-hour target; it must still offer at least 2R.",
+        "- Because this database contains US regular hours, previous session and previous trading day "
+        "are the same feature. Asia and London levels cannot be tested from this source.", "",
         "## Chronological results", "",
         "| Variant | Period | Trades | L/S | Win | PF | Mean R | $100 -> | CAGR | Max DD | Stop | Target | Overnight |",
         "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
@@ -129,6 +163,29 @@ def main(argv: list[str] | None = None) -> int:
         f"- Overlap skipped: **{audit.skipped_overlap:,}**",
         f"- Executed trades: **{audit.trades:,}** ({audit.trades / audit.htf_signals * 100:.1f}% of signals)",
     ]
+
+    lines += [
+        "", "## Liquidity-rule signal counts", "",
+        "| Variant | Trades | No swept entry | No stop pool | No target pool | Below 2R/invalid |",
+        "|---|---:|---:|---:|---:|---:|",
+    ]
+    liquidity_labels = [
+        "External liquidity rejection entry",
+        "External liquidity entry + target",
+        "Liquidity sweep/reclaim entry",
+        "Stop beyond resting D/W liquidity",
+        "Target nearest resting D/W liquidity",
+        "Liquidity sweep entry + target",
+        "Liquidity stop + target",
+        "All liquidity rules",
+    ]
+    for label in liquidity_labels:
+        item = audits[label]
+        lines.append(
+            f"| {label} | {item.trades:,} | {item.no_liquidity_entry:,} | "
+            f"{item.no_liquidity_stop:,} | {item.no_liquidity_target:,} | "
+            f"{item.invalid_or_low_reward:,} |"
+        )
 
     baseline = run_strategy(four_hour, pine, start=args.start)
     baseline_train = summarise([trade for trade in baseline if trade.signal_timestamp[:10] < args.split])
@@ -177,6 +234,8 @@ def main(argv: list[str] | None = None) -> int:
         "- Rejection is known only at its close and entry is the following 15-minute open.",
         "- Stop and target ordering inside one OHLC bar is conservative: the stop wins ties.",
         "- Regular-session data cannot observe after-hours paths; overnight gaps fill at the next open.",
+        "- Daily and weekly liquidity levels are calculated only from sessions completed before they "
+        "become available; a future bar cannot revise them.",
         "- This is a first specification tested on GLD. Variant rows are diagnostics, not permission "
         "to select the best test-period result.",
     ]

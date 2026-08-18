@@ -4,8 +4,12 @@ import unittest
 from datetime import datetime, timedelta, timezone
 
 from savi_uz.multitimeframe_retest import (
+    LiquidityLevel,
     RetestConfig,
+    _is_resting,
+    _swept_and_reclaimed,
     confirmed_pivots,
+    prior_liquidity_levels,
     run_retest_strategy,
     summarise_retests,
 )
@@ -68,6 +72,41 @@ class SignalTimingTests(unittest.TestCase):
 
     def test_empty_summary_is_valid(self):
         self.assertEqual(summarise_retests([]).count, 0)
+
+
+class LiquidityTimingTests(unittest.TestCase):
+    def test_previous_day_levels_exclude_every_current_day_bar(self):
+        first = datetime(2024, 1, 2, 14, 30, tzinfo=timezone.utc)
+        bars = [
+            at(first, 100, 101, 99, 100),
+            at(first + timedelta(minutes=15), 100, 103, 98, 102),
+            at(first + timedelta(days=1), 102, 104, 101, 103),
+            at(first + timedelta(days=1, minutes=15), 103, 200, 1, 150),
+        ]
+        levels = {level.kind: level for level in prior_liquidity_levels(bars)["2024-01-03"]}
+        self.assertEqual(levels["PDH"].price, 103)
+        self.assertEqual(levels["PDL"].price, 98)
+
+    def test_previous_week_level_only_starts_resting_in_the_new_week(self):
+        friday = datetime(2024, 1, 5, 14, 30, tzinfo=timezone.utc)
+        monday = datetime(2024, 1, 8, 14, 30, tzinfo=timezone.utc)
+        bars = [at(friday, 100, 105, 95, 101), at(monday, 101, 104, 96, 102)]
+        levels = {level.kind: level for level in prior_liquidity_levels(bars)["2024-01-08"]}
+        self.assertEqual(levels["PWH"].price, 105)
+        self.assertEqual(levels["PWL"].price, 95)
+        self.assertEqual(levels["PWH"].resting_from, 1)
+        self.assertTrue(_is_resting(levels["PWH"], bars, 0))
+
+    def test_liquidity_sweep_requires_level_to_be_untouched_before_rejection(self):
+        first = datetime(2024, 1, 8, 14, 30, tzinfo=timezone.utc)
+        bars = [
+            at(first, 101, 102, 99.5, 101),
+            at(first + timedelta(minutes=15), 101, 102, 99, 101.5),
+        ]
+        level = LiquidityLevel("PDL", "low", 100, 0)
+        self.assertIsNone(_swept_and_reclaimed((level,), bars, 1, 1))
+        fresh = LiquidityLevel("PDL", "low", 100, 1)
+        self.assertEqual(_swept_and_reclaimed((fresh,), bars, 1, 1), fresh)
 
 
 if __name__ == "__main__":

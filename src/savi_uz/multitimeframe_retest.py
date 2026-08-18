@@ -37,6 +37,10 @@ class RetestConfig:
     max_hold_sessions: int = 5
     require_aligned_slope: bool = True
     trendline_method: str = "first-hour regression"
+    entry_trigger: str = "trendline rejection"
+    require_external_liquidity_sweep: bool = False
+    stop_method: str = "rejection"
+    target_method: str = "four-hour"
     round_trip_cost: float = 0.0002
 
     def __post_init__(self) -> None:
@@ -48,6 +52,20 @@ class RetestConfig:
             raise ValueError("reward/risk and holding period must be positive")
         if self.trendline_method not in {"first-hour regression", "confirmed pivots"}:
             raise ValueError("unknown trendline_method")
+        if self.entry_trigger not in {"trendline rejection", "liquidity rejection"}:
+            raise ValueError("unknown entry_trigger")
+        if self.stop_method not in {"rejection", "resting liquidity"}:
+            raise ValueError("unknown stop_method")
+        if self.target_method not in {"four-hour", "resting liquidity"}:
+            raise ValueError("unknown target_method")
+
+
+@dataclass(frozen=True)
+class LiquidityLevel:
+    kind: str
+    side: str
+    price: float
+    resting_from: int
 
 
 @dataclass(frozen=True)
@@ -67,10 +85,16 @@ class RetestTrade:
     trendline_slope_per_bar: float
     rejection_timestamp: str
     rejection_level: float
+    entry_liquidity_kind: str
+    entry_liquidity_level: float
     entry_timestamp: str
     entry: float
     stop: float
+    stop_anchor_kind: str
+    stop_anchor_level: float
     target: float
+    target_anchor_kind: str
+    target_anchor_level: float
     planned_reward_risk: float
     exit_timestamp: str
     exit: float
@@ -94,6 +118,9 @@ class RetestAudit:
     liquidity_not_resting: int
     thesis_expired_before_entry: int
     no_rejection: int
+    no_liquidity_entry: int
+    no_liquidity_stop: int
+    no_liquidity_target: int
     invalid_or_low_reward: int
     trades: int
 
@@ -164,6 +191,122 @@ def _thesis_touched(signal: SweepSignal, bars: list[Bar], first: int, last: int)
     return False
 
 
+def prior_liquidity_levels(bars: list[Bar]) -> dict[str, tuple[LiquidityLevel, ...]]:
+    """Map each session to levels fully known before that session began.
+
+    Previous-day levels come from the immediately preceding trading session.
+    Previous-week levels come from the preceding observed ISO trading week.  A
+    level's ``resting_from`` index lets the caller reject a pool already traded
+    through since it became actionable.
+    """
+    sessions: list[tuple[str, int, int, float, float]] = []
+    first = 0
+    while first < len(bars):
+        day = bars[first].timestamp[:10]
+        last = first
+        while last + 1 < len(bars) and bars[last + 1].timestamp[:10] == day:
+            last += 1
+        sessions.append((day, first, last, max(row.high for row in bars[first:last + 1]),
+                         min(row.low for row in bars[first:last + 1])))
+        first = last + 1
+
+    weeks: list[tuple[tuple[int, int], int, float, float]] = []
+    for day, session_first, _, high, low in sessions:
+        week = date.fromisoformat(day).isocalendar()[:2]
+        if not weeks or weeks[-1][0] != week:
+            weeks.append((week, session_first, high, low))
+        else:
+            key, week_first, week_high, week_low = weeks[-1]
+            weeks[-1] = (key, week_first, max(week_high, high), min(week_low, low))
+    prior_week = {
+        weeks[index][0]: weeks[index - 1]
+        for index in range(1, len(weeks))
+    }
+    week_starts = {week: week_first for week, week_first, _, _ in weeks}
+
+    result: dict[str, tuple[LiquidityLevel, ...]] = {}
+    for index, (day, session_first, _, _, _) in enumerate(sessions):
+        levels: list[LiquidityLevel] = []
+        if index:
+            _, _, _, prior_high, prior_low = sessions[index - 1]
+            levels.extend((
+                LiquidityLevel("PDH", "high", prior_high, session_first),
+                LiquidityLevel("PDL", "low", prior_low, session_first),
+            ))
+        week_key = date.fromisoformat(day).isocalendar()[:2]
+        if week_key in prior_week:
+            _, _, week_high, week_low = prior_week[week_key]
+            week_first = week_starts[week_key]
+            levels.extend((
+                LiquidityLevel("PWH", "high", week_high, week_first),
+                LiquidityLevel("PWL", "low", week_low, week_first),
+            ))
+        result[day] = tuple(levels)
+    return result
+
+
+def _is_resting(level: LiquidityLevel, bars: list[Bar], through: int) -> bool:
+    """Whether a pre-known level remained untouched through ``through`` inclusive."""
+    if through < level.resting_from:
+        return True
+    if level.side == "high":
+        return all(bar.high < level.price for bar in bars[level.resting_from:through + 1])
+    return all(bar.low > level.price for bar in bars[level.resting_from:through + 1])
+
+
+def _swept_and_reclaimed(
+    levels: tuple[LiquidityLevel, ...], bars: list[Bar], index: int, direction: int
+) -> LiquidityLevel | None:
+    bar = bars[index]
+    candidates = []
+    for level in levels:
+        if not _is_resting(level, bars, index - 1):
+            continue
+        if direction > 0 and level.side == "low" and bar.low < level.price < bar.close:
+            candidates.append(level)
+        elif direction < 0 and level.side == "high" and bar.high > level.price > bar.close:
+            candidates.append(level)
+    if not candidates:
+        return None
+    return max(candidates, key=lambda level: level.price) if direction > 0 else min(
+        candidates, key=lambda level: level.price
+    )
+
+
+def _resting_stop_anchor(
+    levels: tuple[LiquidityLevel, ...], bars: list[Bar], through: int,
+    direction: int, rejection: Bar,
+) -> LiquidityLevel | None:
+    candidates = [
+        level for level in levels
+        if _is_resting(level, bars, through)
+        and ((direction > 0 and level.side == "low" and level.price < rejection.low)
+             or (direction < 0 and level.side == "high" and level.price > rejection.high))
+    ]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda level: level.price) if direction > 0 else min(
+        candidates, key=lambda level: level.price
+    )
+
+
+def _resting_target_anchor(
+    levels: tuple[LiquidityLevel, ...], bars: list[Bar], through: int,
+    direction: int, entry: float, htf_target: float,
+) -> LiquidityLevel | None:
+    candidates = [
+        level for level in levels
+        if _is_resting(level, bars, through)
+        and ((direction > 0 and level.side == "high" and entry < level.price <= htf_target)
+             or (direction < 0 and level.side == "low" and entry > level.price >= htf_target))
+    ]
+    if not candidates:
+        return None
+    return min(candidates, key=lambda level: level.price) if direction > 0 else max(
+        candidates, key=lambda level: level.price
+    )
+
+
 def run_retest_strategy(
     htf_bars: list[Bar],
     entry_bars: list[Bar],
@@ -178,6 +321,7 @@ def run_retest_strategy(
     signals = build_signals(htf_bars, htf_config, start=start, end=end)
     positions = {bar.timestamp: index for index, bar in enumerate(lower)}
     atrs = _wilder(_true_ranges(lower), config.atr_length)
+    liquidity_by_day = prior_liquidity_levels(lower)
     trades: list[RetestTrade] = []
     counters = {
         "skipped_overlap": 0,
@@ -187,6 +331,9 @@ def run_retest_strategy(
         "liquidity_not_resting": 0,
         "thesis_expired_before_entry": 0,
         "no_rejection": 0,
+        "no_liquidity_entry": 0,
+        "no_liquidity_stop": 0,
+        "no_liquidity_target": 0,
         "invalid_or_low_reward": 0,
     }
     available_after = ""
@@ -257,7 +404,10 @@ def run_retest_strategy(
             session_end += 1
         rejection_index: int | None = None
         rejection_line = math.nan
+        entry_liquidity: LiquidityLevel | None = None
+        saw_plain_rejection = False
         expired = False
+        session_levels = liquidity_by_day.get(session_day, ())
         # The final session bar cannot trigger: its next available open is overnight.
         for index in range(observation_end + 1, session_end):
             if _thesis_touched(signal, lower, index, index):
@@ -286,14 +436,26 @@ def run_retest_strategy(
                     bar.high > price_two and bar.high >= line - tolerance
                     and bar.close < price_two and bar.close < line and bar.close < bar.open
                 )
+            swept = _swept_and_reclaimed(session_levels, lower, index, signal.direction)
+            if config.entry_trigger == "liquidity rejection":
+                directional_close = bar.close > bar.open if signal.direction > 0 else bar.close < bar.open
+                correct_side_of_line = bar.close > line if signal.direction > 0 else bar.close < line
+                trigger = swept is not None and directional_close and correct_side_of_line
             if trigger:
+                saw_plain_rejection = True
+                if config.require_external_liquidity_sweep and swept is None:
+                    continue
                 rejection_index, rejection_line = index, line
+                entry_liquidity = swept
                 break
         if expired:
             counters["thesis_expired_before_entry"] += 1
             continue
         if rejection_index is None:
-            counters["no_rejection"] += 1
+            liquidity_missing = config.entry_trigger == "liquidity rejection" or (
+                config.require_external_liquidity_sweep and saw_plain_rejection
+            )
+            counters["no_liquidity_entry" if liquidity_missing else "no_rejection"] += 1
             continue
 
         entry_index = rejection_index + 1
@@ -301,13 +463,36 @@ def run_retest_strategy(
         entry = lower[entry_index].open
         atr = atrs[rejection_index]
         assert atr is not None
-        stop = (
-            rejection.low - config.stop_buffer_atr * atr
-            if signal.direction > 0
-            else rejection.high + config.stop_buffer_atr * atr
-        )
+        stop_anchor: LiquidityLevel | None = None
+        if config.stop_method == "resting liquidity":
+            stop_anchor = _resting_stop_anchor(
+                session_levels, lower, rejection_index, signal.direction, rejection
+            )
+            if stop_anchor is None:
+                counters["no_liquidity_stop"] += 1
+                continue
+            stop = stop_anchor.price - signal.direction * config.stop_buffer_atr * atr
+            if signal.direction * (stop - signal.base_stop) < 0:
+                counters["no_liquidity_stop"] += 1
+                continue
+        else:
+            stop = (
+                rejection.low - config.stop_buffer_atr * atr
+                if signal.direction > 0
+                else rejection.high + config.stop_buffer_atr * atr
+            )
+        target_anchor: LiquidityLevel | None = None
+        target = signal.target
+        if config.target_method == "resting liquidity":
+            target_anchor = _resting_target_anchor(
+                session_levels, lower, rejection_index, signal.direction, entry, signal.target
+            )
+            if target_anchor is None:
+                counters["no_liquidity_target"] += 1
+                continue
+            target = target_anchor.price
         risk = signal.direction * (entry - stop)
-        reward = signal.direction * (signal.target - entry)
+        reward = signal.direction * (target - entry)
         planned_rr = reward / risk if risk > 0 else -math.inf
         if risk <= 0 or reward <= 0 or planned_rr < config.minimum_reward_risk:
             counters["invalid_or_low_reward"] += 1
@@ -317,7 +502,7 @@ def run_retest_strategy(
         fill: tuple[float, str, bool] | None = None
         exit_index = last_index
         for index in range(entry_index, last_index + 1):
-            fill = _fill_on_bar(lower[index], signal.direction, stop, signal.target)
+            fill = _fill_on_bar(lower[index], signal.direction, stop, target)
             if fill is not None:
                 exit_index = index
                 break
@@ -348,10 +533,18 @@ def run_retest_strategy(
                 trendline_slope_per_bar=slope,
                 rejection_timestamp=rejection.timestamp,
                 rejection_level=rejection_line,
+                entry_liquidity_kind=entry_liquidity.kind if entry_liquidity else "",
+                entry_liquidity_level=entry_liquidity.price if entry_liquidity else math.nan,
                 entry_timestamp=lower[entry_index].timestamp,
                 entry=entry,
                 stop=stop,
-                target=signal.target,
+                stop_anchor_kind=stop_anchor.kind if stop_anchor else "rejection",
+                stop_anchor_level=stop_anchor.price if stop_anchor else (
+                    rejection.low if signal.direction > 0 else rejection.high
+                ),
+                target=target,
+                target_anchor_kind=target_anchor.kind if target_anchor else "4h",
+                target_anchor_level=target_anchor.price if target_anchor else signal.target,
                 planned_reward_risk=planned_rr,
                 exit_timestamp=lower[exit_index].timestamp,
                 exit=exit_price,
