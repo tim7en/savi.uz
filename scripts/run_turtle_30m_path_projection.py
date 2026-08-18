@@ -194,7 +194,8 @@ def metrics(path, exit_only_path, daily_indices):
 
 
 def replay(trades, variant, regimes, funding, timeline, closes, prepared,
-           daily_indices, *, seed, max_positions, broker_spread, size_fn=None):
+           daily_indices, *, seed, max_positions, broker_spread, size_fn=None,
+           post_capacity_size=False):
     entries = defaultdict(list)
     for trade in trades:
         entries[trade.entry].append(trade)
@@ -243,14 +244,21 @@ def replay(trades, variant, regimes, funding, timeline, closes, prepared,
                 continue
             size = (size_fn(variant, trade) if size_fn is not None
                     else multiplier(variant, trade.entry[:10], regimes))
-            requested_risk = trading_nav * 0.01 * size
-            requested_gross = requested_risk * trade.initial_basis_r * 4
             active_gross = sum(item.reserved_gross for item in active.values())
             gross_room = max(0.0, 2.0 * trading_nav - active_gross)
-            reserved = min(requested_gross, gross_room)
+            if post_capacity_size:
+                full_risk = trading_nav * 0.01
+                full_gross = full_risk * trade.initial_basis_r * 4
+                full_reserved = min(full_gross, gross_room)
+                reserved = full_reserved * size
+                risk_per_r = full_risk * full_reserved / full_gross * size
+            else:
+                requested_risk = trading_nav * 0.01 * size
+                requested_gross = requested_risk * trade.initial_basis_r * 4
+                reserved = min(requested_gross, gross_room)
+                risk_per_r = requested_risk * reserved / requested_gross
             if reserved <= 0:
                 continue
-            risk_per_r = requested_risk * reserved / requested_gross
             rate = (funding.get(trade.entry[:10]) or 0.0) / 100.0 + broker_spread
             borrowed_before = max(active_gross - trading_nav, 0.0)
             borrowed_after = max(active_gross + reserved - trading_nav, 0.0)

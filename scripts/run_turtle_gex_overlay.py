@@ -222,6 +222,34 @@ def main(argv=None):
     funding = funding_map(calendar, macro)
     macro.close()
     risk_size = size_function(available, args.high_percentile)
+    joined = [
+        (trade, available.get((trade.ticker, trade.entry[:10]))) for trade in trades
+    ]
+    print(
+        f"prior-GEX join: {sum(feature is not None for _, feature in joined)}/"
+        f"{len(joined)} candidate trades",
+        flush=True,
+    )
+    for variant in VARIANTS[1:]:
+        flagged = sum(
+            feature is not None and risk_size(variant, trade) < 1.0
+            for trade, feature in joined
+        )
+        print(f"{variant}: {flagged} candidates flagged", flush=True)
+    sign_diagnostics = {}
+    for label, predicate in (
+        ("Prior net GEX positive", lambda feature: feature["net_gex"] > 0),
+        ("Prior net GEX negative", lambda feature: feature["net_gex"] < 0),
+    ):
+        subset = [trade.net_r for trade, feature in joined
+                  if feature is not None and predicate(feature)]
+        sign_diagnostics[label] = {
+            "trades": len(subset),
+            "win_rate": sum(value > 0 for value in subset) / len(subset),
+            "mean_r": statistics.mean(subset),
+            "median_r": statistics.median(subset),
+            "total_r": sum(subset),
+        }
 
     results = {}
     summaries = {}
@@ -230,10 +258,15 @@ def main(argv=None):
             trades, variant, {}, funding, timeline, closes, prepared, daily_indices,
             seed=seed, max_positions=args.max_positions,
             broker_spread=args.broker_spread, size_fn=risk_size,
+            post_capacity_size=True,
         ) for seed in range(args.draws)]
         results[variant] = draws
         summaries[variant] = median_summary(draws)
-        print(f"{variant}: median NAV {summaries[variant]['ending']:.2f}", flush=True)
+        print(
+            f"{variant}: median NAV {summaries[variant]['ending']:.2f}, "
+            f"mean size {summaries[variant]['mean_size']:.3f}",
+            flush=True,
+        )
 
     baseline = results["No overlay"]
     paired_rows = []
@@ -294,7 +327,15 @@ def main(argv=None):
               "- Gamma wall is the strike with greatest absolute signed GEX; put wall is the strike with greatest put GEX.",
               "- Distance to gamma wall is (spot - wall) / spot; a negative value means the wall is overhead.",
               "- IV is open-interest-weighted midpoint-implied volatility. Calls are positive and puts negative, so this is a proxy rather than observed dealer inventory.",
-              "- An overlay halves risk only for new entries; it never changes an already-open position."]
+              "- An overlay halves risk only for new entries; it never changes an already-open position.",
+              "", "## Candidate trades by prior-day GEX sign", "",
+              "| Prior-day regime | Candidate trades | Win rate | Mean R | Median R | Total R |",
+              "|---|---:|---:|---:|---:|---:|"]
+    for label, item in sign_diagnostics.items():
+        lines.append(
+            f"| {label} | {item['trades']} | {item['win_rate']:.1%} | "
+            f"{item['mean_r']:+.3f} | {item['median_r']:+.3f} | {item['total_r']:+.2f} |"
+        )
     report.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"wrote {report}, {paired_csv}, {features_csv}")
     return 0
