@@ -132,6 +132,7 @@ class TurtleTrade:
     net_r: float
     equity_return: float
     cost_basis_r: float = 0.0
+    unit_entries: tuple[TurtleUnit, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -411,6 +412,7 @@ def run_turtle(
                     net_r=net,
                     equity_return=net * config.risk_fraction,
                     cost_basis_r=basis,
+                    unit_entries=tuple(units),
                 ))
                 direction = 0
                 units = []
@@ -547,6 +549,7 @@ def run_turtle(
             net_r=gross - cost,
             equity_return=(gross - cost) * config.risk_fraction,
             cost_basis_r=basis,
+            unit_entries=tuple(units),
         ))
 
     return trades, TurtleAudit(

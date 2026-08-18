@@ -140,6 +140,9 @@ class PyramidTests(unittest.TestCase):
         trades, _ = run_turtle(rows, config=config)
         self.assertLessEqual(trades[0].units, 4)
         self.assertGreater(trades[0].units, 1)
+        self.assertEqual(len(trades[0].unit_entries), trades[0].units)
+        self.assertEqual(trades[0].unit_entries[0].timestamp,
+                         trades[0].entry_timestamp)
 
     def test_a_single_unit_system_never_adds(self):
         rows = flat_then_breakout()
