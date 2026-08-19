@@ -85,7 +85,7 @@ def macro_regimes(path: Path):
         "WHERE horizon_months IN (3, 12) ORDER BY curve_date").fetchall()
     curve_rows = connection.execute(
         "SELECT curve_date, mnemonic, value FROM gsw_rates "
-        "WHERE mnemonic IN ('SVENF02','SVENF10') ORDER BY curve_date").fetchall()
+        "WHERE mnemonic IN ('SVENY02','SVENY10') ORDER BY curve_date").fetchall()
     connection.close()
 
     horizons = defaultdict(dict)
@@ -99,9 +99,9 @@ def macro_regimes(path: Path):
     tightening = {d: v[12] > v[3] for d, v in horizons.items()
                   if 3 in v and 12 in v and v[3] is not None and v[12] is not None}
     # Inverted curve: the classic recession signal, 10-year below 2-year.
-    inverted = {d: v["SVENF10"] < v["SVENF02"] for d, v in tenors.items()
-                if "SVENF02" in v and "SVENF10" in v
-                and v["SVENF02"] is not None and v["SVENF10"] is not None}
+    inverted = {d: v["SVENY10"] < v["SVENY02"] for d, v in tenors.items()
+                if "SVENY02" in v and "SVENY10" in v
+                and v["SVENY02"] is not None and v["SVENY10"] is not None}
     # Rising level: policy expectations above where they sat a quarter ago.
     days = sorted(horizons)
     level = {d: horizons[d].get(12) for d in days}
