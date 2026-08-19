@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Savi · Tracked assets</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f4f0; --panel: #fff; --ink: #151513; --soft: #696963;
+      --muted: #96968e; --line: #deded7; --wash: #f8f8f5;
+      --green: #16845b; --red: #d14f42; --blue: #276bea; --blue-wash: #edf3ff;
+      --sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { color-scheme: dark; --bg: #11110f; --panel: #191917; --ink: #f3f3ef;
+        --soft: #b7b7b0; --muted: #7f7f78; --line: #31312d; --wash: #20201d;
+        --green: #45bd8d; --red: #ee7467; --blue: #70a0ff; --blue-wash: #17243e; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans);
+      font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+    button, input { font: inherit; }
+    .app { min-height: 100vh; display: grid; grid-template-columns: 210px minmax(0, 1fr); }
+    aside { position: sticky; top: 0; height: 100vh; padding: 26px 18px; background: var(--panel);
+      border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+    .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 28px; font-weight: 700; }
+    .mark { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px;
+      background: var(--ink); color: var(--panel); font: 700 11px var(--mono); }
+    nav { display: grid; gap: 4px; }
+    .navitem { display: flex; justify-content: space-between; padding: 9px 10px; border-radius: 7px;
+      color: var(--soft); text-decoration: none; font-size: 13px; }
+    .navitem.active { color: var(--ink); background: var(--wash); font-weight: 650; }
+    .navitem small { font: 11px var(--mono); color: var(--muted); }
+    .aside-foot { margin-top: auto; padding: 12px 8px 0; color: var(--muted); font: 10px/1.6 var(--mono); }
+    main { min-width: 0; padding: 34px clamp(20px, 4vw, 58px) 70px; }
+    .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
+    .eyebrow { margin-bottom: 7px; color: var(--muted); font: 10px var(--mono); letter-spacing: .12em;
+      text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(25px, 3vw, 34px); letter-spacing: -.035em; line-height: 1.1; }
+    .lede { margin: 10px 0 0; color: var(--soft); max-width: 62ch; }
+    .refresh { flex: none; border: 0; border-radius: 8px; padding: 10px 15px; cursor: pointer;
+      background: var(--ink); color: var(--panel); font-weight: 650; transition: opacity .15s, transform .15s; }
+    .refresh:hover { transform: translateY(-1px); }
+    .refresh:disabled { cursor: wait; opacity: .5; transform: none; }
+    .refresh:focus-visible, input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 7px 22px; margin-top: 22px; padding: 11px 0;
+      border-block: 1px solid var(--line); color: var(--muted); font: 11px var(--mono); }
+    .meta b { color: var(--soft); font-weight: 500; }
+    .progress { display: none; margin-top: 18px; padding: 14px 15px; background: var(--blue-wash);
+      border: 1px solid color-mix(in srgb, var(--blue) 28%, var(--line)); border-radius: 9px; }
+    .progress.on { display: block; }
+    .progress-head { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 9px; }
+    .progress-head b { font-size: 12px; }
+    .progress-head span { color: var(--soft); font: 11px var(--mono); }
+    .track { height: 5px; overflow: hidden; border-radius: 5px;
+      background: color-mix(in srgb, var(--blue) 15%, var(--panel)); }
+    .fill { width: 0; height: 100%; background: var(--blue); transition: width .35s ease; }
+    .progress-foot { display: flex; justify-content: space-between; margin-top: 8px;
+      color: var(--muted); font: 10px var(--mono); }
+    .kpis { display: grid; grid-template-columns: repeat(4, minmax(130px, 1fr)); margin-top: 20px;
+      border: 1px solid var(--line); background: var(--line); gap: 1px; }
+    .kpi { padding: 15px 16px; background: var(--panel); }
+    .kpi-label { color: var(--muted); font-size: 11px; }
+    .kpi-value { margin-top: 4px; font: 600 23px var(--mono); letter-spacing: -.04em; }
+    .kpi-sub { margin-top: 2px; color: var(--muted); font: 10px var(--mono); }
+    .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px;
+      margin: 24px 0 10px; }
+    .search { width: min(330px, 100%); border: 1px solid var(--line); border-radius: 7px;
+      background: var(--panel); color: var(--ink); padding: 9px 11px; }
+    .search::placeholder { color: var(--muted); }
+    .result-count { color: var(--muted); font: 11px var(--mono); white-space: nowrap; }
+    .table-card { overflow: hidden; background: var(--panel); border: 1px solid var(--line); }
+    .scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th { padding: 11px 14px; text-align: right; color: var(--muted); background: var(--wash);
+      border-bottom: 1px solid var(--line); font: 10px var(--mono); letter-spacing: .06em;
+      text-transform: uppercase; white-space: nowrap; }
+    td { padding: 12px 14px; text-align: right; border-bottom: 1px solid var(--line);
+      font: 12px var(--mono); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: var(--wash); }
+    th:first-child, td:first-child { text-align: left; }
+    .asset { display: grid; grid-template-columns: 42px minmax(150px, 1fr); align-items: center; gap: 10px; }
+    .ticker { font-weight: 750; color: var(--ink); }
+    .asset-name { overflow: hidden; text-overflow: ellipsis; color: var(--soft); font-family: var(--sans); }
+    .asset-sub { overflow: hidden; text-overflow: ellipsis; color: var(--muted); font: 10px var(--mono); }
+    .pos { color: var(--green); } .neg { color: var(--red); }
+    .badge { display: inline-flex; align-items: center; gap: 5px; color: var(--soft); }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+    .stale .dot { background: var(--red); }
+    .empty { padding: 42px; color: var(--muted); text-align: center; }
+    .note { padding: 11px 14px; border-top: 1px solid var(--line); color: var(--muted);
+      font-size: 11px; }
+    .error { color: var(--red); }
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+      aside { position: static; height: auto; padding: 14px 18px; flex-direction: row; align-items: center; }
+      .brand { padding: 0; } nav { margin-left: auto; } .aside-foot { display: none; }
+      main { padding-top: 25px; } .kpis { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 600px) {
+      .top { flex-direction: column; } .refresh { width: 100%; }
+      .kpis { grid-template-columns: 1fr 1fr; } .toolbar { align-items: stretch; flex-direction: column; }
+      .search { width: 100%; } .result-count { align-self: flex-end; }
+    }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="brand"><span class="mark">S</span><span>Savi</span></div>
+      <nav><a class="navitem active" href="#"><span>Tracked assets</span><small id="navCount">—</small></a></nav>
+      <div class="aside-foot">LOCAL DATA ROOM<br>TIINGO · IEX</div>
+    </aside>
+
+    <main>
+      <div class="top">
+        <div>
+          <div class="eyebrow">Market data · Overview</div>
+          <h1>Tracked assets</h1>
+          <p class="lede">Latest price and session volume across the research universe. Refreshes update a recent overlap through today without re-downloading history.</p>
+        </div>
+        <button class="refresh" id="refresh" type="button">Refresh to today</button>
+      </div>
+
+      <div class="meta">
+        <span><b>source</b> Tiingo IEX</span>
+        <span><b>frequency</b> 5 minute</span>
+        <span><b>latest session</b> <span id="latestMeta">—</span></span>
+        <span><b>dashboard read</b> <span id="readMeta">—</span></span>
+      </div>
+
+      <section class="progress" id="progress" aria-live="polite">
+        <div class="progress-head"><b id="progressTitle">Refreshing market data</b><span id="progressPct">0%</span></div>
+        <div class="track"><div class="fill" id="progressFill"></div></div>
+        <div class="progress-foot"><span id="progressDetail">Preparing request queue…</span><span id="progressBars">0 bars</span></div>
+      </section>
+
+      <section class="kpis" aria-label="Coverage summary">
+        <div class="kpi"><div class="kpi-label">Tracked assets</div><div class="kpi-value" id="assetCount">—</div><div class="kpi-sub">stocks, ETFs and proxies</div></div>
+        <div class="kpi"><div class="kpi-label">Current feeds</div><div class="kpi-value" id="currentCount">—</div><div class="kpi-sub">latest session ≤ 4 days</div></div>
+        <div class="kpi"><div class="kpi-label">Latest market date</div><div class="kpi-value" id="latestDate">—</div><div class="kpi-sub">most recent stored session</div></div>
+        <div class="kpi"><div class="kpi-label">Median volume pulse</div><div class="kpi-value" id="volumePulse">—</div><div class="kpi-sub">session / prior 20-session avg</div></div>
+      </section>
+
+      <div class="toolbar">
+        <input class="search" id="search" type="search" autocomplete="off" placeholder="Search symbol, name or theme…" aria-label="Search tracked assets">
+        <span class="result-count" id="resultCount">Loading…</span>
+      </div>
+
+      <section class="table-card">
+        <div class="scroll">
+          <table>
+            <thead><tr><th>Asset</th><th>Last price</th><th>Session</th><th>Volume</th><th>vs 20D</th><th>Last date</th><th>Coverage</th></tr></thead>
+            <tbody id="rows"><tr><td class="empty" colspan="7">Reading local market database…</td></tr></tbody>
+          </table>
+        </div>
+        <div class="note" id="volumeNote">Five-minute volume is IEX-only and is best used as a relative activity measure.</div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+      const $ = (id) => document.getElementById(id);
+      const state = { assets: [], query: "", polling: null, lastCompleted: 0 };
+      const fmtPrice = (value) => value == null ? "—" : "$" + value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const fmtVolume = (value) => {
+        if (value == null) return "—";
+        if (Math.abs(value) >= 1e9) return (value / 1e9).toFixed(2) + "B";
+        if (Math.abs(value) >= 1e6) return (value / 1e6).toFixed(2) + "M";
+        if (Math.abs(value) >= 1e3) return (value / 1e3).toFixed(1) + "K";
+        return value.toLocaleString("en-US");
+      };
+      const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[ch]);
+      const median = (values) => {
+        const rows = values.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+        if (!rows.length) return null;
+        const mid = Math.floor(rows.length / 2);
+        return rows.length % 2 ? rows[mid] : (rows[mid - 1] + rows[mid]) / 2;
+      };
+
+      async function api(path, options) {
+        const response = await fetch(path, options);
+        const payload = await response.json();
+        if (!response.ok && response.status !== 409) throw new Error(payload.error || `Request failed (${response.status})`);
+        return payload;
+      }
+
+      function renderRows() {
+        const query = state.query.trim().toLowerCase();
+        const visible = state.assets.filter((row) => [row.ticker, row.name, row.themes, row.exchange].join(" ").toLowerCase().includes(query));
+        $("resultCount").textContent = `${visible.length} of ${state.assets.length}`;
+        if (!visible.length) {
+          $("rows").innerHTML = '<tr><td class="empty" colspan="7">No tracked asset matches that search.</td></tr>';
+          return;
+        }
+        $("rows").innerHTML = visible.map((row) => {
+          const changeClass = row.change_pct > 0 ? "pos" : row.change_pct < 0 ? "neg" : "";
+          const change = row.change_pct == null ? "—" : `${row.change_pct > 0 ? "+" : ""}${row.change_pct.toFixed(2)}%`;
+          const pulse = row.volume_ratio == null ? "—" : row.volume_ratio.toFixed(2) + "×";
+          const pulseClass = row.volume_ratio >= 1.25 ? "pos" : row.volume_ratio <= .75 ? "neg" : "";
+          const label = row.frequency === "daily" ? "daily fallback" : row.exchange;
+          return `<tr>
+            <td><div class="asset"><span class="ticker">${escapeHtml(row.ticker)}</span><span><div class="asset-name">${escapeHtml(row.name)}</div><div class="asset-sub">${escapeHtml(label)}${row.themes ? " · " + escapeHtml(row.themes) : ""}</div></span></div></td>
+            <td>${fmtPrice(row.price)}</td><td class="${changeClass}">${change}</td><td>${fmtVolume(row.volume)}</td>
+            <td class="${pulseClass}">${pulse}</td><td><span class="badge ${row.status === "stale" ? "stale" : ""}"><i class="dot"></i>${escapeHtml(row.session_date || "—")}</span></td>
+            <td>${escapeHtml(row.coverage_start || "—")} → ${escapeHtml(row.coverage_end || "—")}</td>
+          </tr>`;
+        }).join("");
+      }
+
+      async function loadStocks() {
+        try {
+          const payload = await api("/api/stocks");
+          state.assets = payload.assets || [];
+          $("assetCount").textContent = payload.count ?? "—";
+          $("currentCount").textContent = payload.current_count ?? "—";
+          $("latestDate").textContent = payload.latest_session ? payload.latest_session.slice(5) : "—";
+          $("latestMeta").textContent = payload.latest_session || "—";
+          $("readMeta").textContent = payload.generated_at ? payload.generated_at.slice(0, 16).replace("T", " ") + "Z" : "—";
+          $("navCount").textContent = payload.count ?? "—";
+          $("volumeNote").textContent = payload.volume_note || "";
+          const pulse = median(state.assets.map((row) => row.volume_ratio));
+          $("volumePulse").textContent = pulse == null ? "—" : pulse.toFixed(2) + "×";
+          renderRows();
+        } catch (error) {
+          $("rows").innerHTML = `<tr><td class="empty error" colspan="7">${escapeHtml(error.message)}</td></tr>`;
+          $("resultCount").textContent = "Service unavailable";
+        }
+      }
+
+      function showProgress(status) {
+        const active = status.running || ["complete", "complete_with_errors", "failed"].includes(status.state);
+        $("progress").classList.toggle("on", active);
+        $("refresh").disabled = Boolean(status.running);
+        $("refresh").textContent = status.running ? "Refreshing…" : "Refresh to today";
+        const pct = status.percent || 0;
+        $("progressPct").textContent = pct.toFixed(0) + "%";
+        $("progressFill").style.width = pct + "%";
+        $("progressBars").textContent = `${(status.bars_received || 0).toLocaleString("en-US")} bars received`;
+        if (status.running) {
+          $("progressTitle").textContent = "Refreshing market data";
+          $("progressDetail").textContent = `${status.completed || 0} / ${status.total || 0} · ${status.current_symbol || "preparing"}`;
+        } else if (status.state === "complete") {
+          $("progressTitle").textContent = "Refresh complete";
+          $("progressDetail").textContent = `${status.completed} assets updated successfully`;
+        } else if (status.state === "complete_with_errors") {
+          $("progressTitle").textContent = "Refresh finished with warnings";
+          $("progressDetail").textContent = `${status.completed} checked · ${(status.errors || []).length} errors`;
+        } else if (status.state === "failed") {
+          $("progressTitle").textContent = "Refresh failed";
+          $("progressDetail").textContent = (status.errors || []).map((e) => e.message).join(" · ") || "Unknown error";
+        }
+      }
+
+      async function pollStatus() {
+        try {
+          const status = await api("/api/refresh");
+          showProgress(status);
+          if (status.completed > state.lastCompleted && status.completed % 5 === 0) loadStocks();
+          state.lastCompleted = status.completed;
+          if (status.running) {
+            state.polling = setTimeout(pollStatus, 1200);
+          } else {
+            state.polling = null;
+            if (status.state !== "idle") loadStocks();
+          }
+        } catch (error) {
+          $("progress").classList.add("on");
+          $("progressTitle").textContent = "Cannot read refresh status";
+          $("progressDetail").textContent = error.message;
+          $("refresh").disabled = false;
+        }
+      }
+
+      $("refresh").addEventListener("click", async () => {
+        $("refresh").disabled = true;
+        try {
+          const status = await api("/api/refresh", { method: "POST" });
+          showProgress(status);
+          if (state.polling) clearTimeout(state.polling);
+          pollStatus();
+        } catch (error) {
+          $("progress").classList.add("on");
+          $("progressTitle").textContent = "Refresh could not start";
+          $("progressDetail").textContent = error.message;
+          $("refresh").disabled = false;
+        }
+      });
+      $("search").addEventListener("input", (event) => { state.query = event.target.value; renderRows(); });
+      loadStocks();
+      pollStatus();
+    })();
+  </script>
+</body>
+</html>

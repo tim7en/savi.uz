@@ -688,6 +688,20 @@ A page of the actual distributions, built by calling the same `build_profile`
 the study calls, so the picture is the analysis rather than a second
 reconstruction of it.
 
+### Live tracked-assets dashboard
+
+```bash
+python scripts/run_dashboard.py --open
+```
+
+The first page lists every symbol in `data/intraday/bars.db` with its latest
+price, session return, summed session volume, 20-session relative-volume pulse
+and stored coverage. **Refresh to today** starts a background seven-day overlap
+download and reports symbol-by-symbol progress in the page. It is paced at 45
+Tiingo calls per hour, below the free-tier ceiling; a full 46-symbol refresh
+takes about one hour. The service binds to `127.0.0.1:8765` by default and has
+no external web dependencies.
+
 Each session is drawn as **two panels sharing one price axis**: price against
 time on the left, volume against price on the right. They are not merged --
 volume-at-price and price-over-time have different horizontal meanings, and one
