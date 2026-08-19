@@ -7,7 +7,11 @@ import unittest
 from datetime import date
 from pathlib import Path
 
-from savi_uz.fundamentals import FundamentalsRefreshManager, fundamentals_snapshot
+from savi_uz.fundamentals import (
+    EarningsEstimatesRefreshManager,
+    FundamentalsRefreshManager,
+    fundamentals_snapshot,
+)
 
 
 def write_payload(folder: Path, ticker: str, suffix: str, data: dict, stamp: str = "2026-05-12T09:00:00") -> None:
@@ -65,6 +69,8 @@ class FakeClient:
 
     def fetch(self, function: str, ticker: str) -> dict:
         self.calls.append((function, ticker))
+        if function == "EARNINGS_ESTIMATES":
+            return {"symbol": ticker, "estimates": []}
         if function == "OVERVIEW":
             return {"Symbol": ticker, "Name": "Test company"}
         if function == "EARNINGS":
@@ -107,6 +113,29 @@ class FundamentalsRefreshManagerTests(unittest.TestCase):
             self.assertEqual(resumed.status()["total"], 0)
             self.assertEqual(resumed.status()["skipped_current"], 5)
             self.assertEqual(len(FakeClient.calls), 5)
+
+    def test_forward_estimate_refresh_is_a_separate_one_call_per_symbol_queue(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            (folder / "sp500_symbols.json").write_text(
+                json.dumps({"date": "2026-01-01", "source": "test", "symbols": ["AAA", "BBB"]}),
+                encoding="utf-8",
+            )
+            FakeClient.calls = []
+            manager = EarningsEstimatesRefreshManager(
+                folder, client_factory=FakeClient, api_key_factory=lambda: "key",
+            )
+            self.assertTrue(manager.start())
+            for _ in range(100):
+                if not manager.status()["running"]:
+                    break
+                time.sleep(0.01)
+            self.assertEqual(manager.status()["state"], "complete")
+            self.assertEqual(manager.status()["files_updated"], 2)
+            self.assertEqual(FakeClient.calls, [
+                ("EARNINGS_ESTIMATES", "AAA"), ("EARNINGS_ESTIMATES", "BBB"),
+            ])
+            self.assertTrue((folder / "AAA_earnings_estimates.json").is_file())
 
 
 if __name__ == "__main__":

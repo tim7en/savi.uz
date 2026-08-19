@@ -138,7 +138,7 @@
       <div class="brand"><span class="mark">S</span><span>Savi</span></div>
       <nav>
         <button class="navitem active" type="button" data-page="stocks"><span>Tracked assets</span><small id="navCount">—</small></button>
-        <button class="navitem" type="button" data-page="fundamentals"><span>Earnings</span><small id="fundNavCount">—</small></button>
+        <button class="navitem" type="button" data-page="fundamentals"><span>Fundamentals</span><small id="fundNavCount">—</small></button>
         <button class="navitem" type="button" data-page="analysis"><span>Earnings analysis</span><small id="analysisNavCount">—</small></button>
         <button class="navitem" type="button" data-page="cross"><span>Cross assets</span><small id="crossNavCount">—</small></button>
         <button class="navitem" type="button" data-page="options"><span>Options &amp; GEX</span><small id="optionsNavCount">2</small></button>
@@ -300,7 +300,8 @@
       const state = {
         assets: [], query: "", polling: null, lastCompleted: 0,
         companies: [], fundQuery: "", fundSector: "", fundPolling: null,
-        fundamentalsLoaded: false,
+        fundamentalsLoaded: false, loaded: { stocks: true, fundamentals: false },
+        estimatePolling: null, crossPolling: null,
       };
       const fmtPrice = (value) => value == null ? "—" : "$" + value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const fmtVolume = (value) => {
@@ -325,6 +326,43 @@
         const mid = Math.floor(rows.length / 2);
         return rows.length % 2 ? rows[mid] : (rows[mid - 1] + rows[mid]) / 2;
       };
+      const pct = (value, digits = 1, ratio = false) => {
+        if (value == null) return "—";
+        const numeric = Number(value) * (ratio ? 100 : 1);
+        return `${numeric > 0 ? "+" : ""}${numeric.toFixed(digits)}%`;
+      };
+      const fmtRate = (value) => value == null ? "—" : Number(value).toFixed(2) + "%";
+      const fmtGex = (value) => value == null ? "—" : (value / 1e9).toFixed(1) + "B";
+      const latestValue = (points) => points && points.length ? points[points.length - 1][1] : null;
+
+      function drawChart(id, series, options = {}) {
+        const host = $(id);
+        const live = series.filter((row) => row.points && row.points.length);
+        if (!live.length) { host.innerHTML = '<div class="empty">No observations stored yet.</div>'; return; }
+        const W = 760, H = 220, m = { l: 52, r: 18, t: 18, b: 28 };
+        const points = live.flatMap((row) => row.points.filter((point) => point[1] != null).map((point) => [new Date(String(point[0]).slice(0, 10) + "T00:00:00Z").getTime(), Number(point[1])])).filter((point) => Number.isFinite(point[0]) && Number.isFinite(point[1]));
+        if (!points.length) { host.innerHTML = '<div class="empty">No numeric observations.</div>'; return; }
+        let xmin = Math.min(...points.map((p) => p[0])), xmax = Math.max(...points.map((p) => p[0]));
+        let ymin = Math.min(...points.map((p) => p[1])), ymax = Math.max(...points.map((p) => p[1]));
+        if (options.zero) { ymin = Math.min(ymin, 0); ymax = Math.max(ymax, 0); }
+        const pad = (ymax - ymin || Math.abs(ymax) || 1) * .08; ymin -= pad; ymax += pad;
+        const X = (value) => m.l + (value - xmin) / (xmax - xmin || 1) * (W - m.l - m.r);
+        const Y = (value) => m.t + (ymax - value) / (ymax - ymin || 1) * (H - m.t - m.b);
+        const colors = ["var(--blue)", "var(--green)", "var(--red)", "#b27b16", "#8b67d7"];
+        let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${escapeHtml(options.label || "Time series chart")}">`;
+        for (let i = 0; i < 4; i++) {
+          const value = ymin + (ymax - ymin) * i / 3, y = Y(value);
+          svg += `<line class="chart-grid" x1="${m.l}" y1="${y}" x2="${W-m.r}" y2="${y}"/><text class="chart-label" x="${m.l-7}" y="${y+3}" text-anchor="end">${escapeHtml((options.format || ((v) => v.toFixed(1)))(value))}</text>`;
+        }
+        if (options.zero && ymin < 0 && ymax > 0) svg += `<line x1="${m.l}" y1="${Y(0)}" x2="${W-m.r}" y2="${Y(0)}" stroke="var(--muted)" stroke-dasharray="3 3"/>`;
+        live.forEach((row, index) => {
+          const mapped = row.points.filter((point) => point[1] != null).map((point) => [X(new Date(String(point[0]).slice(0, 10) + "T00:00:00Z").getTime()), Y(Number(point[1]))]).filter((p) => Number.isFinite(p[0]) && Number.isFinite(p[1]));
+          svg += `<polyline fill="none" stroke="${colors[index % colors.length]}" stroke-width="2" points="${mapped.map((p) => p.join(",")).join(" ")}"/>`;
+        });
+        svg += `<text class="chart-label" x="${m.l}" y="${H-7}">${new Date(xmin).toISOString().slice(0,10)}</text><text class="chart-label" x="${W-m.r}" y="${H-7}" text-anchor="end">${new Date(xmax).toISOString().slice(0,10)}</text></svg>`;
+        svg += `<div style="display:flex;gap:14px;flex-wrap:wrap;padding:0 40px 8px">${live.map((row,index) => `<span style="font:10px var(--mono);color:var(--muted)"><i style="display:inline-block;width:12px;height:2px;background:${colors[index%colors.length]};vertical-align:middle;margin-right:5px"></i>${escapeHtml(row.name)}</span>`).join("")}</div>`;
+        host.innerHTML = svg;
+      }
 
       async function api(path, options) {
         const response = await fetch(path, options);
@@ -521,6 +559,179 @@
         }
       }
 
+      const metricHeader = (labels) => `<div class="metric-row head">${labels.map((label, index) => index ? `<span>${escapeHtml(label)}</span>` : `<strong>${escapeHtml(label)}</strong>`).join("")}</div>`;
+      const metricRow = (label, values) => `<div class="metric-row"><strong>${escapeHtml(label)}</strong>${values.map((value) => `<span>${escapeHtml(value == null ? "—" : String(value))}</span>`).join("")}</div>`;
+
+      async function loadEarningsAnalysis() {
+        try {
+          const payload = await api("/api/earnings-analysis");
+          const latest = payload.factset_latest || {};
+          $("analysisLatest").textContent = latest.report_date || "—";
+          $("forwardPe").textContent = latest.forward_12m_pe == null ? "—" : Number(latest.forward_12m_pe).toFixed(1) + "×";
+          $("estimatedGrowth").textContent = fmtRate(latest.estimated_earnings_growth ?? latest.estimated_growth_at_quarter_start);
+          $("earningsBeat").textContent = fmtRate(latest.pct_positive_eps);
+          $("revisionBreadth").textContent = payload.positive_revision_pct == null ? "—" : Number(payload.positive_revision_pct).toFixed(0) + "%";
+          $("analysisNavCount").textContent = payload.estimate_covered ?? 0;
+          const history = payload.factset_history || [];
+          drawChart("peChart", [
+            { name: "Forward P/E", points: history.map((row) => [row.report_date, row.forward_12m_pe]) },
+            { name: "5Y average", points: history.map((row) => [row.report_date, row.pe_5y_average]) },
+            { name: "10Y average", points: history.map((row) => [row.report_date, row.pe_10y_average]) },
+          ], { label: "Forward P/E history", format: (value) => value.toFixed(1) + "×" });
+          drawChart("growthChart", [
+            { name: "Blended", points: history.map((row) => [row.report_date, row.blended_earnings_growth]) },
+            { name: "Estimate", points: history.map((row) => [row.report_date, row.estimated_earnings_growth]) },
+          ], { label: "Earnings growth history", format: (value) => value.toFixed(0) + "%", zero: true });
+          const sectors = (payload.sectors || []).sort((a, b) => (b.positive_revision_pct ?? -1) - (a.positive_revision_pct ?? -1));
+          $("sectorRevisionRows").innerHTML = sectors.length ? metricHeader(["Sector", "Median 30D", "Positive", "Net breadth"]) + sectors.map((row) => metricRow(row.sector, [fmtRate(row.median_eps_revision_pct), fmtRate(row.positive_revision_pct), row.net_revision_breadth])).join("") : '<div class="empty">Forward estimates have not been downloaded yet.</div>';
+          const companies = (payload.estimates || []).filter((row) => row.eps_revision_pct != null).sort((a, b) => Math.abs(b.eps_revision_pct) - Math.abs(a.eps_revision_pct)).slice(0, 14);
+          $("companyRevisionRows").innerHTML = companies.length ? metricHeader(["Company", "Period", "EPS estimate", "30D change"]) + companies.map((row) => metricRow(row.ticker, [row.period || "—", row.eps_estimate == null ? "—" : "$" + Number(row.eps_estimate).toFixed(2), fmtRate(row.eps_revision_pct)])).join("") : '<div class="empty">Forward estimates have not been downloaded yet.</div>';
+        } catch (error) {
+          $("companyRevisionRows").innerHTML = `<div class="empty error">${escapeHtml(error.message)}</div>`;
+        }
+      }
+
+      function showEstimateProgress(status) {
+        const active = status.running || ["complete", "complete_with_errors", "failed"].includes(status.state);
+        $("estimateProgress").classList.toggle("on", active);
+        $("estimateRefresh").disabled = Boolean(status.running);
+        $("estimateRefresh").textContent = status.running ? "Updating…" : "Update forward estimates";
+        const value = status.percent || 0;
+        $("estimateProgressPct").textContent = value.toFixed(0) + "%";
+        $("estimateProgressFill").style.width = value + "%";
+        $("estimateProgressEta").textContent = status.running ? etaLabel(status.estimated_seconds_remaining) : `${status.files_updated || 0} files updated`;
+        if (status.running) {
+          $("estimateProgressTitle").textContent = "Updating forward estimates";
+          $("estimateProgressDetail").textContent = `${status.completed || 0} / ${status.total || 0} · ${status.current_symbol || "preparing"}`;
+        } else {
+          $("estimateProgressTitle").textContent = status.state === "failed" ? "Estimate update failed" : "Forward estimates checked";
+          $("estimateProgressDetail").textContent = `${status.files_updated || 0} updated · ${status.skipped_current || 0} already current · ${(status.errors || []).length} errors`;
+        }
+      }
+
+      async function pollEstimateStatus() {
+        try {
+          const status = await api("/api/earnings-analysis/refresh");
+          showEstimateProgress(status);
+          if (status.running) state.estimatePolling = setTimeout(pollEstimateStatus, 1200);
+          else { state.estimatePolling = null; if (status.state !== "idle") loadEarningsAnalysis(); }
+        } catch (error) {
+          $("estimateProgress").classList.add("on");
+          $("estimateProgressDetail").textContent = error.message;
+          $("estimateRefresh").disabled = false;
+        }
+      }
+
+      async function loadCrossAssets() {
+        try {
+          const payload = await api("/api/cross-assets");
+          $("crossRead").textContent = payload.generated_at ? payload.generated_at.slice(0, 16).replace("T", " ") + "Z" : "—";
+          $("crossNavCount").textContent = payload.direct_total ?? "—";
+          $("directCoverage").textContent = `${payload.direct_covered || 0}/${payload.direct_total || 0}`;
+          const ten = latestValue(payload.yields?.DGS10), two = latestValue(payload.yields?.DGS2), ovx = latestValue(payload.volatility?.OVXCLS);
+          $("tenYearYield").textContent = ten == null ? "—" : Number(ten).toFixed(2) + "%";
+          $("curveSlope").textContent = ten == null || two == null ? "—" : (ten - two > 0 ? "+" : "") + (ten - two).toFixed(2) + "pp";
+          $("oilVol").textContent = ovx == null ? "—" : Number(ovx).toFixed(1);
+          drawChart("yieldChart", ["DGS2", "DGS5", "DGS10", "DGS30"].map((key) => ({ name: key.replace("DGS", "") + "Y", points: payload.yields?.[key] || [] })), { label: "Treasury curve history", format: (value) => value.toFixed(1) + "%" });
+          const labels = { GLD: "Gold / GLD", SLV: "Silver / SLV", XLE: "Energy / XLE", TBT: "Short duration / TBT", TMF: "Long duration / TMF" };
+          const proxies = Object.values(payload.proxies || {});
+          $("proxyRows").innerHTML = metricHeader(["Proxy", "Date", "Price", "Daily move"]) + proxies.map((row) => metricRow(labels[row.ticker] || row.ticker, [row.latest?.[0] || "—", row.latest?.[1] == null ? "—" : "$" + Number(row.latest[1]).toFixed(2), fmtRate(row.change_pct)])).join("");
+          const direct = Object.values(payload.direct || {});
+          $("directRows").innerHTML = metricHeader(["Series", "Observation", "Latest", "Cache updated"]) + direct.map((row) => metricRow(row.label, [row.latest?.[0] || "—", row.latest?.[1] ?? "—", row.updated_at ? row.updated_at.slice(0, 10) : "missing"])).join("");
+        } catch (error) {
+          $("directRows").innerHTML = `<div class="empty error">${escapeHtml(error.message)}</div>`;
+        }
+      }
+
+      function showCrossProgress(status) {
+        const active = status.running || ["complete", "complete_with_errors", "failed"].includes(status.state);
+        $("crossProgress").classList.toggle("on", active);
+        $("crossRefresh").disabled = Boolean(status.running);
+        $("crossRefresh").textContent = status.running ? "Updating…" : "Update direct series";
+        const value = status.percent || 0;
+        $("crossProgressPct").textContent = value.toFixed(0) + "%";
+        $("crossProgressFill").style.width = value + "%";
+        $("crossProgressFiles").textContent = `${status.files_updated || 0} files updated`;
+        $("crossProgressTitle").textContent = status.running ? "Updating cross assets" : (status.state === "failed" ? "Cross-asset update failed" : "Direct series checked");
+        $("crossProgressDetail").textContent = status.running ? `${status.completed || 0} / ${status.total || 0} · ${status.current_series || "preparing"}` : `${status.completed || 0} checked · ${(status.errors || []).length} errors`;
+      }
+
+      async function pollCrossStatus() {
+        try {
+          const status = await api("/api/cross-assets/refresh");
+          showCrossProgress(status);
+          if (status.running) state.crossPolling = setTimeout(pollCrossStatus, 1200);
+          else { state.crossPolling = null; if (status.state !== "idle") loadCrossAssets(); }
+        } catch (error) {
+          $("crossProgress").classList.add("on");
+          $("crossProgressDetail").textContent = error.message;
+          $("crossRefresh").disabled = false;
+        }
+      }
+
+      async function loadOptions() {
+        try {
+          const payload = await api("/api/options");
+          $("optionsLatest").textContent = payload.latest_date || "—";
+          const spy = payload.symbols?.SPY || {}, qqq = payload.symbols?.QQQ || {};
+          const spyLatest = spy.latest || {}, qqqLatest = qqq.latest || {};
+          $("spyGex").textContent = fmtGex(spyLatest.net_gex);
+          $("qqqGex").textContent = fmtGex(qqqLatest.net_gex);
+          $("spyGexSub").textContent = spyLatest.gex_percentile == null ? "—" : Number(spyLatest.gex_percentile).toFixed(0) + "th percentile";
+          $("qqqGexSub").textContent = qqqLatest.gex_percentile == null ? "—" : Number(qqqLatest.gex_percentile).toFixed(0) + "th percentile";
+          $("spyIv").textContent = pct(spyLatest.atm_iv, 1, true);
+          $("spyZeroDte").textContent = pct(spyLatest.zero_dte_share, 1, true);
+          const symbols = [["SPY", spy], ["QQQ", qqq]];
+          drawChart("gexChart", symbols.map(([name, row]) => ({ name, points: (row.history || []).map((point) => [point.date, point.net_gex == null ? null : point.net_gex / 1e9]) })), { label: "Net GEX", format: (value) => "$" + value.toFixed(1) + "bn", zero: true });
+          drawChart("ivChart", symbols.map(([name, row]) => ({ name, points: (row.history || []).map((point) => [point.date, point.atm_iv == null ? null : point.atm_iv * 100]) })), { label: "ATM implied volatility", format: (value) => value.toFixed(0) + "%" });
+          $("optionRows").innerHTML = metricHeader(["Underlying", "Put/call OI", "Gamma wall", "Put wall"]) + symbols.map(([name, row]) => metricRow(name, [row.latest?.put_call_oi == null ? "—" : Number(row.latest.put_call_oi).toFixed(2) + "×", row.marketdata_latest?.gamma_wall_strike == null ? "—" : "$" + Number(row.marketdata_latest.gamma_wall_strike).toFixed(0), row.put_wall_strike == null ? "—" : "$" + Number(row.put_wall_strike).toFixed(0)])).join("");
+          $("optionPlanNote").textContent = payload.plan_note || "";
+        } catch (error) {
+          $("optionRows").innerHTML = `<div class="empty error">${escapeHtml(error.message)}</div>`;
+        }
+      }
+
+      async function loadCftc() {
+        try {
+          const payload = await api("/api/cftc"), markets = payload.markets || [];
+          $("cftcLatest").textContent = payload.latest_date || "—";
+          $("cftcMarkets").textContent = markets.length;
+          $("cftcNavCount").textContent = markets.length;
+          const valid = markets.filter((row) => row.net_share_pct != null);
+          const long = valid.reduce((best, row) => !best || row.net_share_pct > best.net_share_pct ? row : best, null);
+          const short = valid.reduce((best, row) => !best || row.net_share_pct < best.net_share_pct ? row : best, null);
+          $("crowdedLong").textContent = long?.label || "—"; $("crowdedLongSub").textContent = long ? fmtRate(long.net_share_pct) + " of OI" : "—";
+          $("crowdedShort").textContent = short?.label || "—"; $("crowdedShortSub").textContent = short ? fmtRate(short.net_share_pct) + " of OI" : "—";
+          $("cftcMovers").textContent = valid.filter((row) => Math.abs(row.weekly_change_pct_points || 0) >= 2).length;
+          $("cftcRows").innerHTML = metricHeader(["Market", "Net / OI", "Weekly Δ", "3Y percentile"]) + markets.map((row) => metricRow(row.label, [fmtRate(row.net_share_pct), row.weekly_change_pct_points == null ? "—" : fmtRate(row.weekly_change_pct_points), row.percentile_3y == null ? "—" : Number(row.percentile_3y).toFixed(0) + "th"])).join("");
+          drawChart("cftcChart", markets.map((row) => ({ name: row.label, points: (row.history || []).map((point) => [point[0], point[1]]) })), { label: "CFTC net position share", format: (value) => value.toFixed(0) + "%", zero: true });
+        } catch (error) {
+          $("cftcRows").innerHTML = `<div class="empty error">${escapeHtml(error.message)}</div>`;
+        }
+      }
+
+      async function loadFed() {
+        try {
+          const payload = await api("/api/fed"), latest = payload.latest || {}, series = payload.series || {};
+          const value = (key) => latest[key]?.[1], dated = Object.values(latest).filter(Boolean).map((row) => row[0]);
+          $("fedLatest").textContent = dated.sort().at(-1) || "—";
+          $("policyDirection").textContent = payload.policy_direction_3m || "—";
+          $("fedFunds").textContent = value("DFF") == null ? "—" : Number(value("DFF")).toFixed(2) + "%";
+          $("fedFundsSub").textContent = payload.policy_change_3m_pct_points == null ? "—" : `${payload.policy_change_3m_pct_points > 0 ? "+" : ""}${Number(payload.policy_change_3m_pct_points).toFixed(2)}pp over 3m`;
+          $("targetRange").textContent = value("DFEDTARL") == null || value("DFEDTARU") == null ? "—" : `${Number(value("DFEDTARL")).toFixed(2)}–${Number(value("DFEDTARU")).toFixed(2)}%`;
+          $("sofr").textContent = value("SOFR") == null ? "—" : Number(value("SOFR")).toFixed(2) + "%";
+          $("fedBalance").textContent = value("WALCL") == null ? "—" : "$" + (Number(value("WALCL")) / 1e6).toFixed(2) + "tn";
+          $("fedBalanceSub").textContent = payload.balance_change_13w_pct == null ? "—" : fmtRate(payload.balance_change_13w_pct) + " over 13w";
+          drawChart("policyChart", ["DFF", "IORB", "SOFR"].map((key) => ({ name: key, points: series[key] || [] })), { label: "Policy rates", format: (point) => point.toFixed(1) + "%" });
+          drawChart("balanceChart", ["WALCL", "WRESBAL", "WTREGEN"].map((key) => ({ name: key, points: (series[key] || []).map((point) => [point[0], point[1] == null ? null : point[1] / 1e6]) })), { label: "Balance sheet components", format: (point) => "$" + point.toFixed(1) + "tn" });
+          $("fedRows").innerHTML = metricHeader(["Component", "Latest", "Date", "Unit"]) + [
+            ["Reserve balances", "WRESBAL", "$m"], ["Treasury General Account", "WTREGEN", "$m"], ["Overnight reverse repo", "RRPONTSYD", "$bn"]
+          ].map(([label, key, unit]) => metricRow(label, [value(key) == null ? "—" : Number(value(key)).toLocaleString("en-US", { maximumFractionDigits: 1 }), latest[key]?.[0] || "—", unit])).join("") + metricRow("Liquidity proxy", [payload.liquidity_proxy_millions == null ? "—" : Number(payload.liquidity_proxy_millions).toLocaleString("en-US", { maximumFractionDigits: 0 }), "latest aligned values", "$m"]);
+        } catch (error) {
+          $("fedRows").innerHTML = `<div class="empty error">${escapeHtml(error.message)}</div>`;
+        }
+      }
+
       $("refresh").addEventListener("click", async () => {
         $("refresh").disabled = true;
         try {
@@ -552,15 +763,47 @@
           $("fundRefresh").disabled = false;
         }
       });
+      $("estimateRefresh").addEventListener("click", async () => {
+        $("estimateRefresh").disabled = true;
+        try {
+          const status = await api("/api/earnings-analysis/refresh", { method: "POST" });
+          showEstimateProgress(status);
+          if (state.estimatePolling) clearTimeout(state.estimatePolling);
+          pollEstimateStatus();
+        } catch (error) {
+          $("estimateProgress").classList.add("on");
+          $("estimateProgressDetail").textContent = error.message;
+          $("estimateRefresh").disabled = false;
+        }
+      });
+      $("crossRefresh").addEventListener("click", async () => {
+        $("crossRefresh").disabled = true;
+        try {
+          const status = await api("/api/cross-assets/refresh", { method: "POST" });
+          showCrossProgress(status);
+          if (state.crossPolling) clearTimeout(state.crossPolling);
+          pollCrossStatus();
+        } catch (error) {
+          $("crossProgress").classList.add("on");
+          $("crossProgressDetail").textContent = error.message;
+          $("crossRefresh").disabled = false;
+        }
+      });
+      const pages = {
+        stocks: $("stocksPage"), fundamentals: $("fundamentalsPage"), analysis: $("analysisPage"),
+        cross: $("crossPage"), options: $("optionsPage"), cftc: $("cftcPage"), fed: $("fedPage"),
+      };
+      const loaders = {
+        fundamentals: () => { loadFundamentals(); pollFundStatus(); },
+        analysis: () => { loadEarningsAnalysis(); pollEstimateStatus(); },
+        cross: () => { loadCrossAssets(); pollCrossStatus(); },
+        options: loadOptions, cftc: loadCftc, fed: loadFed,
+      };
       document.querySelectorAll("[data-page]").forEach((button) => button.addEventListener("click", () => {
         const page = button.dataset.page;
         document.querySelectorAll("[data-page]").forEach((item) => item.classList.toggle("active", item === button));
-        $("stocksPage").hidden = page !== "stocks";
-        $("fundamentalsPage").hidden = page !== "fundamentals";
-        if (page === "fundamentals" && !state.fundamentalsLoaded) {
-          loadFundamentals();
-          pollFundStatus();
-        }
+        Object.entries(pages).forEach(([name, element]) => { element.hidden = name !== page; });
+        if (!state.loaded[page] && loaders[page]) { state.loaded[page] = true; loaders[page](); }
         window.scrollTo({ top: 0, behavior: "smooth" });
       }));
       loadStocks();
