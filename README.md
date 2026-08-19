@@ -714,7 +714,14 @@ folder, paced at 72 requests/minute under the 75/minute premium-plan limit
 job resumable after a server or network interruption.
 
 The earnings-analysis page combines the stored FactSet aggregate history with
-Alpha Vantage `EARNINGS_ESTIMATES`; its separate refresh is one call per symbol.
+Alpha Vantage `EARNINGS` actual/report-time consensus history,
+`EARNINGS_ESTIMATES` 7/30/60/90-day revision fields and the three-month
+`EARNINGS_CALENDAR`. It reports quarterly beat/miss history, forecast
+convergence, forward revision breadth and dispersion, sector scorecards,
+recent results, upcoming events and a searchable company scorecard. Its
+separate refresh is two calls per stale symbol plus one calendar call; same-day
+files are skipped. Historical backtests should use the consensus embedded in
+the reported `EARNINGS` event, not a current forward-estimate file.
 Cross assets combine local FRED rates, Tiingo ETF proxies and 11 direct Alpha
 Vantage commodity/Treasury series. Options use the existing Alpha Vantage
 historical-chain and MarketData.app GEX databases. Real-time Alpha Vantage

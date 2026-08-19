@@ -8,6 +8,8 @@ never diverge into two copies of the truth.
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 import os
 import threading
@@ -40,6 +42,10 @@ FUNDAMENTAL_ENDPOINTS: tuple[tuple[str, str, str], ...] = (
 )
 EARNINGS_ESTIMATES_ENDPOINTS: tuple[tuple[str, str, str], ...] = (
     ("EARNINGS_ESTIMATES", "earnings_estimates", "Forward earnings estimates"),
+)
+EARNINGS_ANALYSIS_ENDPOINTS: tuple[tuple[str, str, str], ...] = (
+    ("EARNINGS", "earnings", "Reported earnings history"),
+    *EARNINGS_ESTIMATES_ENDPOINTS,
 )
 
 
@@ -416,3 +422,51 @@ class EarningsEstimatesRefreshManager(FundamentalsRefreshManager):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.endpoints = EARNINGS_ESTIMATES_ENDPOINTS
+
+
+def refresh_earnings_calendar(
+    folder: str | Path,
+    api_key: str,
+    horizon: str = "3month",
+) -> int:
+    """Download the official upcoming calendar CSV and cache universe rows."""
+
+    root = Path(folder)
+    symbols, _ = load_universe(root)
+    query = urlencode({
+        "function": "EARNINGS_CALENDAR", "horizon": horizon, "apikey": api_key,
+    })
+    request = Request(f"{BASE_URL}?{query}", headers={"User-Agent": USER_AGENT})
+    with urlopen(request, timeout=60) as response:  # nosec B310
+        body = response.read().decode("utf-8-sig")
+    rows = list(csv.DictReader(io.StringIO(body)))
+    if not rows or "symbol" not in rows[0]:
+        raise FundamentalsSourceError("Alpha Vantage returned no earnings calendar data")
+    allowed = set(symbols)
+    selected = [row for row in rows if row.get("symbol") in allowed]
+    wrapper = {
+        "timestamp": datetime.now().astimezone().isoformat(),
+        "horizon": horizon,
+        "rows": selected,
+    }
+    path = root / "earnings_calendar.json"
+    temporary = path.with_suffix(path.suffix + ".tmp-" + uuid.uuid4().hex[:8])
+    temporary.write_text(json.dumps(wrapper, indent=2), encoding="utf-8")
+    os.replace(temporary, path)
+    return len(selected)
+
+
+class EarningsAnalysisRefreshManager(FundamentalsRefreshManager):
+    """Refresh actual/consensus history, forward estimates, and calendar."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.endpoints = EARNINGS_ANALYSIS_ENDPOINTS
+
+    def _run(self, api_key: str, force: bool) -> None:
+        self._set(current_symbol="CALENDAR", current_dataset="Upcoming earnings calendar")
+        try:
+            refresh_earnings_calendar(self.folder, api_key)
+        except Exception as exc:
+            self._error("CALENDAR", "Upcoming earnings calendar", str(exc))
+        super()._run(api_key, force)

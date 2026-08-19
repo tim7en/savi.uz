@@ -75,6 +75,20 @@ def _last(points: list[list[Any]]) -> list[Any] | None:
     return points[-1] if points else None
 
 
+def _revision_pct(current: float | None, prior: float | None) -> float | None:
+    if current is None or prior in (None, 0.0):
+        return None
+    return (current - prior) / abs(prior) * 100.0
+
+
+def _quarter_label(value: str) -> str:
+    try:
+        parsed = date.fromisoformat(value[:10])
+    except (TypeError, ValueError):
+        return "Unknown"
+    return f"{parsed.year} Q{(parsed.month - 1) // 3 + 1}"
+
+
 def earnings_analysis_snapshot(
     equity_db: str | Path = EQUITY_DB,
     fundamentals_folder: str | Path = FUNDAMENTALS_FOLDER,
@@ -100,34 +114,143 @@ def earnings_analysis_snapshot(
     folder = Path(fundamentals_folder)
     symbols, universe = load_universe(folder)
     estimates: list[dict[str, Any]] = []
+    historical_reports: list[dict[str, Any]] = []
+    company_summaries: list[dict[str, Any]] = []
+    company_meta: dict[str, dict[str, str]] = {}
+    earnings_timestamps: list[str] = []
+    estimate_timestamps: list[str] = []
+    forecast_accuracy: dict[int, list[tuple[float, float | None, float | None]]] = {
+        90: [], 60: [], 30: [], 7: [], 0: [],
+    }
 
     for ticker in symbols:
         overview, _ = _read_payload(folder, ticker, "overview")
+        company_meta[ticker] = {
+            "name": str(overview.get("Name") or ticker),
+            "sector": str(overview.get("Sector") or "Unclassified"),
+        }
+        earnings_document, earnings_updated = _read_payload(folder, ticker, "earnings")
+        if earnings_updated:
+            earnings_timestamps.append(str(earnings_updated))
+        company_reports = []
+        for raw in earnings_document.get("quarterlyEarnings", []):
+            if not isinstance(raw, dict) or not raw.get("reportedDate"):
+                continue
+            actual = _float(raw.get("reportedEPS"))
+            consensus = _float(raw.get("estimatedEPS"))
+            surprise = _float(raw.get("surprisePercentage"))
+            if surprise is None and actual is not None and consensus not in (None, 0.0):
+                surprise = (actual - consensus) / abs(consensus) * 100.0
+            row = {
+                "ticker": ticker,
+                "name": company_meta[ticker]["name"],
+                "sector": company_meta[ticker]["sector"],
+                "fiscal_date": raw.get("fiscalDateEnding"),
+                "report_date": raw.get("reportedDate"),
+                "report_time": raw.get("reportTime"),
+                "actual_eps": actual,
+                "consensus_eps": consensus,
+                "surprise_pct": _round(surprise, 3),
+            }
+            company_reports.append(row)
+            historical_reports.append(row)
+        company_reports.sort(key=lambda row: str(row["report_date"]), reverse=True)
+        actual_by_fiscal = {
+            str(row["fiscal_date"]): row["actual_eps"]
+            for row in company_reports if row["fiscal_date"] and row["actual_eps"] is not None
+        }
+        recent = [row for row in company_reports[:4] if row["surprise_pct"] is not None]
+        recent_eight = [row for row in company_reports[:8] if row["surprise_pct"] is not None]
+        streak = None
+        if company_reports and company_reports[0]["surprise_pct"] is not None:
+            direction = 1 if company_reports[0]["surprise_pct"] > 0 else -1 if company_reports[0]["surprise_pct"] < 0 else 0
+            streak = 0
+            for row in company_reports:
+                surprise = row["surprise_pct"]
+                if surprise is None or (1 if surprise > 0 else -1 if surprise < 0 else 0) != direction:
+                    break
+                streak += direction
+        company_summaries.append({
+            "ticker": ticker,
+            "name": company_meta[ticker]["name"],
+            "sector": company_meta[ticker]["sector"],
+            "latest_report": company_reports[0]["report_date"] if company_reports else None,
+            "latest_actual_eps": company_reports[0]["actual_eps"] if company_reports else None,
+            "latest_consensus_eps": company_reports[0]["consensus_eps"] if company_reports else None,
+            "latest_surprise_pct": company_reports[0]["surprise_pct"] if company_reports else None,
+            "quarters": len(company_reports),
+            "trailing_4_beat_rate": _round(sum(row["surprise_pct"] > 0 for row in recent) / len(recent) * 100.0, 1) if recent else None,
+            "trailing_4_median_surprise_pct": _round(_median([row["surprise_pct"] for row in recent]), 3),
+            "trailing_8_median_abs_error_pct": _round(_median([abs(row["surprise_pct"]) for row in recent_eight]), 3),
+            "streak": streak,
+            "earnings_updated_at": earnings_updated,
+        })
+
         document, updated = _read_payload(folder, ticker, "earnings_estimates")
+        if updated:
+            estimate_timestamps.append(str(updated))
         rows = document.get("estimates", []) if isinstance(document, dict) else []
         quarter_rows = [row for row in rows if isinstance(row, dict) and row.get("horizon") == "fiscal quarter"]
+        for archived in quarter_rows:
+            fiscal_date = str(archived.get("date") or "")
+            actual = actual_by_fiscal.get(fiscal_date)
+            if actual is None or fiscal_date >= today.isoformat():
+                continue
+            for days, field in (
+                (90, "eps_estimate_average_90_days_ago"),
+                (60, "eps_estimate_average_60_days_ago"),
+                (30, "eps_estimate_average_30_days_ago"),
+                (7, "eps_estimate_average_7_days_ago"),
+                (0, "eps_estimate_average"),
+            ):
+                forecast = _float(archived.get(field))
+                if forecast is None:
+                    continue
+                raw_error = forecast - actual
+                relative_error = raw_error / abs(actual) * 100.0 if abs(actual) >= 0.10 else None
+                forecast_accuracy[days].append((abs(raw_error), abs(relative_error) if relative_error is not None else None, relative_error))
         future = [row for row in quarter_rows if str(row.get("date") or "") >= today.isoformat()]
         selected = min(future, key=lambda row: str(row.get("date")), default={})
-        if not selected and quarter_rows:
-            selected = max(quarter_rows, key=lambda row: str(row.get("date") or ""))
         current = _float(selected.get("eps_estimate_average"))
-        thirty = _float(selected.get("eps_estimate_average_30_days_ago"))
-        revision = ((current / thirty - 1.0) * 100.0) if current is not None and thirty not in (None, 0.0) else None
+        priors = {
+            days: _float(selected.get(f"eps_estimate_average_{days}_days_ago"))
+            for days in (7, 30, 60, 90)
+        }
+        revisions = {days: _revision_pct(current, prior) for days, prior in priors.items()}
         up = _float(selected.get("eps_estimate_revision_up_trailing_30_days"))
         down = _float(selected.get("eps_estimate_revision_down_trailing_30_days"))
+        high = _float(selected.get("eps_estimate_high"))
+        low = _float(selected.get("eps_estimate_low"))
+        dispersion = (high - low) / abs(current) * 100.0 if high is not None and low is not None and current not in (None, 0.0) else None
+        year_rows = [row for row in rows if isinstance(row, dict) and row.get("horizon") == "fiscal year" and str(row.get("date") or "") >= today.isoformat()]
+        forward_year = min(year_rows, key=lambda row: str(row.get("date")), default={})
+        year_current = _float(forward_year.get("eps_estimate_average"))
+        year_prior = _float(forward_year.get("eps_estimate_average_30_days_ago"))
         estimates.append({
             "ticker": ticker,
-            "name": overview.get("Name") or ticker,
-            "sector": overview.get("Sector") or "Unclassified",
+            "name": company_meta[ticker]["name"],
+            "sector": company_meta[ticker]["sector"],
             "period": selected.get("date"),
             "eps_estimate": current,
-            "eps_30d_ago": thirty,
-            "eps_revision_pct": _round(revision, 3),
+            "eps_high": high,
+            "eps_low": low,
+            "eps_dispersion_pct": _round(dispersion, 3),
+            "eps_7d_ago": priors[7],
+            "eps_30d_ago": priors[30],
+            "eps_60d_ago": priors[60],
+            "eps_90d_ago": priors[90],
+            "eps_revision_7d_pct": _round(revisions[7], 3),
+            "eps_revision_pct": _round(revisions[30], 3),
+            "eps_revision_60d_pct": _round(revisions[60], 3),
+            "eps_revision_90d_pct": _round(revisions[90], 3),
             "analysts": _float(selected.get("eps_estimate_analyst_count")),
             "revision_up_30d": up,
             "revision_down_30d": down,
             "revision_breadth": (up - down) if up is not None and down is not None else None,
             "revenue_estimate": _float(selected.get("revenue_estimate_average")),
+            "forward_year": forward_year.get("date"),
+            "forward_year_eps": year_current,
+            "forward_year_revision_pct": _round(_revision_pct(year_current, year_prior), 3),
             "updated_at": updated,
             "status": "current" if updated and str(updated)[:10] == today.isoformat() else ("stale" if updated else "missing"),
         })
@@ -138,6 +261,11 @@ def earnings_analysis_snapshot(
     sector_map: dict[str, list[dict[str, Any]]] = {}
     for row in covered:
         sector_map.setdefault(row["sector"], []).append(row)
+    cutoff_365 = (today - timedelta(days=365)).isoformat()
+    recent_by_sector: dict[str, list[dict[str, Any]]] = {}
+    for row in historical_reports:
+        if str(row["report_date"]) >= cutoff_365 and row["surprise_pct"] is not None:
+            recent_by_sector.setdefault(row["sector"], []).append(row)
     sectors = []
     for sector, rows in sorted(sector_map.items()):
         sector_revisions = [row["eps_revision_pct"] for row in rows if row["eps_revision_pct"] is not None]
@@ -148,7 +276,99 @@ def earnings_analysis_snapshot(
             "median_eps_revision_pct": _round(_median(sector_revisions), 3),
             "positive_revision_pct": _round(sum(value > 0 for value in sector_revisions) / len(sector_revisions) * 100.0, 1) if sector_revisions else None,
             "net_revision_breadth": _round(sum(sector_breadth), 0) if sector_breadth else None,
+            "reports_12m": len(recent_by_sector.get(sector, [])),
+            "beat_rate_12m": _round(sum(row["surprise_pct"] > 0 for row in recent_by_sector.get(sector, [])) / len(recent_by_sector[sector]) * 100.0, 1) if recent_by_sector.get(sector) else None,
+            "median_surprise_12m": _round(_median([row["surprise_pct"] for row in recent_by_sector.get(sector, [])]), 3),
         })
+
+    quarter_map: dict[str, list[dict[str, Any]]] = {}
+    for row in historical_reports:
+        if row["surprise_pct"] is not None:
+            quarter_map.setdefault(_quarter_label(str(row["report_date"])), []).append(row)
+    quarterly_outcomes = []
+    for quarter, rows in sorted(quarter_map.items()):
+        values = [row["surprise_pct"] for row in rows]
+        quarterly_outcomes.append({
+            "quarter": quarter,
+            "date": max(str(row["report_date"]) for row in rows),
+            "reports": len(rows),
+            "beat_rate": _round(sum(value > 0 for value in values) / len(values) * 100.0, 1),
+            "meet_rate": _round(sum(value == 0 for value in values) / len(values) * 100.0, 1),
+            "miss_rate": _round(sum(value < 0 for value in values) / len(values) * 100.0, 1),
+            "median_surprise_pct": _round(_median(values), 3),
+            "median_abs_error_pct": _round(_median([abs(value) for value in values]), 3),
+        })
+    quarterly_outcomes = quarterly_outcomes[-48:]
+
+    cutoff_90 = (today - timedelta(days=90)).isoformat()
+    trailing_reports = [row for row in historical_reports if str(row["report_date"]) >= cutoff_90 and row["surprise_pct"] is not None]
+    trailing_values = [row["surprise_pct"] for row in trailing_reports]
+    revision_curve = []
+    for days, key in ((90, "eps_revision_90d_pct"), (60, "eps_revision_60d_pct"), (30, "eps_revision_pct"), (7, "eps_revision_7d_pct")):
+        values = [row[key] for row in covered if row.get(key) is not None]
+        revision_curve.append({
+            "days_ago": days,
+            "date": (today - timedelta(days=days)).isoformat(),
+            "median_revision_pct": _round(_median(values), 3),
+            "positive_pct": _round(sum(value > 0 for value in values) / len(values) * 100.0, 1) if values else None,
+            "companies": len(values),
+        })
+    distribution = {"strong_upgrade": 0, "upgrade": 0, "flat": 0, "downgrade": 0, "strong_downgrade": 0}
+    for value in revisions:
+        if value >= 2:
+            distribution["strong_upgrade"] += 1
+        elif value > 0.25:
+            distribution["upgrade"] += 1
+        elif value >= -0.25:
+            distribution["flat"] += 1
+        elif value > -2:
+            distribution["downgrade"] += 1
+        else:
+            distribution["strong_downgrade"] += 1
+
+    historical_estimate_accuracy = []
+    for days in (90, 60, 30, 7, 0):
+        observations = forecast_accuracy[days]
+        relative = [row[1] for row in observations if row[1] is not None]
+        bias = [row[2] for row in observations if row[2] is not None]
+        historical_estimate_accuracy.append({
+            "days_before": days,
+            "date": (today - timedelta(days=days)).isoformat(),
+            "observations": len(observations),
+            "median_abs_error_eps": _round(_median([row[0] for row in observations]), 4),
+            "median_abs_error_pct": _round(_median(relative), 3),
+            "median_bias_pct": _round(_median(bias), 3),
+            "within_10_pct": _round(sum(value <= 10 for value in relative) / len(relative) * 100.0, 1) if relative else None,
+        })
+
+    calendar_rows = []
+    calendar_updated = None
+    calendar_path = folder / "earnings_calendar.json"
+    if calendar_path.is_file():
+        try:
+            calendar_wrapper = json.loads(calendar_path.read_text(encoding="utf-8"))
+            calendar_updated = calendar_wrapper.get("timestamp")
+            for row in calendar_wrapper.get("rows", []):
+                ticker = str(row.get("symbol") or "")
+                if ticker in company_meta:
+                    calendar_rows.append({
+                        "ticker": ticker,
+                        "name": company_meta[ticker]["name"],
+                        "sector": company_meta[ticker]["sector"],
+                        "report_date": row.get("reportDate"),
+                        "fiscal_date": row.get("fiscalDateEnding"),
+                        "estimate": _float(row.get("estimate")),
+                        "currency": row.get("currency"),
+                        "report_time": row.get("timeOfTheDay"),
+                    })
+        except (OSError, json.JSONDecodeError, AttributeError):
+            calendar_rows = []
+    calendar_rows.sort(key=lambda row: (str(row["report_date"]), row["ticker"]))
+
+    recent_reports = sorted(historical_reports, key=lambda row: str(row["report_date"]), reverse=True)[:120]
+    company_summaries.sort(key=lambda row: (str(row["latest_report"] or ""), row["ticker"]), reverse=True)
+    first_report = min((str(row["report_date"]) for row in historical_reports), default=None)
+    last_report = max((str(row["report_date"]) for row in historical_reports), default=None)
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -164,6 +384,33 @@ def earnings_analysis_snapshot(
         "net_revision_breadth": _round(sum(breadth), 0) if breadth else None,
         "sectors": sectors,
         "estimates": estimates,
+        "revision_curve": revision_curve,
+        "revision_distribution": distribution,
+        "historical_estimate_accuracy": historical_estimate_accuracy,
+        "historical_coverage": {
+            "companies": sum(row["quarters"] > 0 for row in company_summaries),
+            "reports": len(historical_reports),
+            "first_report": first_report,
+            "last_report": last_report,
+            "earnings_cache_latest": max(earnings_timestamps, default=None),
+            "estimate_cache_latest": max(estimate_timestamps, default=None),
+        },
+        "trailing_90d": {
+            "reports": len(trailing_reports),
+            "beat_rate": _round(sum(value > 0 for value in trailing_values) / len(trailing_values) * 100.0, 1) if trailing_values else None,
+            "median_surprise_pct": _round(_median(trailing_values), 3),
+            "median_abs_error_pct": _round(_median([abs(value) for value in trailing_values]), 3),
+        },
+        "quarterly_outcomes": quarterly_outcomes,
+        "recent_reports": recent_reports,
+        "companies": company_summaries,
+        "calendar": calendar_rows,
+        "calendar_updated_at": calendar_updated,
+        "methodology": {
+            "historical_consensus": "estimatedEPS stored with each reported EARNINGS event",
+            "forward_revisions": "current EARNINGS_ESTIMATES consensus versus provider 7/30/60/90-day snapshots",
+            "point_in_time_warning": "Use report-time consensus for historical backtests. Current forward-estimate files are not a reconstructable daily point-in-time archive.",
+        },
     }
 
 

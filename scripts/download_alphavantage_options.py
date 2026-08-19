@@ -78,6 +78,11 @@ def parse_args(argv=None):
     parser.add_argument("--keep-moneyness", type=float, default=0.15,
                         help="store contracts within this fraction of spot")
     parser.add_argument("--keep-dte", type=int, default=120)
+    parser.add_argument("--no-contracts", action="store_true",
+                        help="store only the daily aggregates, skipping the "
+                             "per-contract table -- the daily features are what "
+                             "the strategy consumes, and the contract rows cost "
+                             "roughly a gigabyte per symbol-pair")
     parser.add_argument("--limit", type=int, default=0, help="stop after N fetches")
     return parser.parse_args(argv)
 
@@ -242,16 +247,17 @@ def main(argv=None):
                  feats.get("gamma_balance"), feats.get("gamma_flip_distance"),
                  feats.get("zero_dte_share"), feats.get("vanna"),
                  feats.get("total_oi"), feats.get("total_volume")))
-            keep = [
-                (symbol, day, c["expiration"], c["dte"], c["side"], c["strike"],
-                 c["iv"], c["delta"], c["gamma"], c["open_interest"],
-                 c["volume"], c["bid"], c["ask"])
-                for c in contracts
-                if c["dte"] <= args.keep_dte
-                and abs(c["strike"] / spot - 1.0) <= args.keep_moneyness
-            ]
-            store.executemany(
-                "INSERT INTO av_contracts VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", keep)
+            if not args.no_contracts:
+                keep = [
+                    (symbol, day, c["expiration"], c["dte"], c["side"], c["strike"],
+                     c["iv"], c["delta"], c["gamma"], c["open_interest"],
+                     c["volume"], c["bid"], c["ask"])
+                    for c in contracts
+                    if c["dte"] <= args.keep_dte
+                    and abs(c["strike"] / spot - 1.0) <= args.keep_moneyness
+                ]
+                store.executemany(
+                    "INSERT INTO av_contracts VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", keep)
             store.execute("INSERT INTO av_fetch_log VALUES (?,?,?,?,?,?)",
                           (symbol, day, "ok", len(rows), "", stamp))
             store.commit()

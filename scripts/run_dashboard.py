@@ -26,8 +26,8 @@ from savi_uz.fundamentals import (  # noqa: E402
     DEFAULT_FOLDER as DEFAULT_FUNDAMENTALS_FOLDER,
     DEFAULT_REQUESTS_PER_MINUTE as DEFAULT_AV_REQUESTS_PER_MINUTE,
     PLAN_REQUESTS_PER_MINUTE,
+    EarningsAnalysisRefreshManager,
     FundamentalsRefreshManager,
-    EarningsEstimatesRefreshManager,
     fundamentals_snapshot,
 )
 from savi_uz.dashboard_sections import (  # noqa: E402
@@ -64,7 +64,7 @@ class DashboardHTTPServer(ThreadingHTTPServer):
         self.fundamentals_refresh_manager = FundamentalsRefreshManager(
             fundamentals_folder, requests_per_minute=alphavantage_requests_per_minute
         )
-        self.earnings_estimates_refresh_manager = EarningsEstimatesRefreshManager(
+        self.earnings_estimates_refresh_manager = EarningsAnalysisRefreshManager(
             fundamentals_folder, requests_per_minute=alphavantage_requests_per_minute
         )
         self.cross_asset_refresh_manager = CrossAssetRefreshManager(

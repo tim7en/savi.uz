@@ -44,6 +44,13 @@ class EarningsAnalysisSnapshotTests(unittest.TestCase):
             (root / "AAA_overview.json").write_text(json.dumps(wrapper("overview", {
                 "Name": "Alpha Co", "Sector": "Technology",
             })), encoding="utf-8")
+            (root / "AAA_earnings.json").write_text(json.dumps(wrapper("earnings", {
+                "symbol": "AAA", "quarterlyEarnings": [{
+                    "fiscalDateEnding": "2026-06-30", "reportedDate": "2026-07-20",
+                    "reportedEPS": "1.20", "estimatedEPS": "1.00",
+                    "surprisePercentage": "20.0", "reportTime": "pre-market",
+                }],
+            })), encoding="utf-8")
             (root / "AAA_earnings_estimates.json").write_text(json.dumps(wrapper(
                 "earnings_estimates", {"symbol": "AAA", "estimates": [{
                     "date": "2026-09-30", "horizon": "fiscal quarter",
@@ -52,6 +59,13 @@ class EarningsAnalysisSnapshotTests(unittest.TestCase):
                     "eps_estimate_revision_up_trailing_30_days": "5",
                     "eps_estimate_revision_down_trailing_30_days": "2",
                     "eps_estimate_analyst_count": "20",
+                }, {
+                    "date": "2026-06-30", "horizon": "fiscal quarter",
+                    "eps_estimate_average": "1.15",
+                    "eps_estimate_average_7_days_ago": "1.14",
+                    "eps_estimate_average_30_days_ago": "1.10",
+                    "eps_estimate_average_60_days_ago": "1.05",
+                    "eps_estimate_average_90_days_ago": "1.00",
                 }]},
             )), encoding="utf-8")
 
@@ -61,6 +75,12 @@ class EarningsAnalysisSnapshotTests(unittest.TestCase):
             self.assertEqual(payload["estimates"][0]["period"], "2026-09-30")
             self.assertEqual(payload["estimates"][0]["eps_revision_pct"], 10.0)
             self.assertEqual(payload["net_revision_breadth"], 3.0)
+            self.assertEqual(payload["historical_coverage"]["reports"], 1)
+            self.assertEqual(payload["trailing_90d"]["beat_rate"], 100.0)
+            self.assertEqual(payload["quarterly_outcomes"][-1]["median_surprise_pct"], 20.0)
+            self.assertEqual(payload["companies"][0]["streak"], 1)
+            self.assertEqual(payload["historical_estimate_accuracy"][-1]["observations"], 1)
+            self.assertEqual(payload["historical_estimate_accuracy"][-1]["median_abs_error_eps"], 0.05)
 
 
 if __name__ == "__main__":

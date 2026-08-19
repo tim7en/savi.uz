@@ -248,14 +248,22 @@
       <section class="page" id="analysisPage" hidden>
         <div class="top">
           <div><div class="eyebrow">FactSet · Alpha Vantage</div><h1>Earnings analysis</h1>
-            <p class="lede">Index-level expectations, reporting breadth and forward company revisions. FactSet supplies the aggregate history; Alpha Vantage supplies forward EPS and revenue estimates.</p></div>
-          <button class="refresh" id="estimateRefresh" type="button">Update forward estimates</button>
+            <p class="lede">Report-time consensus versus actual EPS, forward revisions, forecast dispersion, sector breadth and the upcoming calendar across the full research universe.</p></div>
+          <button class="refresh" id="estimateRefresh" type="button">Update earnings data</button>
         </div>
-        <div class="meta"><span><b>aggregate</b> FactSet weekly</span><span><b>company estimates</b> Alpha Vantage</span><span><b>pacing</b> 72 / minute</span><span><b>latest</b> <span id="analysisLatest">—</span></span></div>
-        <section class="progress" id="estimateProgress" aria-live="polite"><div class="progress-head"><b id="estimateProgressTitle">Updating forward estimates</b><span id="estimateProgressPct">0%</span></div><div class="track"><div class="fill" id="estimateProgressFill"></div></div><div class="progress-foot"><span id="estimateProgressDetail">Preparing…</span><span id="estimateProgressEta">—</span></div></section>
-        <section class="kpis"><div class="kpi"><div class="kpi-label">Forward 12m P/E</div><div class="kpi-value" id="forwardPe">—</div><div class="kpi-sub">FactSet aggregate</div></div><div class="kpi"><div class="kpi-label">Estimated EPS growth</div><div class="kpi-value" id="estimatedGrowth">—</div><div class="kpi-sub">current quarter</div></div><div class="kpi"><div class="kpi-label">Positive EPS</div><div class="kpi-value" id="earningsBeat">—</div><div class="kpi-sub">companies reported</div></div><div class="kpi"><div class="kpi-label">Forward revisions</div><div class="kpi-value" id="revisionBreadth">—</div><div class="kpi-sub">positive estimate changes</div></div></section>
+        <div class="meta"><span><b>actual + report consensus</b> Alpha Vantage EARNINGS</span><span><b>forward revisions</b> 7 / 30 / 60 / 90 days</span><span><b>aggregate</b> FactSet weekly</span><span><b>latest actual</b> <span id="analysisLatest">—</span></span></div>
+        <section class="progress" id="estimateProgress" aria-live="polite"><div class="progress-head"><b id="estimateProgressTitle">Updating earnings history and estimates</b><span id="estimateProgressPct">0%</span></div><div class="track"><div class="fill" id="estimateProgressFill"></div></div><div class="progress-foot"><span id="estimateProgressDetail">Preparing…</span><span id="estimateProgressEta">—</span></div></section>
+        <section class="kpis"><div class="kpi"><div class="kpi-label">Forward 12m P/E</div><div class="kpi-value" id="forwardPe">—</div><div class="kpi-sub">FactSet aggregate</div></div><div class="kpi"><div class="kpi-label">30D revision breadth</div><div class="kpi-value" id="revisionBreadth">—</div><div class="kpi-sub">companies revised upward</div></div><div class="kpi"><div class="kpi-label">Trailing 90D beat rate</div><div class="kpi-value" id="trailingBeatRate">—</div><div class="kpi-sub" id="trailingBeatMeta">report-time consensus</div></div><div class="kpi"><div class="kpi-label">Historical reports</div><div class="kpi-value" id="actualCoverage">—</div><div class="kpi-sub" id="historicalRange">—</div></div></section>
+        <section class="kpis"><div class="kpi"><div class="kpi-label">Estimated EPS growth</div><div class="kpi-value" id="estimatedGrowth">—</div><div class="kpi-sub">FactSet quarter estimate</div></div><div class="kpi"><div class="kpi-label">Median 30D revision</div><div class="kpi-value" id="medianRevision">—</div><div class="kpi-sub">next fiscal-quarter EPS</div></div><div class="kpi"><div class="kpi-label">Median surprise</div><div class="kpi-value" id="medianSurprise">—</div><div class="kpi-sub">reports in trailing 90 days</div></div><div class="kpi"><div class="kpi-label">Upcoming events</div><div class="kpi-value" id="upcomingCount">—</div><div class="kpi-sub" id="calendarUpdated">next three months</div></div></section>
         <div class="grid2"><section class="panel"><div class="panel-head"><h2>Forward P/E against history</h2><p>Current multiple versus FactSet's five- and ten-year averages.</p></div><div class="chart" id="peChart"></div></section><section class="panel"><div class="panel-head"><h2>Earnings growth path</h2><p>Blended actual/estimate growth and the pre-report estimate.</p></div><div class="chart" id="growthChart"></div></section></div>
-        <div class="grid2"><section class="panel"><div class="panel-head"><h2>Sector revision breadth</h2><p>Median 30-day EPS estimate change and analyst revision direction.</p></div><div class="metric-list" id="sectorRevisionRows"><div class="empty">Forward estimates have not been downloaded yet.</div></div></section><section class="panel"><div class="panel-head"><h2>Largest company revisions</h2><p>Next fiscal-quarter consensus versus 30 days ago.</p></div><div class="metric-list" id="companyRevisionRows"><div class="empty">Forward estimates have not been downloaded yet.</div></div></section></div>
+        <div class="grid2"><section class="panel"><div class="panel-head"><h2>Historical earnings outcomes</h2><p>Quarterly beat rate and median EPS surprise using the consensus stored with each report.</p></div><div class="chart" id="outcomeChart"></div></section><section class="panel"><div class="panel-head"><h2>Forward revision path</h2><p>Median current consensus change versus 90, 60, 30 and 7 days ago.</p></div><div class="chart" id="revisionChart"></div></section></div>
+        <div class="grid2"><section class="panel"><div class="panel-head"><h2>Historical forecast convergence</h2><p>How archived consensus error narrowed from 90 days out to the final estimate.</p></div><div class="metric-list" id="historicalAccuracyRows"></div></section><section class="panel"><div class="panel-head"><h2>Current earnings read</h2><p>Descriptive regime checks; these size conviction but do not predict direction alone.</p></div><div class="metric-list" id="earningsRegimeRows"></div></section></div>
+        <section class="table-card" style="margin-top:16px"><div class="panel-head"><h2>Sector earnings scorecard</h2><p>Forward revision breadth alongside the realised twelve-month beat record.</p></div><div class="scroll"><table><thead><tr><th>Sector</th><th>Forward covered</th><th>Median 30D revision</th><th>Positive revisions</th><th>12M reports</th><th>12M beat rate</th><th>Median surprise</th></tr></thead><tbody id="sectorRevisionRows"><tr><td class="empty" colspan="7">Loading sector analytics…</td></tr></tbody></table></div></section>
+        <div class="grid2" style="margin-top:16px"><section class="panel"><div class="panel-head"><h2>Largest estimate changes</h2><p>Next-quarter consensus, analyst coverage and forecast dispersion.</p></div><div class="metric-list" id="companyRevisionRows"><div class="empty">Loading forward estimates…</div></div></section><section class="panel"><div class="panel-head"><h2>Revision distribution</h2><p>30-day changes: strong is at least ±2%; flat is within ±0.25%.</p></div><div class="metric-list" id="revisionDistributionRows"></div></section></div>
+        <section class="table-card" style="margin-top:16px"><div class="panel-head"><h2>Upcoming earnings calendar</h2><p>Scheduled report dates from Alpha Vantage's three-month calendar.</p></div><div class="scroll"><table><thead><tr><th>Company</th><th>Report date</th><th>Fiscal period</th><th>EPS estimate</th><th>Timing</th><th>Sector</th></tr></thead><tbody id="calendarRows"><tr><td class="empty" colspan="6">Calendar has not been refreshed yet.</td></tr></tbody></table></div></section>
+        <section class="table-card" style="margin-top:16px"><div class="panel-head"><h2>Most recent earnings outcomes</h2><p>Actual EPS compared with the report-time consensus—not today's reconstructed estimate.</p></div><div class="scroll"><table><thead><tr><th>Company</th><th>Report date</th><th>Actual EPS</th><th>Consensus EPS</th><th>Surprise</th><th>Timing</th><th>Sector</th></tr></thead><tbody id="recentEarningsRows"><tr><td class="empty" colspan="7">Loading reported earnings…</td></tr></tbody></table></div></section>
+        <div class="toolbar" style="margin-top:16px"><input class="search" id="earningsSearch" type="search" autocomplete="off" placeholder="Search company, ticker or sector…" aria-label="Search earnings company scorecard"><span class="result-count" id="earningsResultCount">Loading…</span></div>
+        <section class="table-card"><div class="panel-head"><h2>Company earnings scorecard</h2><p>Latest outcome, trailing-four consistency, forecast error and current forward revision.</p></div><div class="scroll"><table><thead><tr><th>Company</th><th>Latest report</th><th>Latest surprise</th><th>4Q beat rate</th><th>Beat/miss streak</th><th>8Q median error</th><th>Next EPS</th><th>30D revision</th></tr></thead><tbody id="companyEarningsRows"><tr><td class="empty" colspan="8">Loading company history…</td></tr></tbody></table></div><div class="note" id="earningsMethodology">Historical tests must use the estimate stored with the reported event. Current forward-estimate snapshots are descriptive and are not a substitute for a daily point-in-time estimate archive.</div></section>
       </section>
 
       <section class="page" id="crossPage" hidden>
@@ -302,6 +310,7 @@
         companies: [], fundQuery: "", fundSector: "", fundPolling: null,
         fundamentalsLoaded: false, loaded: { stocks: true, fundamentals: false },
         estimatePolling: null, crossPolling: null,
+        earningsPayload: null, earningsQuery: "",
       };
       const fmtPrice = (value) => value == null ? "—" : "$" + value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const fmtVolume = (value) => {
@@ -565,13 +574,22 @@
       async function loadEarningsAnalysis() {
         try {
           const payload = await api("/api/earnings-analysis");
+          state.earningsPayload = payload;
           const latest = payload.factset_latest || {};
-          $("analysisLatest").textContent = latest.report_date || "—";
+          const coverage = payload.historical_coverage || {}, trailing = payload.trailing_90d || {};
+          $("analysisLatest").textContent = coverage.last_report || "—";
           $("forwardPe").textContent = latest.forward_12m_pe == null ? "—" : Number(latest.forward_12m_pe).toFixed(1) + "×";
           $("estimatedGrowth").textContent = fmtRate(latest.estimated_earnings_growth ?? latest.estimated_growth_at_quarter_start);
-          $("earningsBeat").textContent = fmtRate(latest.pct_positive_eps);
           $("revisionBreadth").textContent = payload.positive_revision_pct == null ? "—" : Number(payload.positive_revision_pct).toFixed(0) + "%";
-          $("analysisNavCount").textContent = payload.estimate_covered ?? 0;
+          $("trailingBeatRate").textContent = trailing.beat_rate == null ? "—" : Number(trailing.beat_rate).toFixed(1) + "%";
+          $("trailingBeatMeta").textContent = `${(trailing.reports || 0).toLocaleString("en-US")} reports in 90 days`;
+          $("actualCoverage").textContent = (coverage.reports || 0).toLocaleString("en-US");
+          $("historicalRange").textContent = coverage.first_report && coverage.last_report ? `${coverage.first_report.slice(0,4)}–${coverage.last_report.slice(0,4)} · ${coverage.companies || 0} companies` : "—";
+          $("medianRevision").textContent = pct(payload.median_eps_revision_pct, 2);
+          $("medianSurprise").textContent = pct(trailing.median_surprise_pct, 2);
+          $("upcomingCount").textContent = (payload.calendar || []).length.toLocaleString("en-US");
+          $("calendarUpdated").textContent = payload.calendar_updated_at ? `calendar read ${payload.calendar_updated_at.slice(0,10)}` : "calendar not refreshed";
+          $("analysisNavCount").textContent = coverage.companies ?? payload.estimate_covered ?? 0;
           const history = payload.factset_history || [];
           drawChart("peChart", [
             { name: "Forward P/E", points: history.map((row) => [row.report_date, row.forward_12m_pe]) },
@@ -582,29 +600,73 @@
             { name: "Blended", points: history.map((row) => [row.report_date, row.blended_earnings_growth]) },
             { name: "Estimate", points: history.map((row) => [row.report_date, row.estimated_earnings_growth]) },
           ], { label: "Earnings growth history", format: (value) => value.toFixed(0) + "%", zero: true });
+          const outcomes = (payload.quarterly_outcomes || []).filter((row) => row.reports >= 100);
+          drawChart("outcomeChart", [
+            { name: "Beat rate", points: outcomes.map((row) => [row.date, row.beat_rate]) },
+            { name: "Miss rate", points: outcomes.map((row) => [row.date, row.miss_rate]) },
+          ], { label: "Quarterly earnings outcomes", format: (value) => value.toFixed(0) + "%" });
+          const curve = payload.revision_curve || [];
+          drawChart("revisionChart", [{ name: "Median EPS revision", points: curve.map((row) => [row.date, row.median_revision_pct]) }], { label: "Forward consensus revision path", format: (value) => value.toFixed(2) + "%", zero: true });
+          const accuracy = payload.historical_estimate_accuracy || [];
+          $("historicalAccuracyRows").innerHTML = metricHeader(["Horizon", "Observations", "Median error", "Within ±10%"]) + accuracy.map((row) => metricRow(row.days_before ? `${row.days_before} days out` : "Final estimate", [(row.observations || 0).toLocaleString("en-US"), fmtRate(row.median_abs_error_pct), row.within_10_pct == null ? "—" : Number(row.within_10_pct).toFixed(1) + "%"])).join("");
+          const completeOutcomes = outcomes.slice(-20), historicalBeat = median(completeOutcomes.map((row) => row.beat_rate));
+          const valuationPremium = latest.forward_12m_pe != null && latest.pe_10y_average ? (latest.forward_12m_pe / latest.pe_10y_average - 1) * 100 : null;
+          const dispersion = median((payload.estimates || []).map((row) => row.eps_dispersion_pct));
+          const revisionRead = payload.positive_revision_pct == null ? "No data" : payload.positive_revision_pct >= 55 ? "Positive" : payload.positive_revision_pct <= 45 ? "Negative" : "Neutral";
+          const beatRead = trailing.beat_rate == null || historicalBeat == null ? "No current reports" : trailing.beat_rate >= historicalBeat + 3 ? "Above trend" : trailing.beat_rate <= historicalBeat - 3 ? "Below trend" : "Near trend";
+          $("earningsRegimeRows").innerHTML = metricHeader(["Signal", "Current", "Reference", "Read"]) + [
+            ["Revision breadth", payload.positive_revision_pct == null ? "—" : Number(payload.positive_revision_pct).toFixed(1) + "%", "50% neutral", revisionRead],
+            ["Realised beat rate", trailing.beat_rate == null ? "—" : Number(trailing.beat_rate).toFixed(1) + "%", historicalBeat == null ? "—" : Number(historicalBeat).toFixed(1) + "% 20Q median", beatRead],
+            ["Forward valuation", latest.forward_12m_pe == null ? "—" : Number(latest.forward_12m_pe).toFixed(1) + "×", latest.pe_10y_average == null ? "—" : Number(latest.pe_10y_average).toFixed(1) + "× 10Y", valuationPremium == null ? "—" : pct(valuationPremium, 1) + " premium"],
+            ["Forecast dispersion", fmtRate(dispersion), `${payload.estimate_covered || 0} companies`, dispersion == null ? "No data" : dispersion <= 20 ? "Tighter" : "Wide"],
+          ].map((row) => metricRow(row[0], row.slice(1))).join("");
           const sectors = (payload.sectors || []).sort((a, b) => (b.positive_revision_pct ?? -1) - (a.positive_revision_pct ?? -1));
-          $("sectorRevisionRows").innerHTML = sectors.length ? metricHeader(["Sector", "Median 30D", "Positive", "Net breadth"]) + sectors.map((row) => metricRow(row.sector, [fmtRate(row.median_eps_revision_pct), fmtRate(row.positive_revision_pct), row.net_revision_breadth])).join("") : '<div class="empty">Forward estimates have not been downloaded yet.</div>';
+          $("sectorRevisionRows").innerHTML = sectors.length ? sectors.map((row) => `<tr><td><strong>${escapeHtml(row.sector)}</strong></td><td>${row.companies ?? "—"}</td><td>${pct(row.median_eps_revision_pct, 2)}</td><td>${row.positive_revision_pct == null ? "—" : Number(row.positive_revision_pct).toFixed(0) + "%"}</td><td>${row.reports_12m ?? 0}</td><td>${row.beat_rate_12m == null ? "—" : Number(row.beat_rate_12m).toFixed(1) + "%"}</td><td>${pct(row.median_surprise_12m, 2)}</td></tr>`).join("") : '<tr><td class="empty" colspan="7">No sector estimate coverage.</td></tr>';
           const companies = (payload.estimates || []).filter((row) => row.eps_revision_pct != null).sort((a, b) => Math.abs(b.eps_revision_pct) - Math.abs(a.eps_revision_pct)).slice(0, 14);
-          $("companyRevisionRows").innerHTML = companies.length ? metricHeader(["Company", "Period", "EPS estimate", "30D change"]) + companies.map((row) => metricRow(row.ticker, [row.period || "—", row.eps_estimate == null ? "—" : "$" + Number(row.eps_estimate).toFixed(2), fmtRate(row.eps_revision_pct)])).join("") : '<div class="empty">Forward estimates have not been downloaded yet.</div>';
+          $("companyRevisionRows").innerHTML = companies.length ? metricHeader(["Company", "Next EPS", "30D change", "Dispersion"]) + companies.map((row) => metricRow(row.ticker, [row.eps_estimate == null ? "—" : "$" + Number(row.eps_estimate).toFixed(2), pct(row.eps_revision_pct, 2), fmtRate(row.eps_dispersion_pct)])).join("") : '<div class="empty">Forward estimates have not been downloaded yet.</div>';
+          const distribution = payload.revision_distribution || {}, total = Object.values(distribution).reduce((sum, value) => sum + value, 0);
+          const buckets = [
+            ["Strong upgrades", "≥ +2%", distribution.strong_upgrade || 0], ["Upgrades", "+0.25% to +2%", distribution.upgrade || 0],
+            ["Flat", "within ±0.25%", distribution.flat || 0], ["Downgrades", "-0.25% to -2%", distribution.downgrade || 0],
+            ["Strong downgrades", "≤ -2%", distribution.strong_downgrade || 0],
+          ];
+          $("revisionDistributionRows").innerHTML = metricHeader(["Bucket", "Threshold", "Companies", "Share"]) + buckets.map((row) => metricRow(row[0], [row[1], row[2], total ? (row[2] / total * 100).toFixed(1) + "%" : "—"])).join("");
+          const calendar = (payload.calendar || []).slice(0, 100);
+          $("calendarRows").innerHTML = calendar.length ? calendar.map((row) => `<tr><td><div class="asset"><span class="ticker">${escapeHtml(row.ticker)}</span><span><div class="asset-name">${escapeHtml(row.name)}</div></span></div></td><td>${escapeHtml(row.report_date || "—")}</td><td>${escapeHtml(row.fiscal_date || "—")}</td><td>${row.estimate == null ? "—" : "$" + Number(row.estimate).toFixed(2)}</td><td>${escapeHtml(row.report_time || "—")}</td><td>${escapeHtml(row.sector)}</td></tr>`).join("") : '<tr><td class="empty" colspan="6">No scheduled universe events in the current three-month calendar.</td></tr>';
+          const recent = payload.recent_reports || [];
+          $("recentEarningsRows").innerHTML = recent.length ? recent.slice(0, 100).map((row) => `<tr><td><div class="asset"><span class="ticker">${escapeHtml(row.ticker)}</span><span><div class="asset-name">${escapeHtml(row.name)}</div></span></div></td><td>${escapeHtml(row.report_date || "—")}</td><td>${row.actual_eps == null ? "—" : "$" + Number(row.actual_eps).toFixed(2)}</td><td>${row.consensus_eps == null ? "—" : "$" + Number(row.consensus_eps).toFixed(2)}</td><td class="${row.surprise_pct > 0 ? "pos" : row.surprise_pct < 0 ? "neg" : ""}">${pct(row.surprise_pct, 2)}</td><td>${escapeHtml(row.report_time || "—")}</td><td>${escapeHtml(row.sector)}</td></tr>`).join("") : '<tr><td class="empty" colspan="7">No reported earnings records.</td></tr>';
+          renderCompanyEarnings();
+          $("earningsMethodology").textContent = payload.methodology?.point_in_time_warning || $("earningsMethodology").textContent;
         } catch (error) {
-          $("companyRevisionRows").innerHTML = `<div class="empty error">${escapeHtml(error.message)}</div>`;
+          $("companyEarningsRows").innerHTML = `<tr><td class="empty error" colspan="8">${escapeHtml(error.message)}</td></tr>`;
         }
+      }
+
+      function renderCompanyEarnings() {
+        const payload = state.earningsPayload || {}, query = state.earningsQuery.trim().toLowerCase();
+        const forward = new Map((payload.estimates || []).map((row) => [row.ticker, row]));
+        const rows = (payload.companies || []).filter((row) => [row.ticker, row.name, row.sector].join(" ").toLowerCase().includes(query));
+        $("earningsResultCount").textContent = `${rows.length} of ${(payload.companies || []).length}`;
+        $("companyEarningsRows").innerHTML = rows.length ? rows.map((row) => {
+          const next = forward.get(row.ticker) || {}, streak = row.streak == null ? "—" : row.streak > 0 ? `${row.streak} beats` : row.streak < 0 ? `${Math.abs(row.streak)} misses` : "met";
+          return `<tr><td><div class="asset"><span class="ticker">${escapeHtml(row.ticker)}</span><span><div class="asset-name">${escapeHtml(row.name)}</div><div class="asset-sub">${escapeHtml(row.sector)}</div></span></div></td><td>${escapeHtml(row.latest_report || "—")}</td><td class="${row.latest_surprise_pct > 0 ? "pos" : row.latest_surprise_pct < 0 ? "neg" : ""}">${pct(row.latest_surprise_pct, 2)}</td><td>${row.trailing_4_beat_rate == null ? "—" : Number(row.trailing_4_beat_rate).toFixed(0) + "%"}</td><td>${escapeHtml(streak)}</td><td>${fmtRate(row.trailing_8_median_abs_error_pct)}</td><td>${next.eps_estimate == null ? "—" : "$" + Number(next.eps_estimate).toFixed(2)}</td><td class="${next.eps_revision_pct > 0 ? "pos" : next.eps_revision_pct < 0 ? "neg" : ""}">${pct(next.eps_revision_pct, 2)}</td></tr>`;
+        }).join("") : '<tr><td class="empty" colspan="8">No company matches that search.</td></tr>';
       }
 
       function showEstimateProgress(status) {
         const active = status.running || ["complete", "complete_with_errors", "failed"].includes(status.state);
         $("estimateProgress").classList.toggle("on", active);
         $("estimateRefresh").disabled = Boolean(status.running);
-        $("estimateRefresh").textContent = status.running ? "Updating…" : "Update forward estimates";
+        $("estimateRefresh").textContent = status.running ? "Updating…" : "Update earnings data";
         const value = status.percent || 0;
         $("estimateProgressPct").textContent = value.toFixed(0) + "%";
         $("estimateProgressFill").style.width = value + "%";
         $("estimateProgressEta").textContent = status.running ? etaLabel(status.estimated_seconds_remaining) : `${status.files_updated || 0} files updated`;
         if (status.running) {
-          $("estimateProgressTitle").textContent = "Updating forward estimates";
-          $("estimateProgressDetail").textContent = `${status.completed || 0} / ${status.total || 0} · ${status.current_symbol || "preparing"}`;
+          $("estimateProgressTitle").textContent = "Updating earnings history and estimates";
+          $("estimateProgressDetail").textContent = `${status.completed || 0} / ${status.total || 0} · ${status.current_symbol || "preparing"} · ${status.current_dataset || "queue"}`;
         } else {
-          $("estimateProgressTitle").textContent = status.state === "failed" ? "Estimate update failed" : "Forward estimates checked";
+          $("estimateProgressTitle").textContent = status.state === "failed" ? "Earnings update failed" : "Earnings dataset checked";
           $("estimateProgressDetail").textContent = `${status.files_updated || 0} updated · ${status.skipped_current || 0} already current · ${(status.errors || []).length} errors`;
         }
       }
@@ -749,6 +811,7 @@
       $("search").addEventListener("input", (event) => { state.query = event.target.value; renderRows(); });
       $("fundSearch").addEventListener("input", (event) => { state.fundQuery = event.target.value; renderFundamentals(); });
       $("sectorFilter").addEventListener("change", (event) => { state.fundSector = event.target.value; renderFundamentals(); });
+      $("earningsSearch").addEventListener("input", (event) => { state.earningsQuery = event.target.value; renderCompanyEarnings(); });
       $("fundRefresh").addEventListener("click", async () => {
         $("fundRefresh").disabled = true;
         try {

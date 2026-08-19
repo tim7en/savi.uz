@@ -6,11 +6,13 @@ import time
 import unittest
 from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
 from savi_uz.fundamentals import (
     EarningsEstimatesRefreshManager,
     FundamentalsRefreshManager,
     fundamentals_snapshot,
+    refresh_earnings_calendar,
 )
 
 
@@ -136,6 +138,31 @@ class FundamentalsRefreshManagerTests(unittest.TestCase):
                 ("EARNINGS_ESTIMATES", "AAA"), ("EARNINGS_ESTIMATES", "BBB"),
             ])
             self.assertTrue((folder / "AAA_earnings_estimates.json").is_file())
+
+    def test_calendar_refresh_filters_to_the_stored_universe(self) -> None:
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self):
+                return (
+                    b"symbol,name,reportDate,fiscalDateEnding,estimate,currency\n"
+                    b"AAA,Alpha,2026-09-01,2026-06-30,1.25,USD\n"
+                    b"ZZZ,Outside,2026-09-02,2026-06-30,2.00,USD\n"
+                )
+
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            (folder / "sp500_symbols.json").write_text(json.dumps({
+                "date": "2026-01-01", "source": "test", "symbols": ["AAA"],
+            }), encoding="utf-8")
+            with patch("savi_uz.fundamentals.urlopen", return_value=Response()):
+                self.assertEqual(refresh_earnings_calendar(folder, "secret"), 1)
+            document = json.loads((folder / "earnings_calendar.json").read_text(encoding="utf-8"))
+            self.assertEqual([row["symbol"] for row in document["rows"]], ["AAA"])
 
 
 if __name__ == "__main__":
