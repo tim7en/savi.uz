@@ -38,6 +38,9 @@ FUNDAMENTAL_ENDPOINTS: tuple[tuple[str, str, str], ...] = (
     ("BALANCE_SHEET", "balance_sheet", "Balance sheet"),
     ("CASH_FLOW", "cash_flow", "Cash flow"),
 )
+EARNINGS_ESTIMATES_ENDPOINTS: tuple[tuple[str, str, str], ...] = (
+    ("EARNINGS_ESTIMATES", "earnings_estimates", "Forward earnings estimates"),
+)
 
 
 class FundamentalsSourceError(RuntimeError):
@@ -241,7 +244,8 @@ class AlphaVantageFundamentalsClient:
         self.limiter = RateLimiter(requests_per_minute)
 
     def fetch(self, function: str, ticker: str) -> dict[str, Any]:
-        if function not in {row[0] for row in FUNDAMENTAL_ENDPOINTS}:
+        allowed = {row[0] for row in FUNDAMENTAL_ENDPOINTS + EARNINGS_ESTIMATES_ENDPOINTS}
+        if function not in allowed:
             raise ValueError(f"unsupported fundamental function {function}")
         params = {"function": function, "symbol": ticker, "apikey": self.api_key}
         request = Request(f"{BASE_URL}?{urlencode(params)}", headers={"User-Agent": USER_AGENT})
@@ -309,6 +313,7 @@ class FundamentalsRefreshManager:
         self._lock = threading.Lock()
         self._state = self._idle_state()
         self._thread: threading.Thread | None = None
+        self.endpoints = FUNDAMENTAL_ENDPOINTS
 
     def _idle_state(self) -> dict[str, Any]:
         return {
@@ -360,7 +365,7 @@ class FundamentalsRefreshManager:
             symbols, _ = load_universe(self.folder)
             full_queue = [
                 (ticker, function, suffix, label)
-                for ticker in symbols for function, suffix, label in FUNDAMENTAL_ENDPOINTS
+                for ticker in symbols for function, suffix, label in self.endpoints
             ]
             queue = [
                 item for item in full_queue
@@ -398,3 +403,11 @@ class FundamentalsRefreshManager:
                 state="failed", running=False, current_symbol=None, current_dataset=None,
                 finished_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
             )
+
+
+class EarningsEstimatesRefreshManager(FundamentalsRefreshManager):
+    """Refresh only forward EPS/revenue estimates, separately from statements."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.endpoints = EARNINGS_ESTIMATES_ENDPOINTS

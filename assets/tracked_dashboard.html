@@ -97,12 +97,31 @@
     .empty { padding: 42px; color: var(--muted); text-align: center; }
     .note { padding: 11px 14px; border-top: 1px solid var(--line); color: var(--muted);
       font-size: 11px; }
+    .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 18px; }
+    .panel { min-width: 0; overflow: hidden; background: var(--panel); border: 1px solid var(--line); }
+    .panel-head { padding: 14px 15px 10px; border-bottom: 1px solid var(--line); }
+    .panel-head h2 { margin: 0; font-size: 13px; }
+    .panel-head p { margin: 3px 0 0; color: var(--muted); font-size: 11px; }
+    .chart { min-height: 220px; padding: 10px 12px 5px; }
+    .chart svg { display: block; width: 100%; height: auto; }
+    .chart-label { fill: var(--muted); font: 9px var(--mono); }
+    .chart-grid { stroke: var(--line); stroke-width: 1; }
+    .metric-list { display: grid; }
+    .metric-row { display: grid; grid-template-columns: minmax(120px, 1.5fr) repeat(3, minmax(90px, 1fr));
+      gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); font: 11px var(--mono); }
+    .metric-row:last-child { border-bottom: 0; }
+    .metric-row strong { color: var(--ink); font-family: var(--sans); font-size: 12px; }
+    .metric-row span { text-align: right; }
+    .metric-row.head { color: var(--muted); background: var(--wash); font-size: 9px; text-transform: uppercase; }
+    .mini-bar { height: 4px; width: 72px; margin-left: auto; background: var(--line); overflow: hidden; }
+    .mini-bar i { display: block; height: 100%; background: var(--blue); }
     .error { color: var(--red); }
     @media (max-width: 900px) {
       .app { grid-template-columns: 1fr; }
       aside { position: static; height: auto; padding: 14px 18px; flex-direction: row; align-items: center; }
-      .brand { padding: 0; } nav { margin-left: auto; } .aside-foot { display: none; }
+      .brand { padding: 0; } nav { margin-left: auto; display: flex; overflow-x: auto; } .aside-foot { display: none; }
       main { padding-top: 25px; } .kpis { grid-template-columns: repeat(2, 1fr); }
+      .grid2 { grid-template-columns: 1fr; }
     }
     @media (max-width: 600px) {
       .top { flex-direction: column; } .refresh { width: 100%; }
@@ -120,6 +139,11 @@
       <nav>
         <button class="navitem active" type="button" data-page="stocks"><span>Tracked assets</span><small id="navCount">—</small></button>
         <button class="navitem" type="button" data-page="fundamentals"><span>Earnings</span><small id="fundNavCount">—</small></button>
+        <button class="navitem" type="button" data-page="analysis"><span>Earnings analysis</span><small id="analysisNavCount">—</small></button>
+        <button class="navitem" type="button" data-page="cross"><span>Cross assets</span><small id="crossNavCount">—</small></button>
+        <button class="navitem" type="button" data-page="options"><span>Options &amp; GEX</span><small id="optionsNavCount">2</small></button>
+        <button class="navitem" type="button" data-page="cftc"><span>CFTC positioning</span><small id="cftcNavCount">7</small></button>
+        <button class="navitem" type="button" data-page="fed"><span>Fed policy</span><small id="fedNavCount">9</small></button>
       </nav>
       <div class="aside-foot">LOCAL DATA ROOM<br>TIINGO · IEX</div>
     </aside>
@@ -219,6 +243,52 @@
           </div>
           <div class="note">Each refresh updates overview, earnings, income statement, balance sheet and cash flow. Files already updated today are skipped, so interrupted runs resume safely.</div>
         </section>
+      </section>
+
+      <section class="page" id="analysisPage" hidden>
+        <div class="top">
+          <div><div class="eyebrow">FactSet · Alpha Vantage</div><h1>Earnings analysis</h1>
+            <p class="lede">Index-level expectations, reporting breadth and forward company revisions. FactSet supplies the aggregate history; Alpha Vantage supplies forward EPS and revenue estimates.</p></div>
+          <button class="refresh" id="estimateRefresh" type="button">Update forward estimates</button>
+        </div>
+        <div class="meta"><span><b>aggregate</b> FactSet weekly</span><span><b>company estimates</b> Alpha Vantage</span><span><b>pacing</b> 72 / minute</span><span><b>latest</b> <span id="analysisLatest">—</span></span></div>
+        <section class="progress" id="estimateProgress" aria-live="polite"><div class="progress-head"><b id="estimateProgressTitle">Updating forward estimates</b><span id="estimateProgressPct">0%</span></div><div class="track"><div class="fill" id="estimateProgressFill"></div></div><div class="progress-foot"><span id="estimateProgressDetail">Preparing…</span><span id="estimateProgressEta">—</span></div></section>
+        <section class="kpis"><div class="kpi"><div class="kpi-label">Forward 12m P/E</div><div class="kpi-value" id="forwardPe">—</div><div class="kpi-sub">FactSet aggregate</div></div><div class="kpi"><div class="kpi-label">Estimated EPS growth</div><div class="kpi-value" id="estimatedGrowth">—</div><div class="kpi-sub">current quarter</div></div><div class="kpi"><div class="kpi-label">Positive EPS</div><div class="kpi-value" id="earningsBeat">—</div><div class="kpi-sub">companies reported</div></div><div class="kpi"><div class="kpi-label">Forward revisions</div><div class="kpi-value" id="revisionBreadth">—</div><div class="kpi-sub">positive estimate changes</div></div></section>
+        <div class="grid2"><section class="panel"><div class="panel-head"><h2>Forward P/E against history</h2><p>Current multiple versus FactSet's five- and ten-year averages.</p></div><div class="chart" id="peChart"></div></section><section class="panel"><div class="panel-head"><h2>Earnings growth path</h2><p>Blended actual/estimate growth and the pre-report estimate.</p></div><div class="chart" id="growthChart"></div></section></div>
+        <div class="grid2"><section class="panel"><div class="panel-head"><h2>Sector revision breadth</h2><p>Median 30-day EPS estimate change and analyst revision direction.</p></div><div class="metric-list" id="sectorRevisionRows"><div class="empty">Forward estimates have not been downloaded yet.</div></div></section><section class="panel"><div class="panel-head"><h2>Largest company revisions</h2><p>Next fiscal-quarter consensus versus 30 days ago.</p></div><div class="metric-list" id="companyRevisionRows"><div class="empty">Forward estimates have not been downloaded yet.</div></div></section></div>
+      </section>
+
+      <section class="page" id="crossPage" hidden>
+        <div class="top"><div><div class="eyebrow">Commodities · Rates · Proxies</div><h1>Cross assets</h1><p class="lede">Oil, metals, agriculture and the Treasury curve. Direct Alpha Vantage series fill gaps; liquid ETFs provide a current tradable proxy layer.</p></div><button class="refresh" id="crossRefresh" type="button">Update direct series</button></div>
+        <div class="meta"><span><b>direct</b> Alpha Vantage commodities</span><span><b>rates</b> FRED</span><span><b>proxies</b> Tiingo 5-minute</span><span><b>read</b> <span id="crossRead">—</span></span></div>
+        <section class="progress" id="crossProgress" aria-live="polite"><div class="progress-head"><b id="crossProgressTitle">Updating cross assets</b><span id="crossProgressPct">0%</span></div><div class="track"><div class="fill" id="crossProgressFill"></div></div><div class="progress-foot"><span id="crossProgressDetail">Preparing…</span><span id="crossProgressFiles">—</span></div></section>
+        <section class="kpis"><div class="kpi"><div class="kpi-label">Direct series</div><div class="kpi-value" id="directCoverage">—</div><div class="kpi-sub">commodity + Treasury feeds</div></div><div class="kpi"><div class="kpi-label">10Y Treasury</div><div class="kpi-value" id="tenYearYield">—</div><div class="kpi-sub">constant maturity</div></div><div class="kpi"><div class="kpi-label">2s10s curve</div><div class="kpi-value" id="curveSlope">—</div><div class="kpi-sub">10Y minus 2Y</div></div><div class="kpi"><div class="kpi-label">Oil volatility</div><div class="kpi-value" id="oilVol">—</div><div class="kpi-sub">OVX</div></div></section>
+        <div class="grid2"><section class="panel"><div class="panel-head"><h2>Treasury curve history</h2><p>Two-, five-, ten- and thirty-year yields.</p></div><div class="chart" id="yieldChart"></div></section><section class="panel"><div class="panel-head"><h2>Tradable proxies</h2><p>GLD, SLV, energy and duration ETFs from the local five-minute store.</p></div><div class="metric-list" id="proxyRows"></div></section></div>
+        <section class="panel" style="margin-top:16px"><div class="panel-head"><h2>Direct commodity series</h2><p>Latest observations from Alpha Vantage; monthly where no daily normalized series is offered.</p></div><div class="metric-list" id="directRows"></div></section>
+      </section>
+
+      <section class="page" id="optionsPage" hidden>
+        <div class="top"><div><div class="eyebrow">Historical options · Dealer gamma proxy</div><h1>Option activity, GEX &amp; Greeks</h1><p class="lede">SPY and QQQ chain activity, implied volatility, skew and locally modelled gamma exposure. Same-day values are descriptive; strategy overlays remain prior-day lagged.</p></div></div>
+        <div class="meta"><span><b>chains</b> Alpha Vantage + MarketData.app</span><span><b>latest</b> <span id="optionsLatest">—</span></span><span><b>realtime</b> unavailable on 75/min plan</span></div>
+        <section class="kpis"><div class="kpi"><div class="kpi-label">SPY net GEX</div><div class="kpi-value" id="spyGex">—</div><div class="kpi-sub" id="spyGexSub">—</div></div><div class="kpi"><div class="kpi-label">QQQ net GEX</div><div class="kpi-value" id="qqqGex">—</div><div class="kpi-sub" id="qqqGexSub">—</div></div><div class="kpi"><div class="kpi-label">SPY ATM IV</div><div class="kpi-value" id="spyIv">—</div><div class="kpi-sub">near-ATM estimate</div></div><div class="kpi"><div class="kpi-label">SPY 0DTE share</div><div class="kpi-value" id="spyZeroDte">—</div><div class="kpi-sub">share of open interest</div></div></section>
+        <div class="grid2"><section class="panel"><div class="panel-head"><h2>Net GEX</h2><p>Call-positive less put-negative exposure, $bn.</p></div><div class="chart" id="gexChart"></div></section><section class="panel"><div class="panel-head"><h2>ATM implied volatility</h2><p>Historical chain-derived IV.</p></div><div class="chart" id="ivChart"></div></section></div>
+        <section class="panel" style="margin-top:16px"><div class="panel-head"><h2>Latest option state</h2><p>Gamma walls use MarketData chains; Greeks and activity use Alpha Vantage historical chains.</p></div><div class="metric-list" id="optionRows"></div><div class="note" id="optionPlanNote"></div></section>
+      </section>
+
+      <section class="page" id="cftcPage" hidden>
+        <div class="top"><div><div class="eyebrow">Commitments of Traders</div><h1>CFTC positioning</h1><p class="lede">Most recent speculative positioning normalized by open interest, with weekly change and three-year percentile.</p></div></div>
+        <div class="meta"><span><b>source</b> CFTC</span><span><b>cadence</b> weekly, Tuesday positions</span><span><b>latest</b> <span id="cftcLatest">—</span></span></div>
+        <section class="kpis"><div class="kpi"><div class="kpi-label">Markets tracked</div><div class="kpi-value" id="cftcMarkets">—</div><div class="kpi-sub">commodities + financials</div></div><div class="kpi"><div class="kpi-label">Most crowded long</div><div class="kpi-value" id="crowdedLong">—</div><div class="kpi-sub" id="crowdedLongSub">—</div></div><div class="kpi"><div class="kpi-label">Most crowded short</div><div class="kpi-value" id="crowdedShort">—</div><div class="kpi-sub" id="crowdedShortSub">—</div></div><div class="kpi"><div class="kpi-label">Weekly movers</div><div class="kpi-value" id="cftcMovers">—</div><div class="kpi-sub">position change ≥ 2pp</div></div></section>
+        <section class="panel" style="margin-top:18px"><div class="panel-head"><h2>Latest positioning summary</h2><p>Net managed-money or leveraged-fund position as a share of open interest.</p></div><div class="metric-list" id="cftcRows"></div></section>
+        <section class="panel" style="margin-top:16px"><div class="panel-head"><h2>Two-year position history</h2><p>Net position share; zero is flat.</p></div><div class="chart" id="cftcChart"></div></section>
+      </section>
+
+      <section class="page" id="fedPage" hidden>
+        <div class="top"><div><div class="eyebrow">Federal Reserve · NY Fed</div><h1>Basic Fed policy</h1><p class="lede">The administered policy corridor, overnight money-market rates and balance-sheet liquidity components.</p></div></div>
+        <div class="meta"><span><b>source</b> FRED + NY Fed</span><span><b>policy read</b> <span id="policyDirection">—</span></span><span><b>updated</b> <span id="fedLatest">—</span></span></div>
+        <section class="kpis"><div class="kpi"><div class="kpi-label">Effective fed funds</div><div class="kpi-value" id="fedFunds">—</div><div class="kpi-sub" id="fedFundsSub">—</div></div><div class="kpi"><div class="kpi-label">Target range</div><div class="kpi-value" id="targetRange">—</div><div class="kpi-sub">lower – upper</div></div><div class="kpi"><div class="kpi-label">SOFR</div><div class="kpi-value" id="sofr">—</div><div class="kpi-sub">secured overnight</div></div><div class="kpi"><div class="kpi-label">Fed balance sheet</div><div class="kpi-value" id="fedBalance">—</div><div class="kpi-sub" id="fedBalanceSub">—</div></div></section>
+        <div class="grid2"><section class="panel"><div class="panel-head"><h2>Policy rates</h2><p>Effective fed funds, IORB and SOFR.</p></div><div class="chart" id="policyChart"></div></section><section class="panel"><div class="panel-head"><h2>Balance sheet</h2><p>Total assets, reserve balances and the Treasury General Account, $tn.</p></div><div class="chart" id="balanceChart"></div></section></div>
+        <section class="panel" style="margin-top:16px"><div class="panel-head"><h2>Liquidity components</h2><p>Latest levels; the proxy is reserves minus TGA and overnight RRP.</p></div><div class="metric-list" id="fedRows"></div></section>
       </section>
     </main>
   </div>

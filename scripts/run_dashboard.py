@@ -27,7 +27,23 @@ from savi_uz.fundamentals import (  # noqa: E402
     DEFAULT_REQUESTS_PER_MINUTE as DEFAULT_AV_REQUESTS_PER_MINUTE,
     PLAN_REQUESTS_PER_MINUTE,
     FundamentalsRefreshManager,
+    EarningsEstimatesRefreshManager,
     fundamentals_snapshot,
+)
+from savi_uz.dashboard_sections import (  # noqa: E402
+    ALPHAVANTAGE_OPTIONS_DB,
+    CFTC_DB,
+    CROSS_ASSET_FOLDER,
+    EQUITY_DB,
+    INTRADAY_DB,
+    MACRO_DB,
+    MARKETDATA_OPTIONS_DB,
+    CrossAssetRefreshManager,
+    cftc_snapshot,
+    cross_assets_snapshot,
+    earnings_analysis_snapshot,
+    fed_snapshot,
+    options_snapshot,
 )
 
 
@@ -47,6 +63,12 @@ class DashboardHTTPServer(ThreadingHTTPServer):
         self.refresh_manager = RefreshManager(db_path, requests_per_hour=requests_per_hour)
         self.fundamentals_refresh_manager = FundamentalsRefreshManager(
             fundamentals_folder, requests_per_minute=alphavantage_requests_per_minute
+        )
+        self.earnings_estimates_refresh_manager = EarningsEstimatesRefreshManager(
+            fundamentals_folder, requests_per_minute=alphavantage_requests_per_minute
+        )
+        self.cross_asset_refresh_manager = CrossAssetRefreshManager(
+            CROSS_ASSET_FOLDER, requests_per_minute=alphavantage_requests_per_minute
         )
 
 
@@ -90,6 +112,35 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self._json({"error": str(exc)}, HTTPStatus.INTERNAL_SERVER_ERROR)
         elif path == "/api/fundamentals/refresh":
             self._json(self.server.fundamentals_refresh_manager.status())
+        elif path == "/api/earnings-analysis":
+            try:
+                self._json(earnings_analysis_snapshot(EQUITY_DB, self.server.fundamentals_folder))
+            except Exception as exc:
+                self._json({"error": str(exc)}, HTTPStatus.INTERNAL_SERVER_ERROR)
+        elif path == "/api/earnings-analysis/refresh":
+            self._json(self.server.earnings_estimates_refresh_manager.status())
+        elif path == "/api/cross-assets":
+            try:
+                self._json(cross_assets_snapshot(MACRO_DB, INTRADAY_DB, CROSS_ASSET_FOLDER))
+            except Exception as exc:
+                self._json({"error": str(exc)}, HTTPStatus.INTERNAL_SERVER_ERROR)
+        elif path == "/api/cross-assets/refresh":
+            self._json(self.server.cross_asset_refresh_manager.status())
+        elif path == "/api/options":
+            try:
+                self._json(options_snapshot(MARKETDATA_OPTIONS_DB, ALPHAVANTAGE_OPTIONS_DB))
+            except Exception as exc:
+                self._json({"error": str(exc)}, HTTPStatus.INTERNAL_SERVER_ERROR)
+        elif path == "/api/cftc":
+            try:
+                self._json(cftc_snapshot(CFTC_DB))
+            except Exception as exc:
+                self._json({"error": str(exc)}, HTTPStatus.INTERNAL_SERVER_ERROR)
+        elif path == "/api/fed":
+            try:
+                self._json(fed_snapshot(MACRO_DB))
+            except Exception as exc:
+                self._json({"error": str(exc)}, HTTPStatus.INTERNAL_SERVER_ERROR)
         elif path == "/api/health":
             self._json({"ok": True})
         elif path == "/favicon.ico":
@@ -99,14 +150,20 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
         path = urlparse(self.path).path
-        if path not in ("/api/refresh", "/api/fundamentals/refresh"):
+        if path not in (
+            "/api/refresh", "/api/fundamentals/refresh",
+            "/api/earnings-analysis/refresh", "/api/cross-assets/refresh",
+        ):
             self._json({"error": "not found"}, HTTPStatus.NOT_FOUND)
             return
         try:
-            manager = (
-                self.server.refresh_manager
-                if path == "/api/refresh" else self.server.fundamentals_refresh_manager
-            )
+            managers = {
+                "/api/refresh": self.server.refresh_manager,
+                "/api/fundamentals/refresh": self.server.fundamentals_refresh_manager,
+                "/api/earnings-analysis/refresh": self.server.earnings_estimates_refresh_manager,
+                "/api/cross-assets/refresh": self.server.cross_asset_refresh_manager,
+            }
+            manager = managers[path]
             started = manager.start()
         except ValueError as exc:
             self._json({"error": str(exc)}, HTTPStatus.SERVICE_UNAVAILABLE)
