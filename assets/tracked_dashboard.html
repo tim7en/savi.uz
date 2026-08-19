@@ -29,12 +29,14 @@
     .mark { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 7px;
       background: var(--ink); color: var(--panel); font: 700 11px var(--mono); }
     nav { display: grid; gap: 4px; }
-    .navitem { display: flex; justify-content: space-between; padding: 9px 10px; border-radius: 7px;
+    .navitem { width: 100%; display: flex; justify-content: space-between; padding: 9px 10px;
+      border: 0; border-radius: 7px; background: transparent; cursor: pointer; text-align: left;
       color: var(--soft); text-decoration: none; font-size: 13px; }
     .navitem.active { color: var(--ink); background: var(--wash); font-weight: 650; }
     .navitem small { font: 11px var(--mono); color: var(--muted); }
     .aside-foot { margin-top: auto; padding: 12px 8px 0; color: var(--muted); font: 10px/1.6 var(--mono); }
     main { min-width: 0; padding: 34px clamp(20px, 4vw, 58px) 70px; }
+    .page[hidden] { display: none; }
     .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
     .eyebrow { margin-bottom: 7px; color: var(--muted); font: 10px var(--mono); letter-spacing: .12em;
       text-transform: uppercase; }
@@ -67,8 +69,10 @@
     .kpi-sub { margin-top: 2px; color: var(--muted); font: 10px var(--mono); }
     .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px;
       margin: 24px 0 10px; }
-    .search { width: min(330px, 100%); border: 1px solid var(--line); border-radius: 7px;
+    .search, .select { width: min(330px, 100%); border: 1px solid var(--line); border-radius: 7px;
       background: var(--panel); color: var(--ink); padding: 9px 11px; }
+    .select { width: min(220px, 100%); }
+    .filter-group { display: flex; gap: 8px; min-width: 0; flex: 1; }
     .search::placeholder { color: var(--muted); }
     .result-count { color: var(--muted); font: 11px var(--mono); white-space: nowrap; }
     .table-card { overflow: hidden; background: var(--panel); border: 1px solid var(--line); }
@@ -103,7 +107,8 @@
     @media (max-width: 600px) {
       .top { flex-direction: column; } .refresh { width: 100%; }
       .kpis { grid-template-columns: 1fr 1fr; } .toolbar { align-items: stretch; flex-direction: column; }
-      .search { width: 100%; } .result-count { align-self: flex-end; }
+      .search, .select { width: 100%; } .filter-group { flex-direction: column; }
+      .result-count { align-self: flex-end; }
     }
     @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   </style>
@@ -112,11 +117,15 @@
   <div class="app">
     <aside>
       <div class="brand"><span class="mark">S</span><span>Savi</span></div>
-      <nav><a class="navitem active" href="#"><span>Tracked assets</span><small id="navCount">—</small></a></nav>
+      <nav>
+        <button class="navitem active" type="button" data-page="stocks"><span>Tracked assets</span><small id="navCount">—</small></button>
+        <button class="navitem" type="button" data-page="fundamentals"><span>Earnings</span><small id="fundNavCount">—</small></button>
+      </nav>
       <div class="aside-foot">LOCAL DATA ROOM<br>TIINGO · IEX</div>
     </aside>
 
     <main>
+      <section class="page" id="stocksPage">
       <div class="top">
         <div>
           <div class="eyebrow">Market data · Overview</div>
@@ -160,6 +169,57 @@
         </div>
         <div class="note" id="volumeNote">Five-minute volume is IEX-only and is best used as a relative activity measure.</div>
       </section>
+      </section>
+
+      <section class="page" id="fundamentalsPage" hidden>
+        <div class="top">
+          <div>
+            <div class="eyebrow">S&amp;P universe · Fundamentals</div>
+            <h1>Earnings &amp; fundamentals</h1>
+            <p class="lede">Latest reported EPS, revenue growth, margins, cash generation and valuation from the five normalized Alpha Vantage fundamental datasets.</p>
+          </div>
+          <button class="refresh" id="fundRefresh" type="button">Update fundamentals</button>
+        </div>
+
+        <div class="meta">
+          <span><b>source</b> Alpha Vantage</span>
+          <span><b>plan</b> 75 requests / minute</span>
+          <span><b>pacing</b> 72 requests / minute</span>
+          <span><b>universe</b> <span id="universeDate">—</span></span>
+          <span><b>dashboard read</b> <span id="fundReadMeta">—</span></span>
+        </div>
+
+        <section class="progress" id="fundProgress" aria-live="polite">
+          <div class="progress-head"><b id="fundProgressTitle">Updating fundamentals</b><span id="fundProgressPct">0%</span></div>
+          <div class="track"><div class="fill" id="fundProgressFill"></div></div>
+          <div class="progress-foot"><span id="fundProgressDetail">Preparing request queue…</span><span id="fundProgressEta">—</span></div>
+        </section>
+
+        <section class="kpis" aria-label="Fundamentals coverage summary">
+          <div class="kpi"><div class="kpi-label">Companies</div><div class="kpi-value" id="companyCount">—</div><div class="kpi-sub">stored S&amp;P universe</div></div>
+          <div class="kpi"><div class="kpi-label">Complete records</div><div class="kpi-value" id="completeCompanyCount">—</div><div class="kpi-sub">all five datasets present</div></div>
+          <div class="kpi"><div class="kpi-label">Latest fiscal quarter</div><div class="kpi-value" id="latestQuarter">—</div><div class="kpi-sub">newest stored reporting period</div></div>
+          <div class="kpi"><div class="kpi-label">Positive EPS surprise</div><div class="kpi-value" id="positiveSurprise">—</div><div class="kpi-sub">latest report, covered companies</div></div>
+        </section>
+
+        <div class="toolbar">
+          <div class="filter-group">
+            <input class="search" id="fundSearch" type="search" autocomplete="off" placeholder="Search company, ticker or industry…" aria-label="Search company fundamentals">
+            <select class="select" id="sectorFilter" aria-label="Filter by sector"><option value="">All sectors</option></select>
+          </div>
+          <span class="result-count" id="fundResultCount">Loading…</span>
+        </div>
+
+        <section class="table-card">
+          <div class="scroll">
+            <table>
+              <thead><tr><th>Company</th><th>Quarter</th><th>EPS surprise</th><th>Revenue YoY</th><th>Net margin</th><th>Free cash flow</th><th>P/E</th><th>Data updated</th></tr></thead>
+              <tbody id="fundRows"><tr><td class="empty" colspan="8">Reading stored fundamentals…</td></tr></tbody>
+            </table>
+          </div>
+          <div class="note">Each refresh updates overview, earnings, income statement, balance sheet and cash flow. Files already updated today are skipped, so interrupted runs resume safely.</div>
+        </section>
+      </section>
     </main>
   </div>
 
@@ -167,7 +227,11 @@
     (() => {
       "use strict";
       const $ = (id) => document.getElementById(id);
-      const state = { assets: [], query: "", polling: null, lastCompleted: 0 };
+      const state = {
+        assets: [], query: "", polling: null, lastCompleted: 0,
+        companies: [], fundQuery: "", fundSector: "", fundPolling: null,
+        fundamentalsLoaded: false,
+      };
       const fmtPrice = (value) => value == null ? "—" : "$" + value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const fmtVolume = (value) => {
         if (value == null) return "—";
@@ -175,6 +239,14 @@
         if (Math.abs(value) >= 1e6) return (value / 1e6).toFixed(2) + "M";
         if (Math.abs(value) >= 1e3) return (value / 1e3).toFixed(1) + "K";
         return value.toLocaleString("en-US");
+      };
+      const fmtMoney = (value) => {
+        if (value == null) return "—";
+        const abs = Math.abs(value);
+        if (abs >= 1e12) return "$" + (value / 1e12).toFixed(2) + "T";
+        if (abs >= 1e9) return "$" + (value / 1e9).toFixed(2) + "B";
+        if (abs >= 1e6) return "$" + (value / 1e6).toFixed(1) + "M";
+        return "$" + value.toLocaleString("en-US", { maximumFractionDigits: 0 });
       };
       const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[ch]);
       const median = (values) => {
@@ -278,6 +350,107 @@
         }
       }
 
+      function renderFundamentals() {
+        const query = state.fundQuery.trim().toLowerCase();
+        const visible = state.companies.filter((row) => {
+          const matchesText = [row.ticker, row.name, row.industry, row.sector].join(" ").toLowerCase().includes(query);
+          return matchesText && (!state.fundSector || row.sector === state.fundSector);
+        });
+        $("fundResultCount").textContent = `${visible.length} of ${state.companies.length}`;
+        if (!visible.length) {
+          $("fundRows").innerHTML = '<tr><td class="empty" colspan="8">No company matches those filters.</td></tr>';
+          return;
+        }
+        $("fundRows").innerHTML = visible.map((row) => {
+          const surprise = row.surprise_pct == null ? "—" : `${row.surprise_pct > 0 ? "+" : ""}${row.surprise_pct.toFixed(1)}%`;
+          const growth = row.revenue_yoy_pct == null ? "—" : `${row.revenue_yoy_pct > 0 ? "+" : ""}${row.revenue_yoy_pct.toFixed(1)}%`;
+          const margin = row.net_margin_pct == null ? "—" : row.net_margin_pct.toFixed(1) + "%";
+          const surpriseClass = row.surprise_pct > 0 ? "pos" : row.surprise_pct < 0 ? "neg" : "";
+          const growthClass = row.revenue_yoy_pct > 0 ? "pos" : row.revenue_yoy_pct < 0 ? "neg" : "";
+          const updated = row.updated_at ? row.updated_at.slice(0, 10) : "—";
+          return `<tr>
+            <td><div class="asset"><span class="ticker">${escapeHtml(row.ticker)}</span><span><div class="asset-name">${escapeHtml(row.name)}</div><div class="asset-sub">${escapeHtml(row.sector)}${row.industry ? " · " + escapeHtml(row.industry) : ""}</div></span></div></td>
+            <td>${escapeHtml(row.latest_quarter || "—")}</td><td class="${surpriseClass}">${surprise}</td>
+            <td class="${growthClass}">${growth}</td><td>${margin}</td><td>${fmtMoney(row.free_cash_flow)}</td>
+            <td>${row.pe_ratio == null ? "—" : row.pe_ratio.toFixed(1) + "×"}</td>
+            <td><span class="badge ${row.status === "current" ? "" : "stale"}"><i class="dot"></i>${escapeHtml(updated)} · ${row.endpoints_present}/5</span></td>
+          </tr>`;
+        }).join("");
+      }
+
+      async function loadFundamentals() {
+        try {
+          const payload = await api("/api/fundamentals");
+          state.companies = payload.companies || [];
+          state.fundamentalsLoaded = true;
+          $("companyCount").textContent = payload.count ?? "—";
+          $("completeCompanyCount").textContent = payload.complete_count ?? "—";
+          $("latestQuarter").textContent = payload.latest_quarter ? payload.latest_quarter.slice(0, 7) : "—";
+          const beatRate = payload.surprise_count ? payload.positive_surprise_count / payload.surprise_count * 100 : null;
+          $("positiveSurprise").textContent = beatRate == null ? "—" : beatRate.toFixed(0) + "%";
+          $("fundNavCount").textContent = payload.count ?? "—";
+          $("universeDate").textContent = payload.universe?.date || "—";
+          $("fundReadMeta").textContent = payload.generated_at ? payload.generated_at.slice(0, 16).replace("T", " ") + "Z" : "—";
+          const sector = $("sectorFilter");
+          const selected = sector.value;
+          sector.innerHTML = '<option value="">All sectors</option>' + (payload.sectors || []).map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+          sector.value = selected;
+          renderFundamentals();
+        } catch (error) {
+          $("fundRows").innerHTML = `<tr><td class="empty error" colspan="8">${escapeHtml(error.message)}</td></tr>`;
+          $("fundResultCount").textContent = "Service unavailable";
+        }
+      }
+
+      const etaLabel = (seconds) => {
+        if (!Number.isFinite(seconds) || seconds <= 0) return "—";
+        if (seconds < 60) return "< 1 min left";
+        const minutes = Math.ceil(seconds / 60);
+        return minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m left` : `${minutes} min left`;
+      };
+
+      function showFundProgress(status) {
+        const active = status.running || ["complete", "complete_with_errors", "failed"].includes(status.state);
+        $("fundProgress").classList.toggle("on", active);
+        $("fundRefresh").disabled = Boolean(status.running);
+        $("fundRefresh").textContent = status.running ? "Updating…" : "Update fundamentals";
+        const pct = status.percent || 0;
+        $("fundProgressPct").textContent = pct.toFixed(0) + "%";
+        $("fundProgressFill").style.width = pct + "%";
+        $("fundProgressEta").textContent = status.running ? etaLabel(status.estimated_seconds_remaining) : `${status.files_updated || 0} files updated`;
+        if (status.running) {
+          $("fundProgressTitle").textContent = "Updating fundamentals";
+          $("fundProgressDetail").textContent = `${status.completed || 0} / ${status.total || 0} · ${status.current_symbol || "preparing"} · ${status.current_dataset || "queue"}`;
+        } else if (status.state === "complete") {
+          $("fundProgressTitle").textContent = "Fundamentals are current";
+          $("fundProgressDetail").textContent = `${status.files_updated || 0} updated · ${status.skipped_current || 0} already current`;
+        } else if (status.state === "complete_with_errors") {
+          $("fundProgressTitle").textContent = "Update finished with warnings";
+          $("fundProgressDetail").textContent = `${status.files_updated || 0} updated · ${(status.errors || []).length} errors`;
+        } else if (status.state === "failed") {
+          $("fundProgressTitle").textContent = "Fundamentals update failed";
+          $("fundProgressDetail").textContent = (status.errors || []).map((row) => row.message).join(" · ") || "Unknown error";
+        }
+      }
+
+      async function pollFundStatus() {
+        try {
+          const status = await api("/api/fundamentals/refresh");
+          showFundProgress(status);
+          if (status.running) {
+            state.fundPolling = setTimeout(pollFundStatus, 1200);
+          } else {
+            state.fundPolling = null;
+            if (status.state !== "idle") loadFundamentals();
+          }
+        } catch (error) {
+          $("fundProgress").classList.add("on");
+          $("fundProgressTitle").textContent = "Cannot read update status";
+          $("fundProgressDetail").textContent = error.message;
+          $("fundRefresh").disabled = false;
+        }
+      }
+
       $("refresh").addEventListener("click", async () => {
         $("refresh").disabled = true;
         try {
@@ -293,6 +466,33 @@
         }
       });
       $("search").addEventListener("input", (event) => { state.query = event.target.value; renderRows(); });
+      $("fundSearch").addEventListener("input", (event) => { state.fundQuery = event.target.value; renderFundamentals(); });
+      $("sectorFilter").addEventListener("change", (event) => { state.fundSector = event.target.value; renderFundamentals(); });
+      $("fundRefresh").addEventListener("click", async () => {
+        $("fundRefresh").disabled = true;
+        try {
+          const status = await api("/api/fundamentals/refresh", { method: "POST" });
+          showFundProgress(status);
+          if (state.fundPolling) clearTimeout(state.fundPolling);
+          pollFundStatus();
+        } catch (error) {
+          $("fundProgress").classList.add("on");
+          $("fundProgressTitle").textContent = "Update could not start";
+          $("fundProgressDetail").textContent = error.message;
+          $("fundRefresh").disabled = false;
+        }
+      });
+      document.querySelectorAll("[data-page]").forEach((button) => button.addEventListener("click", () => {
+        const page = button.dataset.page;
+        document.querySelectorAll("[data-page]").forEach((item) => item.classList.toggle("active", item === button));
+        $("stocksPage").hidden = page !== "stocks";
+        $("fundamentalsPage").hidden = page !== "fundamentals";
+        if (page === "fundamentals" && !state.fundamentalsLoaded) {
+          loadFundamentals();
+          pollFundStatus();
+        }
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }));
       loadStocks();
       pollStatus();
     })();

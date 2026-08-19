@@ -702,6 +702,15 @@ Tiingo calls per hour, below the free-tier ceiling; a full 46-symbol refresh
 takes about one hour. The service binds to `127.0.0.1:8765` by default and has
 no external web dependencies.
 
+The second page reads the legacy `data/sp500_data` folder and summarises the
+latest EPS surprise, year-over-year revenue growth, net margin, free cash flow
+and P/E for its 465-symbol universe. **Update fundamentals** refreshes the five
+Alpha Vantage datasets already stored per company: overview, earnings, income
+statement, balance sheet and cash flow. That is 2,325 calls for a fully stale
+folder, paced at 72 requests/minute under the 75/minute premium-plan limit
+(about 33 minutes). Files updated on the current day are skipped, making the
+job resumable after a server or network interruption.
+
 Each session is drawn as **two panels sharing one price axis**: price against
 time on the left, volume against price on the right. They are not merged --
 volume-at-price and price-over-time have different horizontal meanings, and one

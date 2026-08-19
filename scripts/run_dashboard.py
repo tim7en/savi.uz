@@ -22,6 +22,13 @@ from urllib.parse import urlparse
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from savi_uz.dashboard import DEFAULT_DB, RefreshManager, tracked_snapshot  # noqa: E402
+from savi_uz.fundamentals import (  # noqa: E402
+    DEFAULT_FOLDER as DEFAULT_FUNDAMENTALS_FOLDER,
+    DEFAULT_REQUESTS_PER_MINUTE as DEFAULT_AV_REQUESTS_PER_MINUTE,
+    PLAN_REQUESTS_PER_MINUTE,
+    FundamentalsRefreshManager,
+    fundamentals_snapshot,
+)
 
 
 DEFAULT_PAGE = Path("assets/tracked_dashboard.html")
@@ -31,11 +38,16 @@ class DashboardHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
 
     def __init__(self, address: tuple[str, int], db_path: Path, page_path: Path,
-                 requests_per_hour: int) -> None:
+                 fundamentals_folder: Path, requests_per_hour: int,
+                 alphavantage_requests_per_minute: int) -> None:
         super().__init__(address, DashboardHandler)
         self.db_path = db_path
         self.page_path = page_path
+        self.fundamentals_folder = fundamentals_folder
         self.refresh_manager = RefreshManager(db_path, requests_per_hour=requests_per_hour)
+        self.fundamentals_refresh_manager = FundamentalsRefreshManager(
+            fundamentals_folder, requests_per_minute=alphavantage_requests_per_minute
+        )
 
 
 class DashboardHandler(BaseHTTPRequestHandler):
@@ -71,6 +83,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self._json({"error": str(exc)}, HTTPStatus.INTERNAL_SERVER_ERROR)
         elif path == "/api/refresh":
             self._json(self.server.refresh_manager.status())
+        elif path == "/api/fundamentals":
+            try:
+                self._json(fundamentals_snapshot(self.server.fundamentals_folder))
+            except Exception as exc:
+                self._json({"error": str(exc)}, HTTPStatus.INTERNAL_SERVER_ERROR)
+        elif path == "/api/fundamentals/refresh":
+            self._json(self.server.fundamentals_refresh_manager.status())
         elif path == "/api/health":
             self._json({"ok": True})
         elif path == "/favicon.ico":
@@ -79,21 +98,27 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._json({"error": "not found"}, HTTPStatus.NOT_FOUND)
 
     def do_POST(self) -> None:  # noqa: N802 - BaseHTTPRequestHandler API
-        if urlparse(self.path).path != "/api/refresh":
+        path = urlparse(self.path).path
+        if path not in ("/api/refresh", "/api/fundamentals/refresh"):
             self._json({"error": "not found"}, HTTPStatus.NOT_FOUND)
             return
         try:
-            started = self.server.refresh_manager.start()
+            manager = (
+                self.server.refresh_manager
+                if path == "/api/refresh" else self.server.fundamentals_refresh_manager
+            )
+            started = manager.start()
         except ValueError as exc:
             self._json({"error": str(exc)}, HTTPStatus.SERVICE_UNAVAILABLE)
             return
-        status = self.server.refresh_manager.status()
+        status = manager.status()
         self._json(status, HTTPStatus.ACCEPTED if started else HTTPStatus.CONFLICT)
 
     def log_message(self, fmt: str, *args: object) -> None:
         # Keep one useful line per request without BaseHTTPRequestHandler's
         # reverse-DNS-looking noise.
-        sys.stdout.write(f"{self.address_string()} {self.command} {self.path} {fmt % args}\n")
+        if sys.stdout is not None:  # pythonw has no console stream on Windows
+            sys.stdout.write(f"{self.address_string()} {self.command} {self.path} {fmt % args}\n")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -101,8 +126,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--db", type=Path, default=DEFAULT_DB)
+    parser.add_argument("--fundamentals-folder", type=Path, default=DEFAULT_FUNDAMENTALS_FOLDER)
     parser.add_argument("--page", type=Path, default=DEFAULT_PAGE)
     parser.add_argument("--requests-per-hour", type=int, default=45)
+    parser.add_argument(
+        "--alphavantage-requests-per-minute", type=int,
+        default=DEFAULT_AV_REQUESTS_PER_MINUTE,
+        help="Alpha Vantage pacing (default 72; premium plan ceiling 75)",
+    )
     parser.add_argument("--open", action="store_true", help="open the dashboard in a browser")
     args = parser.parse_args(argv)
 
@@ -112,14 +143,24 @@ def main(argv: list[str] | None = None) -> int:
     if not args.page.is_file():
         print(f"error: dashboard page not found: {args.page}")
         return 2
+    if not (args.fundamentals_folder / "sp500_symbols.json").is_file():
+        print(f"error: S&P fundamentals folder not found: {args.fundamentals_folder}")
+        return 2
     if not 1 <= args.requests_per_hour <= 50:
         print("error: --requests-per-hour must be between 1 and Tiingo's free-tier ceiling of 50")
         return 2
+    if not 1 <= args.alphavantage_requests_per_minute <= PLAN_REQUESTS_PER_MINUTE:
+        print(f"error: --alphavantage-requests-per-minute must be between 1 and {PLAN_REQUESTS_PER_MINUTE}")
+        return 2
 
-    server = DashboardHTTPServer((args.host, args.port), args.db, args.page, args.requests_per_hour)
+    server = DashboardHTTPServer(
+        (args.host, args.port), args.db, args.page, args.fundamentals_folder,
+        args.requests_per_hour, args.alphavantage_requests_per_minute,
+    )
     url = f"http://{args.host}:{server.server_port}/"
     print(f"Savi dashboard: {url}")
     print(f"Database:       {args.db}")
+    print(f"Fundamentals:   {args.fundamentals_folder}")
     print("Press Ctrl+C to stop.")
     if args.open:
         webbrowser.open(url)
