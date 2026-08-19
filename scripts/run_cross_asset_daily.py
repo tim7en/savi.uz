@@ -1,18 +1,10 @@
-"""The validated system on the non-equity daily book, 2007-2026.
+"""Run the validated system on the non-equity cross-asset book.
 
-Twenty-one ETFs spanning metals, energy, broad commodity, duration, credit, FX
-and volatility, on daily bars reaching back to 2002 in places.  Two things this
-answers that the 30-minute equity book cannot.
-
-First, consistency: the equity book runs ten years, eight of them bullish, and
-its worst year is the only stress it has ever seen.  This book covers 2008, the
-2011 and 2015 commodity collapses and the 2013 taper, so a year-by-year table
-here means something the equity one does not.
-
-Second, whether the rules transfer.  The engine is interval agnostic by design
-and 55/20 on daily bars is the original Turtle specification, so if the edge is
-real it should survive the move -- and if it only works on 30-minute US equities
-selected in 2026, that is worth knowing before any of it is traded.
+The twenty-one ETFs span metals, energy, broad commodities, duration, credit,
+FX and volatility.  Daily remains the reference frequency and the original
+Turtle specification.  Passing ``--frequency 30min`` applies the unchanged
+rules to directly sourced 30-minute bars and marks the resulting portfolio
+once per session for comparable risk statistics.
 
 Long and short are both run: the case for shorts was never tested anywhere with
 a genuine bear market in it, and commodities and duration spend years trending
@@ -46,11 +38,11 @@ def parse_args(argv=None):
     parser.add_argument("--db", type=Path,
                         default=Path("data/cross_assets/etf_daily.db"))
     parser.add_argument("--start", default="2007-01-01")
+    parser.add_argument("--frequency", default="daily")
     parser.add_argument("--max-positions", type=int, default=6)
     parser.add_argument("--target-dd", type=float, default=0.18)
     parser.add_argument("--trials", type=int, default=40)
-    parser.add_argument("--out", type=Path,
-                        default=Path("out/strategy/cross_asset_daily.json"))
+    parser.add_argument("--out", type=Path, default=None)
     return parser.parse_args(argv)
 
 
@@ -59,11 +51,14 @@ def load(args):
     sleeves = dict(connection.execute("SELECT ticker, sleeve FROM venue_map"))
     book = {}
     for (ticker,) in connection.execute(
-        "SELECT DISTINCT ticker FROM bars WHERE frequency='daily' ORDER BY ticker"
+        "SELECT DISTINCT ticker FROM bars WHERE frequency=? ORDER BY ticker",
+        (args.frequency,),
     ).fetchall():
         rows = connection.execute(
             "SELECT ts,open,high,low,close,volume FROM bars WHERE ticker=? AND "
-            "frequency='daily' AND ts>=? ORDER BY ts", (ticker, args.start)).fetchall()
+            "frequency=? AND ts>=? ORDER BY ts",
+            (ticker, args.frequency, args.start),
+        ).fetchall()
         if len(rows) >= 400:
             book[ticker] = [Bar(*r) for r in rows]
     connection.close()
@@ -135,11 +130,15 @@ def sharpe(stream):
 
 def main(argv=None):
     args = parse_args(argv)
+    if args.out is None:
+        args.out = Path(f"out/strategy/cross_asset_{args.frequency}.json")
     book, sleeves = load(args)
+    if not book:
+        raise SystemExit(f"error: no {args.frequency} bars in {args.db}")
     closes_by_ticker = {t: {b.timestamp[:10]: b.close for b in bars}
                         for t, bars in book.items()}
     calendar = sorted({d for c in closes_by_ticker.values() for d in c})
-    print(f"{len(book)} instruments on daily bars, "
+    print(f"{len(book)} instruments on {args.frequency} bars, "
           f"{calendar[0]} -> {calendar[-1]} ({len(calendar):,} sessions)\n", flush=True)
 
     books = {}
