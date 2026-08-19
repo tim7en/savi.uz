@@ -304,6 +304,7 @@ class _Phantom:
 def run_turtle(
     bars: list[Bar], *, config: TurtleConfig = TurtleConfig(),
     entries: dict[int, int] | None = None,
+    chandelier_by_bar: dict[int, float] | None = None,
 ) -> tuple[list[TurtleTrade], TurtleAudit]:
     """Replay the system over ``bars``; returns the trades and an audit.
 
@@ -311,6 +312,12 @@ def run_turtle(
     direction}`` map, leaving every other rule untouched.  A random-entry null
     then runs through exactly the same stop, pyramid and exit machinery as the
     real signal, so a difference between them cannot come from the exit.
+
+    ``chandelier_by_bar`` lets an outside forecast set the trail multiplier per
+    entry bar, leaving sizing, the hard stop and pyramid spacing on Wilder N.
+    The value is read once, at entry, and held for the life of the trade: the
+    trail only ratchets tighter, so a multiplier that widened mid-trade could
+    never loosen an existing stop and would silently do nothing.
     """
     rows = sorted(bars, key=lambda bar: bar.timestamp)
     atr = wilder_atr(rows, config.atr_window)
@@ -347,6 +354,7 @@ def run_turtle(
     stop = 0.0
     stop_reason = "stop"
     n_at_entry = 0.0
+    chandelier_k = config.chandelier_atr
     favourable_extreme = 0.0
     pending: dict[int, _Phantom | None] = {1: None, -1: None}
 
@@ -446,10 +454,10 @@ def run_turtle(
                 max(favourable_extreme, bar.high) if direction > 0
                 else min(favourable_extreme, bar.low)
             )
-            if config.chandelier_atr is not None:
+            if chandelier_k is not None:
                 candidate_stop = (
                     favourable_extreme
-                    - direction * config.chandelier_atr * n_at_entry
+                    - direction * chandelier_k * n_at_entry
                 )
                 tighter = (
                     candidate_stop > stop if direction > 0 else candidate_stop < stop
@@ -485,6 +493,8 @@ def run_turtle(
                 continue
             direction = candidate
             n_at_entry = previous_n
+            chandelier_k = (config.chandelier_atr if chandelier_by_bar is None
+                            else chandelier_by_bar.get(index, config.chandelier_atr))
             units = [TurtleUnit(bar.timestamp, fill, previous_n)]
             stop = fill - candidate * config.stop_atr * previous_n
             entry_index = index
@@ -548,6 +558,8 @@ def run_turtle(
                 break
             direction = candidate
             n_at_entry = previous_n
+            chandelier_k = (config.chandelier_atr if chandelier_by_bar is None
+                            else chandelier_by_bar.get(index, config.chandelier_atr))
             units = [TurtleUnit(bar.timestamp, fill, previous_n)]
             stop = fill - candidate * config.stop_atr * previous_n
             stop_reason = "stop"

@@ -110,6 +110,34 @@ class EntryAndExitTests(unittest.TestCase):
         self.assertTrue(trades)
         self.assertEqual(trades[0].exit_reason, "chandelier")
 
+    def test_a_per_bar_schedule_sets_the_trail_only_at_entry(self):
+        # A wide multiple supplied for the entry bar must survive the whole
+        # trade: the trail ratchets tighter, so a value read later could never
+        # loosen a stop already in place and the schedule would do nothing.
+        rows = flat_then_breakout(drive=20)
+        peak = rows[-1].close
+        rows.extend([
+            bar(len(rows), peak, peak + 1, peak - 1, peak),
+            bar(len(rows) + 1, peak - 4, peak - 3, peak - 8, peak - 7),
+        ])
+        settings = dict(directions=(1,), max_units=1, use_channel_exit=False,
+                        chandelier_atr=2.0)
+        tight, _ = run_turtle(rows, config=TurtleConfig(**settings))
+        self.assertEqual(tight[0].exit_reason, "chandelier")
+        entry_index = next(i for i, row in enumerate(rows)
+                           if row.timestamp == tight[0].entry_timestamp)
+
+        wide, _ = run_turtle(rows, config=TurtleConfig(**settings),
+                             chandelier_by_bar={entry_index: 12.0})
+        self.assertTrue(wide)
+        self.assertNotEqual(wide[0].exit_reason, "chandelier")
+
+        # A bar the trade does not enter on leaves the configured value alone.
+        elsewhere, _ = run_turtle(rows, config=TurtleConfig(**settings),
+                                  chandelier_by_bar={entry_index + 1: 12.0})
+        self.assertEqual(elsewhere[0].exit_reason, "chandelier")
+        self.assertEqual(elsewhere[0].exit, tight[0].exit)
+
     def test_break_even_is_armed_for_the_following_bar(self):
         rows = flat_then_breakout(drive=10)
         entry_probe, _ = run_turtle(rows, config=TurtleConfig(
