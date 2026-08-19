@@ -160,11 +160,10 @@ def main(argv=None):
     for label, pooled in books.items():
         caps = [cap(pooled, args.max_positions, random.Random(s))
                 for s in range(args.trials)]
-        series = []
-        for taken in caps:
-            by_day = marked_map(taken, closes_by_ticker)
-            days = sorted(by_day)
-            series.append((days, [by_day[d] for d in days]))
+        # Mark each tie-break once.  Rebuilding the map inside the year loop
+        # recomputed every open position's daily excursion twenty times over.
+        marks = [marked_map(taken, closes_by_ticker) for taken in caps]
+        series = [(sorted(m), [m[d] for d in sorted(m)]) for m in marks]
         risk = solve_risk(series, args.target_dd)
         years = sorted({d[:4] for d in calendar})
         by_year = {}
@@ -172,21 +171,15 @@ def main(argv=None):
             window = [d for d in calendar if d[:4] == year]
             if len(window) < 60:
                 continue
-            scores = []
-            for taken in caps[:12]:
-                stream = [marked_map(taken, closes_by_ticker).get(d, 0.0)
-                          for d in window]
-                value = sharpe(stream)
-                if value == value:
-                    scores.append(value)
+            scores = [sharpe([m.get(d, 0.0) for d in window]) for m in marks[:12]]
+            scores = [s for s in scores if s == s]
             if scores:
                 by_year[year] = statistics.median(scores)
         live = list(by_year.values())
-        shorts = sum(1 for t in pooled if t["dir"] < 0) / max(len(pooled), 1)
+        shorts = sum(1 for x in pooled if x["dir"] < 0) / max(len(pooled), 1)
         entry = {"trades": len(pooled), "short_share": shorts,
                  "sharpe": statistics.median(
-                     sharpe([marked_map(t, closes_by_ticker).get(d, 0.0)
-                             for d in calendar]) for t in caps[:12]),
+                     sharpe([m.get(d, 0.0) for d in calendar]) for m in marks[:12]),
                  "cagr": statistics.median(
                      path_metrics(d, v, risk)[2] for d, v in series),
                  "risk": risk, "years": by_year, "worst_year": min(live),
