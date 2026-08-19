@@ -260,6 +260,11 @@ class AlphaVantageFundamentalsClient:
                 for key in ("Note", "Information", "Error Message"):
                     if key in document:
                         raise FundamentalsSourceError(f"Alpha Vantage: {document[key]}")
+                if not document and function == "EARNINGS_ESTIMATES":
+                    # The endpoint returns an empty object for unsupported or
+                    # delisted legacy-universe symbols. Cache that as checked
+                    # coverage so every dashboard refresh does not retry it.
+                    return {"symbol": ticker, "estimates": []}
                 if not document:
                     raise FundamentalsSourceError(f"Alpha Vantage returned no {function} data for {ticker}")
                 return document
