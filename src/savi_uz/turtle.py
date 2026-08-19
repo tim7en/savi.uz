@@ -303,8 +303,15 @@ class _Phantom:
 
 def run_turtle(
     bars: list[Bar], *, config: TurtleConfig = TurtleConfig(),
+    entries: dict[int, int] | None = None,
 ) -> tuple[list[TurtleTrade], TurtleAudit]:
-    """Replay the system over ``bars``; returns the trades and an audit."""
+    """Replay the system over ``bars``; returns the trades and an audit.
+
+    ``entries`` replaces breakout detection with an explicit ``{bar index:
+    direction}`` map, leaving every other rule untouched.  A random-entry null
+    then runs through exactly the same stop, pyramid and exit machinery as the
+    real signal, so a difference between them cannot come from the exit.
+    """
     rows = sorted(bars, key=lambda bar: bar.timestamp)
     atr = wilder_atr(rows, config.atr_window)
     highs = [bar.high for bar in rows]
@@ -458,6 +465,29 @@ def run_turtle(
                 if progress_n >= config.breakeven_trigger_n and tighter:
                     stop = average
                     stop_reason = "breakeven"
+            index += 1
+            continue
+
+        if entries is not None:
+            candidate = entries.get(index)
+            if candidate is None:
+                index += 1
+                continue
+            fill = bar.open
+            breakouts += 1
+            floor = max(
+                config.minimum_n_fraction,
+                config.minimum_n_cost_multiple * config.round_trip_cost,
+            )
+            if previous_n < floor * fill:
+                skipped_small_n += 1
+                index += 1
+                continue
+            direction = candidate
+            n_at_entry = previous_n
+            units = [TurtleUnit(bar.timestamp, fill, previous_n)]
+            stop = fill - candidate * config.stop_atr * previous_n
+            entry_index = index
             index += 1
             continue
 

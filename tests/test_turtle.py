@@ -520,5 +520,52 @@ class EntryModeTests(unittest.TestCase):
         )
 
 
+class ExplicitEntryTests(unittest.TestCase):
+    """The random-entry null must run through the identical exit machinery."""
+
+    def test_feeding_back_the_real_entries_reproduces_the_real_trades(self):
+        rows = flat_then_breakout()
+        price = rows[-1].close
+        for cycle in range(5):
+            for _ in range(12):
+                price += -3.5 if cycle % 2 == 0 else 3.5
+                rows.append(bar(len(rows), price, price + 1.5, price - 1.5, price))
+        cfg = TurtleConfig(max_units=1)   # entry price differs under pyramiding
+        real, _ = run_turtle(rows, config=cfg)
+        self.assertTrue(real)
+        stamps = {t.entry_timestamp: t.direction for t in real}
+        index_of = {b.timestamp: i for i, b in enumerate(rows)}
+        replay, _ = run_turtle(rows, config=cfg,
+                               entries={index_of[s]: d for s, d in stamps.items()})
+        self.assertEqual(len(replay), len(real))
+        for a, b in zip(real, replay):
+            self.assertEqual(a.exit_timestamp, b.exit_timestamp)
+            self.assertEqual(a.exit_reason, b.exit_reason)
+            self.assertEqual(a.direction, b.direction)
+
+    def test_an_empty_entry_map_produces_no_trades(self):
+        trades, audit = run_turtle(flat_then_breakout(), entries={})
+        self.assertEqual(trades, [])
+        self.assertEqual(audit.breakouts, 0)
+
+    def test_entries_are_ignored_while_a_position_is_open(self):
+        rows = flat_then_breakout()
+        every = {i: 1 for i in range(25, len(rows))}
+        trades, audit = run_turtle(rows, config=TurtleConfig(directions=(1,)),
+                                   entries=every)
+        # One position at a time, so far fewer trades than offered entries.
+        self.assertLess(len(trades), len(every))
+        self.assertTrue(trades)
+
+    def test_the_n_floor_still_applies_to_explicit_entries(self):
+        rows = [bar(i, 100, 101, 99, 100) for i in range(30)]
+        rows += [bar(30 + i, 100, 100, 100, 100) for i in range(300)]
+        rows.append(bar(330, 100, 140, 100, 138))
+        _, audit = run_turtle(rows, config=TurtleConfig(directions=(1,)),
+                              entries={330: 1})
+        self.assertEqual(audit.skipped_small_n, 1)
+        self.assertEqual(audit.trades, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
