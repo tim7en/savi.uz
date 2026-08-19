@@ -60,6 +60,8 @@ def parse_args(argv=None):
     parser.add_argument("--min-sessions", type=int, default=400)
     parser.add_argument("--max-positions", type=int, default=6)
     parser.add_argument("--target-dd", type=float, default=0.18)
+    parser.add_argument("--cost", type=float, default=0.0002,
+                        help="round-trip cost as a fraction of notional")
     parser.add_argument("--trials", type=int, default=60)
     parser.add_argument("--out", type=Path,
                         default=Path("out/strategy/exit_matched_risk.json"))
@@ -218,6 +220,7 @@ def main(argv=None):
     book = load_book(args)
     print(f"{len(book)} instruments at {args.minutes}-minute bars", flush=True)
 
+    BASE["round_trip_cost"] = args.cost
     base_config = TurtleConfig(**BASE)
     offers = {}
     for ticker, bars in book.items():
