@@ -207,6 +207,33 @@ def snapshot_features(rows: list[Contract], spot: float) -> dict:
     }
 
 
+def aggregate_gamma(rows: list[Contract], spot: float,
+                    multiplier: float = 100.0) -> dict:
+    """Dealer gamma exposure in dollars per 1% move.
+
+    The standard convention has dealers long calls and short puts, so calls add
+    and puts subtract.  Contracts without a gamma or without open interest carry
+    no exposure and are counted as unusable rather than as zero, which keeps the
+    coverage figure honest when a vendor leaves fields blank.
+    """
+    call_gex = put_gex = absolute = 0.0
+    usable = 0
+    for contract in rows:
+        if not contract.gamma or not contract.open_interest or spot <= 0:
+            continue
+        usable += 1
+        dollars = (contract.gamma * contract.open_interest * multiplier
+                   * spot * spot * 0.01)
+        absolute += abs(dollars)
+        if contract.side == "call":
+            call_gex += dollars
+        else:
+            put_gex += dollars
+    return {"call_gex": call_gex, "put_gex": put_gex,
+            "net_gex": call_gex - put_gex, "absolute_gex": absolute,
+            "usable": usable, "contracts": len(rows)}
+
+
 FEATURE_NAMES = (
     "atm_iv", "iv_term_slope", "skew_moneyness", "skew_25delta",
     "put_call_oi", "put_call_volume", "net_gamma", "gamma_balance",

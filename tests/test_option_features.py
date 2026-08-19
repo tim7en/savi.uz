@@ -5,6 +5,7 @@ import unittest
 
 from savi_uz.option_features import (
     Contract,
+    aggregate_gamma,
     black_scholes_greeks,
     snapshot_features,
 )
@@ -102,6 +103,49 @@ class SnapshotTests(unittest.TestCase):
         rows.append(Contract("call", 100.0, 7, None, None, 50.0, 1.0))
         out = snapshot_features(rows, 100.0)
         self.assertIsNotNone(out["atm_iv"])
+
+
+class AggregateGammaTests(unittest.TestCase):
+    def rows(self, call_gamma=0.01, put_gamma=0.01, call_oi=100.0, put_oi=100.0):
+        return [
+            Contract("call", 100.0, 7, 0.2, call_gamma, call_oi, 0.0),
+            Contract("put", 100.0, 7, 0.2, put_gamma, put_oi, 0.0),
+        ]
+
+    def test_calls_add_and_puts_subtract(self):
+        out = aggregate_gamma(self.rows(call_oi=200.0, put_oi=100.0), 100.0)
+        self.assertGreater(out["net_gex"], 0)
+        out = aggregate_gamma(self.rows(call_oi=100.0, put_oi=200.0), 100.0)
+        self.assertLess(out["net_gex"], 0)
+
+    def test_a_matched_book_nets_to_zero_but_is_not_absolutely_zero(self):
+        out = aggregate_gamma(self.rows(), 100.0)
+        self.assertAlmostEqual(out["net_gex"], 0.0, places=9)
+        self.assertGreater(out["absolute_gex"], 0.0)
+
+    def test_the_dollar_figure_matches_the_stated_convention(self):
+        # one call: gamma 0.01, OI 100, x100 multiplier, spot 100, per 1% move
+        out = aggregate_gamma([Contract("call", 100.0, 7, 0.2, 0.01, 100.0, 0.0)],
+                              100.0)
+        self.assertAlmostEqual(out["call_gex"], 0.01 * 100 * 100 * 100 * 100 * 0.01)
+
+    def test_exposure_scales_with_the_square_of_spot(self):
+        one = aggregate_gamma(self.rows(put_oi=0.0), 100.0)["net_gex"]
+        two = aggregate_gamma(self.rows(put_oi=0.0), 200.0)["net_gex"]
+        self.assertAlmostEqual(two / one, 4.0, places=6)
+
+    def test_missing_gamma_or_interest_counts_as_unusable_not_zero(self):
+        rows = [Contract("call", 100.0, 7, 0.2, None, 100.0, 0.0),
+                Contract("put", 100.0, 7, 0.2, 0.01, 0.0, 0.0),
+                Contract("call", 100.0, 7, 0.2, 0.01, 50.0, 0.0)]
+        out = aggregate_gamma(rows, 100.0)
+        self.assertEqual(out["contracts"], 3)
+        self.assertEqual(out["usable"], 1)
+
+    def test_a_nonsense_spot_produces_no_exposure(self):
+        out = aggregate_gamma(self.rows(), 0.0)
+        self.assertEqual(out["usable"], 0)
+        self.assertEqual(out["net_gex"], 0.0)
 
 
 if __name__ == "__main__":
