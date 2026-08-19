@@ -53,6 +53,10 @@ class FundamentalsSourceError(RuntimeError):
     """Alpha Vantage returned an unavailable, throttled, or malformed payload."""
 
 
+class FundamentalsNoDataError(FundamentalsSourceError):
+    """The provider explicitly returned an empty object for a symbol."""
+
+
 def load_universe(folder: str | Path = DEFAULT_FOLDER) -> tuple[list[str], dict[str, Any]]:
     path = Path(folder) / "sp500_symbols.json"
     document = json.loads(path.read_text(encoding="utf-8"))
@@ -272,8 +276,12 @@ class AlphaVantageFundamentalsClient:
                     # coverage so every dashboard refresh does not retry it.
                     return {"symbol": ticker, "estimates": []}
                 if not document:
-                    raise FundamentalsSourceError(f"Alpha Vantage returned no {function} data for {ticker}")
+                    raise FundamentalsNoDataError(f"Alpha Vantage returned no {function} data for {ticker}")
                 return document
+            except FundamentalsNoDataError:
+                # Empty symbol coverage is deterministic and is not repaired
+                # by exponential retrying in the same refresh.
+                raise
             except (HTTPError, URLError, json.JSONDecodeError, FundamentalsSourceError) as exc:
                 last_error = exc
                 if attempt >= self.retries:
@@ -287,7 +295,8 @@ def _wrapper_is_current(path: Path, today: date) -> bool:
     if not path.is_file():
         return False
     try:
-        stamp = json.loads(path.read_text(encoding="utf-8")).get("timestamp")
+        document = json.loads(path.read_text(encoding="utf-8"))
+        stamp = document.get("checked_at") or document.get("timestamp")
         return bool(stamp and str(stamp)[:10] == today.isoformat())
     except (OSError, json.JSONDecodeError, AttributeError):
         return False
@@ -300,6 +309,25 @@ def _write_wrapper(path: Path, ticker: str, suffix: str, document: dict[str, Any
         "data_type": suffix,
         "data": document,
     }
+    temporary = path.with_suffix(path.suffix + ".tmp-" + uuid.uuid4().hex[:8])
+    temporary.write_text(json.dumps(wrapper, indent=2), encoding="utf-8")
+    os.replace(temporary, path)
+
+
+def _mark_wrapper_checked(path: Path, message: str) -> None:
+    """Retain last-known data while recording a same-day empty-provider check."""
+
+    if not path.is_file():
+        return
+    try:
+        wrapper = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(wrapper, dict):
+            return
+    except (OSError, json.JSONDecodeError):
+        return
+    wrapper["checked_at"] = datetime.now().astimezone().isoformat()
+    wrapper["check_status"] = "no_current_provider_data_retained"
+    wrapper["check_message"] = message[:240]
     temporary = path.with_suffix(path.suffix + ".tmp-" + uuid.uuid4().hex[:8])
     temporary.write_text(json.dumps(wrapper, indent=2), encoding="utf-8")
     os.replace(temporary, path)
@@ -398,6 +426,16 @@ class FundamentalsRefreshManager:
                     _write_wrapper(self.folder / f"{ticker}_{suffix}.json", ticker, suffix, document)
                     with self._lock:
                         self._state["files_updated"] += 1
+                except FundamentalsNoDataError as exc:
+                    path = self.folder / f"{ticker}_{suffix}.json"
+                    if path.is_file():
+                        _mark_wrapper_checked(path, str(exc))
+                    else:
+                        empty = {"symbol": ticker}
+                        if suffix == "earnings":
+                            empty |= {"annualEarnings": [], "quarterlyEarnings": []}
+                        _write_wrapper(path, ticker, suffix, empty)
+                    self._error(ticker, label, str(exc))
                 except Exception as exc:
                     self._error(ticker, label, str(exc))
                 self._set(completed=index)

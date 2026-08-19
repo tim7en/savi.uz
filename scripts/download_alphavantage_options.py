@@ -97,19 +97,21 @@ def api_key() -> str:
 
 
 def trading_days(bars_path: pathlib.Path, symbol: str, start: str, end: str):
-    """Sessions and closes taken from the bar database."""
+    """Sessions and closes taken from the bar database.
+
+    One ordered pass, not one query per session: ``substr(ts,1,10)=?`` cannot use
+    the (ticker, ts) index, so the per-session form full-scanned the ticker's bars
+    thousands of times over.  Walking the range in ts order and keeping the last
+    close seen for each day gives the same answer from a single index range scan.
+    """
     connection = sqlite3.connect(f"file:{bars_path}?mode=ro", uri=True)
-    rows = connection.execute(
-        "SELECT DISTINCT substr(ts,1,10) FROM bars WHERE ticker=? AND "
-        "frequency='5min' AND ts>=? AND ts<? ORDER BY 1", (symbol, start, end)
-    ).fetchall()
     closes = {}
-    for (day,) in rows:
-        last = connection.execute(
-            "SELECT close FROM bars WHERE ticker=? AND frequency='5min' AND "
-            "substr(ts,1,10)=? ORDER BY ts DESC LIMIT 1", (symbol, day)).fetchone()
-        if last:
-            closes[day] = float(last[0])
+    for ts, close in connection.execute(
+        "SELECT ts, close FROM bars WHERE ticker=? AND frequency='5min' "
+        "AND ts>=? AND ts<? ORDER BY ts", (symbol, start, end)
+    ):
+        if close is not None:
+            closes[ts[:10]] = float(close)
     connection.close()
     return closes
 
