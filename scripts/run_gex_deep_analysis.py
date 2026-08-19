@@ -133,45 +133,47 @@ def run_symbol(args, symbol):
     log_rv = {d: math.log(max(rv[d], 1e-6)) for d in days}
     index = {d: i for i, d in enumerate(days)}
 
-    def har_row(i):
-        """Daily, weekly and monthly realised volatility, all strictly prior."""
-        d1 = log_rv[days[i]]
-        d5 = statistics.mean(log_rv[days[j]] for j in range(max(i - 4, 0), i + 1))
-        d22 = statistics.mean(log_rv[days[j]] for j in range(max(i - 21, 0), i + 1))
-        return [1.0, d1, d5, d22]
+    # Build every regressor once. Rebuilding them inside the expanding-window
+    # loop costs O(n^2) row constructions for no benefit; the rows themselves
+    # never change, only how many of them are in the fit.
+    series = np.array([log_rv[d] for d in days])
+    n = len(days)
+    d1 = series
+    d5 = np.array([series[max(i - 4, 0):i + 1].mean() for i in range(n)])
+    d22 = np.array([series[max(i - 21, 0):i + 1].mean() for i in range(n)])
+    iv = np.array([math.log(max(feats[d]["atm_iv"], 1e-6)) for d in days])
+    gb = np.array([feats[d]["gamma_balance"] for d in days], dtype=float)
+    ones = np.ones(n)
 
-    models = {
-        "HAR-RV": lambda i: har_row(i),
-        "HAR-RV + IV": lambda i: har_row(i) + [math.log(max(feats[days[i]]["atm_iv"], 1e-6))],
-        "HAR-RV + IV + gamma": lambda i: har_row(i)
-            + [math.log(max(feats[days[i]]["atm_iv"], 1e-6)),
-               feats[days[i]]["gamma_balance"]],
-        "HAR-RV + gamma": lambda i: har_row(i) + [feats[days[i]]["gamma_balance"]],
+    columns = {
+        "HAR-RV": np.column_stack([ones, d1, d5, d22]),
+        "HAR-RV + IV": np.column_stack([ones, d1, d5, d22, iv]),
+        "HAR-RV + IV + gamma": np.column_stack([ones, d1, d5, d22, iv, gb]),
+        "HAR-RV + gamma": np.column_stack([ones, d1, d5, d22, gb]),
     }
-
-    losses = {name: {"rmse": [], "qlike": []} for name in models}
-    forecasts = {name: [] for name in models}
+    losses = {name: {"rmse": [], "qlike": []} for name in columns}
     actuals = []
     start = max(args.burn, 30)
     for i in range(start, len(days) - 1):
         actual = rv[days[i + 1]]
         actuals.append(actual)
-        for name, builder in models.items():
-            design = np.array([builder(j) for j in range(22, i)])
-            target = np.array([log_rv[days[j + 1]] for j in range(22, i)])
-            point = np.array(builder(i))
-            prediction = math.exp(ols_forecast(design, target, point))
-            forecasts[name].append(prediction)
+        target = series[23:i + 1]
+        for name, matrix in columns.items():
+            design = matrix[22:i]
+            prediction = math.exp(ols_forecast(design, target, matrix[i]))
             losses[name]["rmse"].append((math.log(max(actual, 1e-6))
                                          - math.log(max(prediction, 1e-6))) ** 2)
             losses[name]["qlike"].append(qlike(actual, prediction))
+        if (i - start) % 400 == 0:
+            print(f"    forecasting… {i - start:,}/{len(days) - 1 - start:,}",
+                  flush=True)
 
     print(f"  out-of-sample forecasts: {len(actuals):,} "
           f"(fitted on an expanding window, first {start} sessions withheld)")
     print(f"\n  {'model':22s} {'RMSE(log)':>10s} {'QLIKE':>9s} "
           f"{'vs HAR':>9s} {'vs HAR+IV':>11s}")
     summary = {}
-    for name in models:
+    for name in columns:
         rmse = math.sqrt(statistics.mean(losses[name]["rmse"]))
         ql = statistics.mean(losses[name]["qlike"])
         cells = []
