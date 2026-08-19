@@ -1,0 +1,427 @@
+<title>The Eleventh Rejection</title>
+<style>
+  :root{
+    color-scheme:light;
+    --ground:#EDF0EE; --surface:#FFFFFF; --sunken:#E3E8E5; --rule:#D2DAD6;
+    --rule-soft:#E2E8E5;
+    --ink:#111917; --ink-2:#45514D; --ink-3:#77847F;
+    --accent:#1D5C55; --accent-soft:#DCEAE7;
+    --reject:#A64634; --reject-soft:#F3E3DE;
+    --nullband:#B3AB97;
+    --display:Baskerville,"Libre Baskerville","Hoefler Text","Times New Roman",ui-serif,serif;
+    --body:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0D1211; --surface:#151D1B; --sunken:#1B2422; --rule:#28322F;
+    --rule-soft:#202927;
+    --ink:#E3EAE7; --ink-2:#AEBAB5; --ink-3:#7C8985;
+    --accent:#5FB3A5; --accent-soft:#122A27;
+    --reject:#D08268; --reject-soft:#2A1A15;
+    --nullband:#6E6957;
+  }}
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --ground:#0D1211; --surface:#151D1B; --sunken:#1B2422; --rule:#28322F;
+    --rule-soft:#202927;
+    --ink:#E3EAE7; --ink-2:#AEBAB5; --ink-3:#7C8985;
+    --accent:#5FB3A5; --accent-soft:#122A27;
+    --reject:#D08268; --reject-soft:#2A1A15;
+    --nullband:#6E6957;
+  }
+  :root[data-theme="light"]{
+    color-scheme:light;
+    --ground:#EDF0EE; --surface:#FFFFFF; --sunken:#E3E8E5; --rule:#D2DAD6;
+    --rule-soft:#E2E8E5;
+    --ink:#111917; --ink-2:#45514D; --ink-3:#77847F;
+    --accent:#1D5C55; --accent-soft:#DCEAE7;
+    --reject:#A64634; --reject-soft:#F3E3DE;
+    --nullband:#B3AB97;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;padding:0 20px 88px;background:var(--ground);color:var(--ink);
+       font-family:var(--body);font-size:16px;line-height:1.62;
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:0}
+
+  header{padding:60px 0 32px;border-bottom:2px solid var(--ink);
+         display:flex;flex-direction:column;gap:16px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.15em;
+           text-transform:uppercase;color:var(--ink-3);margin:0}
+  h1{font-family:var(--display);font-weight:600;font-size:clamp(2.3rem,6vw,3.5rem);
+     line-height:1.05;letter-spacing:-.02em;margin:0;text-wrap:balance}
+  .standfirst{font-family:var(--display);font-size:1.16rem;line-height:1.52;
+              color:var(--ink-2);max-width:58ch;margin:0}
+
+  .tallies{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));
+           gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:20px}
+  .tally{background:var(--surface);padding:15px 17px;display:flex;
+         flex-direction:column;gap:3px}
+  .tally b{font-family:var(--mono);font-size:1.7rem;font-weight:600;
+           letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1}
+  .tally span{font-size:12px;color:var(--ink-3);line-height:1.36}
+  .t-reject{color:var(--reject)} .t-accent{color:var(--accent)}
+
+  section{padding-top:50px;display:flex;flex-direction:column;gap:16px}
+  h2{font-family:var(--display);font-size:1.6rem;font-weight:600;margin:0;
+     letter-spacing:-.012em;text-wrap:balance}
+  h3{font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+     text-transform:uppercase;color:var(--ink-3);margin:0 0 7px;font-weight:600}
+  p{margin:0;max-width:68ch}
+  .lede{color:var(--ink-2)}
+
+  .card{background:var(--surface);border:1px solid var(--rule);padding:22px 24px;
+        display:flex;flex-direction:column;gap:11px}
+  .verdict{border-left:3px solid var(--reject)}
+  .method{border-left:3px solid var(--accent)}
+  .split{display:grid;grid-template-columns:repeat(auto-fit,minmax(288px,1fr));gap:16px}
+
+  .scroll{overflow-x:auto;border:1px solid var(--rule);background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;
+        font-variant-numeric:tabular-nums}
+  caption{text-align:left;padding:14px 17px 2px;font-size:12.5px;color:var(--ink-3)}
+  th{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+     color:var(--ink-3);font-weight:600;text-align:right;padding:10px 13px;
+     border-bottom:1px solid var(--rule);white-space:nowrap}
+  td{padding:9px 13px;text-align:right;border-bottom:1px solid var(--rule-soft);
+     white-space:nowrap;font-family:var(--mono);font-size:12.5px}
+  th:first-child,td:first-child{text-align:left;font-family:var(--body);
+     font-size:13.5px;white-space:normal}
+  tbody tr:last-child td{border-bottom:0}
+  tr.group td{background:var(--sunken);font-family:var(--body);font-weight:650;
+              font-size:12px;letter-spacing:.04em;text-transform:uppercase;
+              color:var(--ink-2)}
+  td.neg{color:var(--reject)}
+  td.dim{color:var(--ink-3)}
+  .near{background:var(--reject-soft)}
+
+  figure{margin:0;display:flex;flex-direction:column;gap:12px}
+  figcaption{font-size:13px;color:var(--ink-3);max-width:74ch}
+  .plate{background:var(--surface);border:1px solid var(--rule);padding:22px}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .axis{font-family:var(--mono);font-size:10px;fill:var(--ink-3);
+        font-variant-numeric:tabular-nums}
+  .gridline{stroke:var(--rule);stroke-width:1}
+  .zero{stroke:var(--ink-3);stroke-width:1.25}
+
+  .legend{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center;font-size:12.5px;
+          color:var(--ink-2)}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:13px;height:10px;flex:none}
+
+  ul{margin:0;padding-left:19px;display:flex;flex-direction:column;gap:9px;max-width:70ch}
+  li::marker{color:var(--ink-3)}
+  code{font-family:var(--mono);font-size:.87em;background:var(--sunken);
+       padding:1px 5px;border-radius:2px}
+  .note{font-size:14px;color:var(--ink-2);border-top:1px solid var(--rule);
+        padding-top:17px;max-width:76ch}
+  footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--rule);
+         font-size:12.5px;color:var(--ink-3);max-width:74ch;line-height:1.6}
+  a{color:var(--accent)}
+  a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);
+    outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Research ledger &middot; proposal T2.3 &middot; CFTC positioning &middot; 2006&ndash;2026</p>
+  <h1>The Eleventh Rejection</h1>
+  <p class="standfirst">Twenty years of weekly positioning data, eighteen pre-registered
+  arms, and not one that beats its own shuffled copy. The interesting part is not that
+  it failed &mdash; it is that a thousand observations turned out to be thirty.</p>
+
+  <div class="tallies">
+    <div class="tally"><b>0<span style="color:var(--ink-3);font-size:1rem"> / 18</span></b>
+      <span>arms clearing the null</span></div>
+    <div class="tally"><b class="t-reject">30</b>
+      <span>independent observations behind 991 rows</span></div>
+    <div class="tally"><b class="t-reject">97%</b>
+      <span>of the week's move leaked by the old keying</span></div>
+    <div class="tally"><b class="t-accent">0.055</b>
+      <span>lowest p, against 0.9 expected by chance</span></div>
+  </div>
+</header>
+
+<section>
+  <div class="card verdict">
+    <h3>The finding</h3>
+    <p><strong>CFTC positioning does not predict index returns at one or four weeks, in
+    any trader category, on any of the three contracts tested.</strong> Every quintile
+    spread sits inside the 5&ndash;95% band of its own circular-shift null. The best
+    arm reaches p&nbsp;=&nbsp;0.055; across eighteen arms, chance alone was expected to
+    produce about one result that good.</p>
+    <p>The deeper result is about power, and it generalises past this test.
+    Positioning is so persistent week to week that <strong>991 weekly observations carry
+    roughly 30 independent ones</strong>. This study was never capable of detecting
+    anything but an enormous effect, and no amount of additional history fixes that
+    at the rate the effective sample grows.</p>
+  </div>
+</section>
+
+<section>
+  <h2>The data had to be repaired before it could be tested</h2>
+  <p class="lede">Two defects, both load-bearing. One was smaller than recorded, the
+  other much larger.</p>
+  <div class="split">
+    <div class="card">
+      <h3>Mixed date formats &mdash; overstated</h3>
+      <p>The agenda recorded that stored dates mix ISO and US <code>M/D/YYYY</code>
+      formats, so ordering was wrong. Ordering was in fact fine: <code>report_date</code>
+      is clean ISO in every table and agrees with the US-format column on all
+      <strong>18,911</strong> rows where both exist, with zero mismatches.</p>
+      <p>The corruption is confined to the redundant <code>report_date_as_yyyy_mm_dd</code>
+      column, which in the legacy table contains its own header string in all 251,506
+      rows. Nothing needed re-downloading; the column simply is not used.</p>
+    </div>
+    <div class="card method">
+      <h3>Missing release date &mdash; understated</h3>
+      <p>The report is compiled as of Tuesday and published the following Friday, but
+      only the Tuesday was ever stored. Keying a study on it grants hindsight over four
+      of the five sessions in the weekly cycle &mdash; measured against the S&amp;P over
+      1,381 weeks, <strong>97% of the average absolute weekly move</strong>.</p>
+      <p>A release calendar now derives publication from observed NYSE sessions, so
+      holiday weeks slip correctly to Monday. Every result here is keyed on the first
+      session after publication, with the as-of arm run alongside purely to measure
+      the bias.</p>
+    </div>
+  </div>
+  <p class="note">The 2018&ndash;19 shutdown gets no release date at all. The CFTC kept
+  compiling through the lapse and backfilled the backlog on resumption, so the as-of
+  series in this database is continuous and the delay is invisible from the data. Those
+  five weeks are flagged <code>shutdown_unknown</code> and dropped rather than assigned
+  an invented catch-up schedule &mdash; which is what a naive plus-three-days rule would
+  have done, across precisely the window where a positioning signal looks best.</p>
+</section>
+
+<section>
+  <h2>Every arm, against its own shuffled copy</h2>
+  <p class="lede">Net position as a share of open interest, ranked against its own
+  trailing three years, sorted into quintiles. The spread is the top quintile's mean
+  forward return minus the bottom's. The band is where 90% of circular shifts of the
+  same signal land.</p>
+  <div class="legend">
+    <span><i class="sw" style="background:var(--accent)"></i>Release-date keying (the honest arm)</span>
+    <span><i class="sw" style="background:var(--nullband)"></i>5&ndash;95% of shuffled nulls</span>
+  </div>
+  <figure>
+    <div class="plate">
+      <svg id="arms" viewBox="0 0 1000 470" role="img"
+           aria-label="Quintile spread for each arm plotted against the 5 to 95 percent band of its circular-shift null"></svg>
+    </div>
+    <figcaption>Every point falls inside its band. A signal with predictive power would
+    sit outside one.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>A thousand rows, thirty observations</h2>
+  <p class="lede">Positioning changes slowly. Adjusting the sample size for that
+  persistence is the difference between a test that looked well-powered and one that
+  never was.</p>
+  <figure>
+    <div class="plate">
+      <svg id="field" viewBox="0 0 1000 300" role="img"
+           aria-label="991 weekly observations rendered as tick marks, with only the 30 statistically independent ones inked"></svg>
+    </div>
+    <figcaption>Each mark is one weekly filing for the E-mini S&amp;P 500 asset-manager
+    series, 2006&ndash;2026. The inked marks are the effective sample once the lag-one
+    autocorrelation of 0.94 is accounted for.</figcaption>
+  </figure>
+  <div class="split">
+    <div class="card">
+      <h3>Why the count collapses</h3>
+      <p>Net positioning has a lag-one autocorrelation between 0.91 and 0.97 depending
+      on the series. At 0.94, consecutive weeks are almost the same observation
+      recorded twice, and the independent count falls to
+      <code>n&nbsp;&times;&nbsp;(1&minus;&rho;)/(1+&rho;)</code> &mdash; about 3% of
+      what the row count advertises.</p>
+      <p>Effective sample ranged from <strong>15 to 45</strong> across the nine
+      release-keyed arms. Dealer positioning was worst at 15, because it is the most
+      persistent of the three categories.</p>
+    </div>
+    <div class="card">
+      <h3>What that costs</h3>
+      <p>This is the same failure the programme met at proposal T2.4, where a
+      yield-curve tilt was tested on a sample containing one inversion episode. Both
+      look like large samples by row count and are tiny by episode count.</p>
+      <p>Extending the history helps far less than it appears to. Independent
+      observations accumulate at roughly one per eight months here, so reaching even
+      100 would take another forty years of filings.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The near miss, and why it is not one</h2>
+  <p class="lede">One arm came close enough to be worth naming explicitly, because
+  leaving it unnamed is how a null result quietly becomes a positive one later.</p>
+  <div class="card">
+    <p>E-mini S&amp;P 500 asset-manager positioning at four weeks produced a spread of
+    <strong>&minus;1.49%</strong> at <strong>p&nbsp;=&nbsp;0.055</strong> &mdash; high
+    asset-manager crowding preceding lower returns, which is the contrarian direction
+    the folk claim predicts. The sign is right and the magnitude is not trivial.</p>
+    <p>It still fails, for three reasons that were all fixed in advance.
+    <strong>Eighteen arms were tested</strong>, so roughly one result at p&nbsp;&le;&nbsp;0.056
+    was expected from noise; a multiplicity-adjusted threshold would be near 0.003.
+    Its <strong>effective sample is 30</strong>, so the quintiles hold about six
+    independent observations each. And the same arm at one week gives p&nbsp;=&nbsp;0.133
+    with a spread an order of magnitude smaller &mdash; a real effect at four weeks
+    should leave some trace at one.</p>
+  </div>
+  <div class="scroll">
+    <table>
+      <caption>All eighteen arms. Spread and null band in percent of index level.</caption>
+      <thead><tr><th>Arm</th><th>Obs</th><th>Eff. n</th><th>Spread</th>
+      <th>Null 5&ndash;95%</th><th>p</th></tr></thead>
+      <tbody id="arm-table"></tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Disposition</h2>
+  <p class="lede">The kill criterion was fixed before the run: an arm survives only if it
+  clears the circular-shift null at p&nbsp;&lt;&nbsp;0.05 and keeps its sign under the
+  release-date lag. Nothing cleared, so positioning closes.</p>
+  <ul>
+    <li><strong>Positioning is dropped as a trading input.</strong> Not deferred pending
+    better data &mdash; the binding constraint is the effective sample size, and that is
+    a property of the series, not of the vendor or the history length.</li>
+    <li><strong>The release calendar stays.</strong> It is now the only correct way to
+    join these tables, and any future use of COT data &mdash; including as a reporting
+    or regime-description input &mdash; must key on it.</li>
+    <li><strong>Any prior positioning result is void, not adjusted.</strong> Work keyed
+    on the as-of date captured 97% of the following week's move as hindsight. That is
+    not a bias to correct for; it invalidates the measurement.</li>
+    <li><strong>Report effective sample size, not row count, everywhere.</strong> This is
+    the second proposal in the programme to fail on episode count after looking
+    well-powered by observation count. It should be a standing column in every future
+    screen, computed before the test rather than after it.</li>
+  </ul>
+  <p class="note">What would change the answer: a positioning measure that is not
+  autocorrelated &mdash; the weekly <em>change</em> in net position, or a surprise
+  against a published expectation, rather than the level. That is a different
+  hypothesis with a different null, and it is not what T2.3 proposed. If it is ever
+  run, it goes through the contract as its own pre-registered test.</p>
+</section>
+
+<footer>
+  Traders in Financial Futures, futures-only, contract codes 13874A (E-mini S&amp;P 500),
+  209742 (Nasdaq-100 mini) and 1170E1 (VIX futures), keyed by code rather than name so
+  the 2022 CFTC renames do not split the series. Positioning scored on the first NYSE
+  session after Friday publication, derived from an observed session calendar reaching
+  back to January 2000; five shutdown-affected weeks excluded. Net position normalised
+  by open interest, then percentile-ranked against a trailing 156-week window with a
+  52-week minimum. Forward returns are close to close on ^GSPC and ^NDX. Nulls are 400
+  circular shifts per arm, which preserve autocorrelation and run length exactly and
+  destroy only alignment to price. Seed 20260819.
+</footer>
+</div>
+
+<script>
+const ARMS=[
+ {c:"E-mini S&P 500",g:"Asset manager",h:4,n:991,e:30,s:-1.488,lo:-1.190,hi:1.407,p:0.055},
+ {c:"E-mini S&P 500",g:"Asset manager",h:1,n:994,e:30,s:-0.340,lo:-0.333,hi:0.416,p:0.133},
+ {c:"E-mini S&P 500",g:"Dealer",h:1,n:994,e:15,s:0.366,lo:-0.369,hi:0.423,p:0.140},
+ {c:"Nasdaq-100 mini",g:"Dealer",h:1,n:994,e:18,s:0.272,lo:-0.382,hi:0.411,p:0.247},
+ {c:"VIX futures",g:"Leveraged money",h:1,n:953,e:19,s:0.207,lo:-0.355,hi:0.379,p:0.350},
+ {c:"E-mini S&P 500",g:"Leveraged money",h:4,n:991,e:45,s:0.790,lo:-1.230,hi:1.385,p:0.365},
+ {c:"E-mini S&P 500",g:"Dealer",h:4,n:991,e:15,s:0.890,lo:-1.496,hi:1.449,p:0.385},
+ {c:"VIX futures",g:"Asset manager",h:4,n:950,e:43,s:0.597,lo:-1.189,hi:1.260,p:0.465},
+ {c:"Nasdaq-100 mini",g:"Dealer",h:4,n:991,e:18,s:0.490,lo:-1.260,hi:1.495,p:0.542},
+ {c:"Nasdaq-100 mini",g:"Leveraged money",h:4,n:991,e:31,s:-0.539,lo:-1.326,hi:1.515,p:0.522},
+ {c:"VIX futures",g:"Asset manager",h:1,n:953,e:43,s:-0.134,lo:-0.314,hi:0.390,p:0.525},
+ {c:"Nasdaq-100 mini",g:"Asset manager",h:1,n:994,e:19,s:-0.112,lo:-0.416,hi:0.452,p:0.625},
+ {c:"Nasdaq-100 mini",g:"Leveraged money",h:1,n:994,e:31,s:-0.116,lo:-0.389,hi:0.465,p:0.640},
+ {c:"VIX futures",g:"Leveraged money",h:4,n:950,e:19,s:-0.373,lo:-1.335,hi:1.251,p:0.640},
+ {c:"VIX futures",g:"Dealer",h:1,n:953,e:15,s:0.068,lo:-0.330,hi:0.425,p:0.738},
+ {c:"E-mini S&P 500",g:"Leveraged money",h:1,n:994,e:45,s:0.077,lo:-0.321,hi:0.465,p:0.765},
+ {c:"VIX futures",g:"Dealer",h:4,n:950,e:15,s:-0.144,lo:-1.103,hi:1.418,p:0.868},
+ {c:"Nasdaq-100 mini",g:"Asset manager",h:4,n:991,e:19,s:-0.107,lo:-1.340,hi:1.556,p:0.877},
+];
+
+const NS="http://www.w3.org/2000/svg";
+const el=(t,a)=>{const n=document.createElementNS(NS,t);for(const k in a)n.setAttribute(k,a[k]);return n;};
+
+/* ---- arms against their nulls ---- */
+function drawArms(){
+  const svg=document.getElementById("arms");svg.textContent="";
+  const W=1000,H=470,L=250,R=52,T=22,B=40;
+  const iw=W-L-R,ih=H-T-B;
+  const rows=[...ARMS].sort((a,b)=>a.p-b.p);
+  const rh=ih/rows.length;
+  const max=Math.max(...rows.flatMap(d=>[Math.abs(d.lo),Math.abs(d.hi),Math.abs(d.s)]))*1.08;
+  const x=v=>L+iw/2+(v/max)*(iw/2);
+
+  [-1.5,-1,-0.5,0,0.5,1,1.5].forEach(v=>{
+    if(Math.abs(v)>max)return;
+    svg.appendChild(el("line",{x1:x(v),x2:x(v),y1:T,y2:T+ih,
+      class:v===0?"zero":"gridline"}));
+    const t=el("text",{x:x(v),y:H-16,class:"axis","text-anchor":"middle"});
+    t.textContent=(v>0?"+":"")+v+"%";svg.appendChild(t);
+  });
+
+  rows.forEach((d,i)=>{
+    const cy=T+i*rh+rh/2;
+    svg.appendChild(el("rect",{x:x(d.lo),y:cy-rh*0.26,width:Math.max(x(d.hi)-x(d.lo),1),
+      height:rh*0.52,fill:"var(--nullband)",opacity:.42}));
+    svg.appendChild(el("circle",{cx:x(d.s),cy:cy,r:4.6,fill:"var(--accent)",
+      stroke:"var(--surface)","stroke-width":1.6}));
+    const lab=el("text",{x:L-14,y:cy+3.8,class:"axis","text-anchor":"end",
+      fill:"var(--ink)","font-size":"11.5"});
+    lab.textContent=d.c+" · "+d.g+" · "+d.h+"w";svg.appendChild(lab);
+    const pv=el("text",{x:W-R+10,y:cy+3.8,class:"axis","text-anchor":"start",
+      fill:d.p<0.1?"var(--reject)":"var(--ink-3)"});
+    pv.textContent="p "+d.p.toFixed(3);svg.appendChild(pv);
+  });
+}
+
+/* ---- 991 marks, 30 inked ---- */
+function drawField(){
+  const svg=document.getElementById("field");svg.textContent="";
+  const W=1000,H=300,L=8,T=34,total=991,eff=30;
+  const cols=59,rows=Math.ceil(total/cols);
+  const cw=(W-L*2)/cols, mw=3.1, mh=(H-T-30)/rows;
+  const step=total/eff;
+  const inked=new Set();
+  for(let k=0;k<eff;k++) inked.add(Math.floor(k*step));
+  for(let i=0;i<total;i++){
+    const r=Math.floor(i/cols), c=i%cols;
+    const on=inked.has(i);
+    svg.appendChild(el("rect",{x:L+c*cw+(cw-mw)/2,y:T+r*mh,width:mw,
+      height:Math.max(mh-2.6,3),rx:1,
+      fill:on?"var(--accent)":"var(--ink-3)",opacity:on?1:.26}));
+  }
+  const a=el("text",{x:L,y:18,class:"axis",fill:"var(--ink-3)","font-size":"11.5"});
+  a.textContent="991 weekly filings, 2006–2026";svg.appendChild(a);
+  const b=el("text",{x:W-L,y:18,class:"axis","text-anchor":"end",
+    fill:"var(--accent)","font-size":"11.5","font-weight":"600"});
+  b.textContent="30 independent observations";svg.appendChild(b);
+}
+
+/* ---- table ---- */
+(function(){
+  const byContract={};
+  ARMS.forEach(d=>{(byContract[d.c]=byContract[d.c]||[]).push(d);});
+  const out=[];
+  Object.keys(byContract).forEach(c=>{
+    out.push('<tr class="group"><td colspan="6">'+c+'</td></tr>');
+    byContract[c].sort((a,b)=>a.p-b.p).forEach(d=>{
+      out.push('<tr'+(d.p<0.1?' class="near"':'')+'><td>'+d.g+' &middot; '+d.h+
+        ' week'+(d.h>1?'s':'')+'</td><td class="dim">'+d.n.toLocaleString("en-US")+
+        '</td><td>'+d.e+'</td><td class="'+(d.s<0?'neg':'')+'">'+
+        (d.s>0?"+":"−")+Math.abs(d.s).toFixed(3)+'%</td><td class="dim">'+
+        d.lo.toFixed(2)+' … +'+d.hi.toFixed(2)+'</td><td>'+d.p.toFixed(3)+'</td></tr>');
+    });
+  });
+  document.getElementById("arm-table").innerHTML=out.join("");
+})();
+
+function drawAll(){drawArms();drawField();}
+drawAll();
+let t;addEventListener("resize",()=>{clearTimeout(t);t=setTimeout(drawAll,150);});
+</script>
