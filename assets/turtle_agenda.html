@@ -1,0 +1,718 @@
+<title>After the Ninth Rejection</title>
+<style>
+  :root {
+    --ground: #F6F7F9;
+    --surface: #FFFFFF;
+    --surface-sunk: #EEF0F4;
+    --rule: #D8DCE3;
+    --rule-soft: #E7EAEF;
+    --ink: #14171D;
+    --ink-2: #454E5C;
+    --ink-3: #6E7887;
+    --accent: #24457A;
+    --accent-soft: #E6ECF5;
+    --closed: #8C3A2E;
+    --closed-soft: #F6E9E6;
+    --open: #1B6350;
+    --open-soft: #E4F0EC;
+    --hold: #6B5D3E;
+    --hold-soft: #F2EDE1;
+    --serif: ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101318;
+      --surface: #171B22;
+      --surface-sunk: #1D222B;
+      --rule: #2B323D;
+      --rule-soft: #232932;
+      --ink: #E6E9EE;
+      --ink-2: #AEB6C2;
+      --ink-3: #7F8896;
+      --accent: #8FB0DE;
+      --accent-soft: #1B2534;
+      --closed: #D98878;
+      --closed-soft: #2C1F1C;
+      --open: #6FBFA5;
+      --open-soft: #16281F;
+      --hold: #C4AE7E;
+      --hold-soft: #262117;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #101318;
+    --surface: #171B22;
+    --surface-sunk: #1D222B;
+    --rule: #2B323D;
+    --rule-soft: #232932;
+    --ink: #E6E9EE;
+    --ink-2: #AEB6C2;
+    --ink-3: #7F8896;
+    --accent: #8FB0DE;
+    --accent-soft: #1B2534;
+    --closed: #D98878;
+    --closed-soft: #2C1F1C;
+    --open: #6FBFA5;
+    --open-soft: #16281F;
+    --hold: #C4AE7E;
+    --hold-soft: #262117;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0 20px 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 890px; margin: 0 auto; }
+
+  /* ---- masthead ---- */
+  header { padding: 64px 0 36px; border-bottom: 2px solid var(--ink); }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 20px;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-size: clamp(2.4rem, 6vw, 3.6rem);
+    line-height: 1.04;
+    letter-spacing: -.02em;
+    font-weight: 600;
+    margin: 0 0 18px;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-family: var(--serif);
+    font-size: 1.18rem;
+    line-height: 1.5;
+    color: var(--ink-2);
+    max-width: 60ch;
+    margin: 0;
+  }
+  .tallies {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin: 36px 0 0;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+  }
+  .tally {
+    flex: 1 1 150px;
+    padding: 16px 18px;
+    border-right: 1px solid var(--rule);
+  }
+  .tally:last-child { border-right: 0; }
+  .tally b {
+    display: block;
+    font-family: var(--mono);
+    font-size: 1.75rem;
+    font-weight: 600;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .tally span {
+    font-size: 12.5px;
+    color: var(--ink-3);
+    line-height: 1.35;
+    display: block;
+    margin-top: 3px;
+  }
+
+  /* ---- sections ---- */
+  section { padding-top: 52px; }
+  h2 {
+    font-family: var(--serif);
+    font-size: 1.65rem;
+    letter-spacing: -.015em;
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
+  .sub {
+    color: var(--ink-2);
+    max-width: 68ch;
+    margin: 0 0 26px;
+  }
+  p { max-width: 68ch; }
+
+  /* ---- disposition table ---- */
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 500;
+    padding: 0 14px 9px 0;
+    border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  td {
+    padding: 13px 14px 13px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+  td:first-child {
+    font-family: var(--mono);
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* ---- status chips ---- */
+  .chip {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 3px;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+  .chip-closed { background: var(--closed-soft); color: var(--closed); }
+  .chip-open   { background: var(--open-soft);   color: var(--open); }
+  .chip-hold   { background: var(--hold-soft);   color: var(--hold); }
+  .chip-new    { background: var(--accent-soft); color: var(--accent); }
+  .chip-done   { background: var(--ink); color: var(--surface); }
+
+  /* ---- tier blocks ---- */
+  .tier { margin-top: 40px; }
+  .tier-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--ink);
+    flex-wrap: wrap;
+  }
+  .tier-num {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .1em;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .tier-head h3 {
+    font-family: var(--serif);
+    font-size: 1.28rem;
+    margin: 0;
+    font-weight: 600;
+    letter-spacing: -.01em;
+  }
+  .tier-note {
+    font-size: 13px;
+    color: var(--ink-3);
+    margin-left: auto;
+  }
+
+  .item {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-top: 0;
+    padding: 22px 24px;
+  }
+  .tier .item:first-of-type { border-top: 0; margin-top: 0; }
+  .item + .item { border-top: 0; }
+  .item-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .item-head h4 {
+    font-size: 1.02rem;
+    font-weight: 650;
+    margin: 0;
+    letter-spacing: -.005em;
+  }
+  .code {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+    font-weight: 600;
+  }
+  .cost {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    white-space: nowrap;
+  }
+  .item p { margin: 0 0 12px; font-size: 15px; }
+  .item p:last-child { margin-bottom: 0; }
+
+  .field {
+    display: grid;
+    grid-template-columns: 108px 1fr;
+    gap: 4px 16px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--rule);
+    font-size: 14px;
+  }
+  .field dt {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding-top: 3px;
+  }
+  .field dd { margin: 0; color: var(--ink-2); }
+  .field dd.kill { color: var(--ink); }
+  .field dd strong { color: var(--ink); font-weight: 600; }
+
+  /* ---- contract ---- */
+  .contract {
+    background: var(--surface-sunk);
+    border: 1px solid var(--rule);
+    padding: 8px 26px 26px;
+    margin-top: 20px;
+  }
+  .contract ol { margin: 0; padding-left: 0; list-style: none; counter-reset: c; }
+  .contract li {
+    counter-increment: c;
+    padding: 16px 0 16px 44px;
+    border-bottom: 1px solid var(--rule-soft);
+    position: relative;
+    max-width: 74ch;
+  }
+  .contract li:last-child { border-bottom: 0; padding-bottom: 4px; }
+  .contract li::before {
+    content: counter(c, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 17px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .contract b { font-weight: 650; }
+
+
+  .list-table td:nth-child(2) { font-weight: 600; color: var(--ink); }
+  .list-table td:last-child { color: var(--ink-2); }
+  .list-table tr.done td:nth-child(2) { color: var(--ink-3); font-weight: 500; }
+  .dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    margin-right: 7px; vertical-align: middle;
+  }
+  .dot-1 { background: var(--open); }
+  .dot-2 { background: var(--accent); }
+  .dot-3 { background: var(--hold); }
+  .dot-x { background: var(--ink-3); }
+  .dot-done { background: var(--ink); }
+
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 16px 20px;
+    margin: 24px 0 0;
+    font-size: 14.5px;
+  }
+  .callout p { margin: 0; max-width: 66ch; }
+  .callout p + p { margin-top: 10px; }
+
+  footer {
+    margin-top: 64px;
+    padding-top: 22px;
+    border-top: 1px solid var(--rule);
+    font-size: 13px;
+    color: var(--ink-3);
+    max-width: 70ch;
+  }
+  code {
+    font-family: var(--mono);
+    font-size: .88em;
+    background: var(--surface-sunk);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  @media (max-width: 620px) {
+    .field { grid-template-columns: 1fr; gap: 2px; }
+    .field dt { padding-top: 10px; }
+    .cost { margin-left: 0; }
+  }
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Turtle programme &middot; research agenda &middot; revised 20 Aug 2026</p>
+  <h1>After the Ninth Rejection</h1>
+  <p class="standfirst">Eleven proposals tested and rejected, one real improvement banked &mdash; and a much narrower view of what that improvement actually is. As of this revision the narrowing has gone further: the edge that looked like it belonged to the 30-minute interval turns out to belong mostly to an optimistic cost assumption. This is what is worth testing next, ranked by evidence, with the kill criterion for each fixed before it runs.</p>
+
+  <div class="tallies">
+    <div class="tally"><b>2.64</b><span>Sharpe banked, 30-minute US equities</span></div>
+    <div class="tally"><b>0.13</b><span>same rules, daily, cross-asset, 20 years</span></div>
+    <div class="tally"><b>11</b><span>proposals tested and rejected</span></div>
+    <div class="tally"><b>13<span style="display:inline;margin:0;color:var(--ink-3);font-size:1.1rem"> / 21</span></b><span>non-equity ETFs that cannot trade at 30 minutes on cost</span></div>
+  </div>
+</header>
+
+<section>
+  <h2>What changed in this revision</h2>
+  <p class="sub">Three results since 19 August, two of which narrow the banked case rather than extend it.</p>
+  <div class="contract">
+    <ol>
+      <li><b>T2.3 CFTC positioning is closed.</b> Zero of eighteen pre-registered arms beat their own circular-shift null. The binding constraint was never the data: positioning is so autocorrelated that 991 weekly filings carry <b>15 to 45 independent observations</b>. Repairing the release dates first was essential &mdash; the old as-of keying leaked 97% of the following week's move. Full write-up in <a href="https://claude.ai/code/artifact/d7922f67-fa2f-4934-9340-a0d4255a7550">The Eleventh Rejection</a>.</li>
+      <li><b>T1.9 has answered its own kill criterion early, and the answer is bad.</b> On the twelve months of 30-minute data held so far, the non-equity book scores Sharpe 2.57 at 2bp and <b>0.15 at the 15bp gate</b>. Thirteen of the twenty-one names take <em>zero</em> trades at that cost. Worse, the untradeable thirteen are the duration and FX names the whole diversification case rested on.</li>
+      <li><b>A standing control is added:</b> effective sample size, reported beside every nominal count, computed before a test rather than after it. This is the second proposal to fail on episode count after looking well-powered by row count.</li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <h2>What the strategy actually is</h2>
+  <p class="sub">The most important finding in the programme, and it arrived last. Read this before anything else on the page.</p>
+  <p>The banked configuration was described throughout as a Turtle system &mdash; a trend follower. Running the identical rules on daily bars across asset classes, which is the <em>actual</em> Turtle setup, settles whether that description was earned.</p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Configuration</th><th>Names</th><th>Period</th><th>Sharpe</th></tr></thead>
+    <tbody>
+      <tr><td>30-minute, US equities <span class="chip chip-done">as banked</span></td><td>42</td><td>2017&ndash;26</td><td><b>2.64</b></td></tr>
+      <tr><td><b>daily</b>, same names, same period</td><td>42</td><td>2017&ndash;26</td><td><b>1.29</b></td></tr>
+      <tr><td>daily, non-equity ETFs</td><td>21</td><td>2007&ndash;26</td><td><b>0.13</b></td></tr>
+      <tr><td>30-minute, non-equity ETFs, at 2bp</td><td>21</td><td>2025&ndash;26</td><td><b>2.57</b></td></tr>
+      <tr><td>30-minute, non-equity ETFs, <b>at 15bp</b></td><td>21</td><td>2025&ndash;26</td><td><b>0.15</b></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Two independent factors, each worth roughly half the distance. <b>The bar interval alone costs &minus;1.35 Sharpe</b> &mdash; same names, same decade, same rules, only 30-minute becoming daily. Universe and period cost a further &minus;1.16, ending at essentially nothing across twenty years with ten negative years out of twenty. The daily cross-asset row has now been reproduced from source rather than quoted: 1,491 trades, Sharpe 0.13, <b>ten negative years out of twenty</b>, worst year &minus;1.15.</p>
+  <div class="callout">
+    <p><b>The interval advantage is mostly a cost artifact.</b> The last two rows are the same 21 instruments over the same twelve months, differing only in what a round trip is assumed to cost. At the 2bp the programme has been using, the 30-minute book scores 2.57. At the 15bp its own kill criterion names, it scores <b>0.15</b> &mdash; statistically indistinguishable from the daily book's 0.13.</p>
+    <p>This does not overturn the equity result, which has not yet been re-swept at 15bp on the current universe. It does mean the decomposition above should be read with a third factor beside interval and universe: <b>how much of the 30-minute edge is priced away by trading it</b>. That question now outranks everything except T1.1.</p>
+    <p class="sub" style="margin:0">Caveat carried in both directions: the two 30-minute rows cover one benign year for commodities, not the twenty that the daily row covers. A same-period daily comparison is not possible &mdash; 251 sessions falls below the engine's 400-bar minimum &mdash; so period and interval remain partly confounded here.</p>
+  </div>
+  <div class="callout">
+    <p><b>This is an intraday US-equity breakout system, not a trend-following system.</b> It uses Turtle-shaped rules, but the original Turtle setup &mdash; daily bars, many asset classes &mdash; produces 0.13 here. That is a narrower and more fragile object than the framing this programme had been using, and it retroactively explains a great deal: why daily-frequency literature kept failing to apply, why macro regime signals (a weekly phenomenon) never bit, why nine overlays borrowed from the managed-futures world all died.</p>
+    <p>It does not mean the result is false. Intraday momentum is a documented effect in its own right. It does mean the edge should be described as what it is, sized with that fragility in mind, and validated out-of-sample before it is traded &mdash; which is T1.1, and which just became the most urgent item here.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Where we are</h2>
+  <p class="sub">Pure price. Every options pathway tested and closed; every macro pathway tested and closed; positioning tested and closed.</p>
+  <p>Entry is a 55-bar Donchian breakout, long-only, stop-filled, on 30-minute bars. Sizing is <code>risk / N</code> on Wilder ATR(20), hard stop <code>2N</code>, pyramid <code>&frac12;N</code> to four units, six concurrent positions. The exit is a fixed <code>3N</code> chandelier &mdash; the one change that paid, worth Sharpe 2.63 against 2.05 for the Donchian exit it replaced, winning in ten years out of ten, and it unlocked breadth the old exit had been capping.</p>
+
+  <div class="callout" style="margin:0 0 20px">
+    <p><b>Selection and survivorship, measured.</b> Nine of the 42 names had not listed in 2017 &mdash; UBER, CRWD, HIMS, ASTS, COIN, HOOD, RKLB, RIVN, GEV &mdash; and could not have been held. Dropping them costs 13pp of CAGR. Restricting to the 13 ETFs, which carry almost no single-name selection bias, takes Sharpe from 2.63 to 2.14.</p>
+    <p>But most of that gap is <em>breadth</em>, not hindsight: the breadth curve predicts 47.1% CAGR at 15 names and the 13 ETFs deliver 47.5%, dead on their size, while the 29 single names deliver 49.3% where their size predicts about 64.6%. The low-bias part of the universe is pulling <em>more</em> than its weight. Honest estimate of the selection premium: <strong>&minus;0.1 to &minus;0.5 Sharpe</strong>, not the &minus;34pp the headline suggests.</p>
+  </div>
+
+  <div class="callout" style="margin:0 0 20px">
+    <p><b>The non-equity sleeve genuinely diversifies.</b> Splitting the ETF book in two: seven equity ETFs score Sharpe 1.62, six non-equity ones (GLD, SLV, XLE, TMF, TBT, UVXY) score 1.31, and together they score <strong>2.09</strong> &mdash; better than either alone. Their daily R streams correlate <strong>+0.031</strong>, and <strong>+0.004 on the equity sleeve's down days</strong>. Zero, and zero exactly where it matters.</p>
+    <p>Six uncorrelated instruments bought as much Sharpe (+0.47) as thirty-two additional equities did (+0.50). <b>Roughly a five-fold efficiency ratio</b>, and the strongest remaining argument for expanding outside equities. The limit: in 2022 both sleeves were negative, so zero average correlation does not guarantee diversification in any particular bad year.</p>
+  </div>
+
+  <p>Options closed on the ceiling test &mdash; an instrument's own realised volatility, the quantity any chain would estimate, underperforms a fixed trail, so the constraint is redundancy with <code>N</code> rather than forecast accuracy. Macro closed at p&nbsp;=&nbsp;0.453, beaten by its own reversal, on a sample containing exactly one yield-curve inversion which happens to be the historical exception.</p>
+</section>
+
+<section>
+  <h2>Disposition of the ten proposals</h2>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>#</th><th>Proposal</th><th>Status</th><th>Reasoning</th></tr></thead>
+    <tbody>
+      <tr><td>1a</td><td>Symbol options &rarr; volatility &amp; exits</td><td><span class="chip chip-closed">Closed</span></td><td>Ceiling test. Own realised volatility underperforms a fixed trail; better data cannot fix redundancy.</td></tr>
+      <tr><td>1b</td><td>Symbol options &rarr; direction</td><td><span class="chip chip-open">Tier 2</span></td><td>Not closed. The ceiling argument covers volatility only, and single-name option signals have a stronger literature than index ones.</td></tr>
+      <tr><td>2</td><td>Earnings</td><td><span class="chip chip-open">Tier 1</span></td><td>Dated, known ex-ante, the dominant overnight gap risk for single names. A management problem, not a forecasting one.</td></tr>
+      <tr><td>3</td><td>Macro calendar events</td><td><span class="chip chip-open">Tier 2</span></td><td>Same shape as earnings, market-wide, far fewer episodes. Reuses whatever earnings needs.</td></tr>
+      <tr><td>4</td><td>Daily sentiment</td><td><span class="chip chip-closed">Drop</span></td><td>Another direction predictor, and vendor sentiment is restated and backfilled, so the look-ahead cannot be audited.</td></tr>
+      <tr><td>5</td><td>Cross-asset impact</td><td><span class="chip chip-hold">Reframed</span></td><td>Downgraded from Tier 1. The intraday data it asked for now exists in part, and it says the diversifying names are the ones that cannot clear the cost floor. See T1.9.</td></tr>
+      <tr><td>6 + 7</td><td>Macro regime &rarr; returns, volatility, risk</td><td><span class="chip chip-hold">Reframed</span></td><td>Volatility half closed with 1a; returns half failed at p&nbsp;=&nbsp;0.453. Retained as reporting, and re-askable once T1.7 supplies episodes.</td></tr>
+      <tr><td>8</td><td>Hedging the drawdowns</td><td><span class="chip chip-open">Tier 1</span></td><td>The hedge already exists inside the system &mdash; the short side. The question is what it should cost, not whether it works.</td></tr>
+      <tr><td>9</td><td>CFTC positioning</td><td><span class="chip chip-closed">Closed</span></td><td>Tested and rejected. Zero of eighteen arms beat a circular-shift null; 991 weekly filings carry 15&ndash;45 independent observations. Dropped on effective sample size, which no vendor or history length can fix.</td></tr>
+      <tr><td>10</td><td>Fed path &amp; market rates</td><td><span class="chip chip-hold">Blocked</span></td><td>The tightening split is the closest thing to a survivor here (+0.665R against &minus;0.080R). Blocked on episode count, not data.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <h2>The agenda</h2>
+  <p class="sub">Tier 1 protects what is banked and closes the gaps that need no new data. Nothing in Tier 2 starts until Tier 1 is done.</p>
+
+  <div class="tier">
+    <div class="tier-head">
+      <span class="tier-num">TIER 1</span>
+      <h3>Protect the result, then close the gaps</h3>
+      <span class="tier-note">one acquisition, the rest is compute</span>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <span class="code">T1.1</span><h4>Validate the exit out-of-sample</h4>
+        <span class="chip chip-new">Now urgent</span><span class="cost">~hours</span>
+      </div>
+      <p>Chandelier <code>3N</code> was chosen as the best of twelve variants, scored on the same 42 names it is now credited with. The fragility decomposition raises the stakes: a result that halves when the bar interval changes is a result whose robustness cannot be assumed anywhere else either.</p>
+      <dl class="field">
+        <dt>Method</dt><dd>Walk-forward on two axes &mdash; choose on a subset of names, score on held-out names, rotating; and choose on 2017&ndash;2021, score on 2022&ndash;2026.</dd>
+        <dt>Control</dt><dd>Report the selection-set advantage beside the held-out advantage. Shrinkage is expected; collapse is disqualifying.</dd>
+        <dt>Kill</dt><dd class="kill">If the held-out advantage over Donchian is under <strong>half</strong> the in-sample advantage, treat <code>3N</code> as fitted and fall back to the median of the top three rather than the argmax.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <span class="code">T1.9</span><h4>Intraday history for the non-equity ETFs</h4>
+        <span class="chip chip-closed">Mostly answered</span><span class="cost">download running</span>
+      </div>
+      <p>The premise was that six uncorrelated instruments are worth thirty-two correlated ones, and that the edge lives at 30 minutes and dies at daily. Together they named one acquisition: <strong>intraday bars for the non-equity ETFs</strong> &mdash; USO, UNG, DBC, DBA, TLT, IEF, UUP, FXE, FXY, VXX, HYG, LQD, GDX.</p>
+      <p>Twelve months of all 21 are now held, and the full 2017&ndash;2026 backfill is running. The twelve months are already enough to answer the kill criterion, because it is a question about volatility against cost rather than about sample length.</p>
+      <div class="callout" style="margin:14px 0 4px;border-left:3px solid var(--closed);background:var(--closed-soft)">
+        <p><b>The acquisition's premise is inverted.</b> At a 15bp round trip, thirteen of the twenty-one names take <em>zero</em> trades &mdash; not losing trades, none at all. The engine's N floor is five times the round trip, so a name needs roughly 0.75% of price in volatility before a position can be sized, and the median 30-minute bar range for the duration and FX names is an order of magnitude below that: SHY and FXB at 0.023%, TIP 0.049%, FXE and FXY 0.056%, HYG and IEF 0.062%, LQD 0.078%, TLT 0.133%.</p>
+        <p>Only four names hold positive net R at 15bp &mdash; USO, BNO, PPLT and GSG, the last on two trades. <b>The names that clear the cost floor are energy and metals, correlated with each other; the duration and FX names that carried the diversification argument are precisely the ones that cannot trade.</b> The correlation case and the tradeability case point at disjoint sets of instruments.</p>
+      </div>
+      <dl class="field">
+        <dt>Result</dt><dd>Whole book: Sharpe 2.57 and 741 trades at 2bp, <strong>0.15 and 209 trades at 15bp</strong>, negative by 20bp. A far steeper decline than the &ldquo;about Sharpe 2.3 at 15bp&rdquo; this item anticipated for the equity book.</dd>
+        <dt>Open</dt><dd>Whether the floor is regime-dependent. Twelve calm months understate bond volatility badly &mdash; TLT's 30-minute range in 2022 was several times its current 0.133% &mdash; so the backfill is still worth finishing before duration is written off at this interval.</dd>
+        <dt>Kill</dt><dd class="kill">Unchanged and now largely applied: any name that does not clear the cost sweep at 15bp is dropped. Uncorrelated and untradeable is worth nothing.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <span class="code">T1.7</span><h4>Extend the sample to 2000</h4>
+        <span class="chip chip-new">Data now in hand</span><span class="cost">~day</span>
+      </div>
+      <p>A precondition for asking the macro question at all. <code>index_prices</code> holds daily S&amp;P 500, Nasdaq 100 and Russell 2000 back to January 2000, <code>fed_path</code> and the GSW curve reach equally far, and the 21 non-equity ETFs now add daily history from 2002&ndash;2010.</p>
+      <p>For yield-curve inversion this is the whole ballgame: the current sample holds <strong>one</strong> episode and it is a false positive, while 2000&ndash;2026 adds the July 2000 and February 2006 inversions, which preceded declines of 22% and 34%. One false positive becomes two true and one false. It also brings 2008 into view, the only genuine bear market anywhere in this programme's data.</p>
+      <dl class="field">
+        <dt>Method</dt><dd>Run the validated configuration on daily bars, 2000&ndash;2026. Confirm it reproduces known behaviour on the overlapping window first.</dd>
+        <dt>Caveat</dt><dd>Daily rules score 1.29 on equities and 0.13 cross-asset, so this book is <em>evidence about regimes</em>, never a performance estimate. Do not let a daily backtest become the thing being optimised.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <span class="code">T1.3</span><h4>Correlation-aware capacity</h4>
+        <span class="cost">~hours</span>
+      </div>
+      <p>The book caps at six concurrent positions and, when more signals compete than slots, <strong>picks among them at random</strong>. Six semiconductor names is not six positions. With the non-equity sleeve about to grow, choosing slots by correlation rather than coin-flip becomes materially more valuable than it was.</p>
+      <dl class="field">
+        <dt>Method</dt><dd>Replace the random tie-break with a correlation-penalised choice, or cap exposure per cluster.</dd>
+        <dt>Control</dt><dd>Matched drawdown &mdash; this reduces exposure, and that is the confound that made theme sub-accounts look bad before it was corrected.</dd>
+        <dt>Kill</dt><dd class="kill">Must beat the random tie-break at matched drawdown in <strong>&ge;7 of 10 years</strong>.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <span class="code">T1.6</span><h4>Equity-curve de-risking</h4>
+        <span class="cost">~hours</span>
+      </div>
+      <p>Cut gross exposure while the equity curve is in drawdown, restore on recovery. No second book, no new data, and it conditions on <em>realised portfolio state</em> rather than a forecast &mdash; which puts it outside the family that has failed ten times.</p>
+      <dl class="field">
+        <dt>Method</dt><dd>Halve risk below X% from peak, restore above. Sweep X widely and report the whole surface, not the best cell.</dd>
+        <dt>Control</dt><dd>Matched drawdown, plus a shuffled-trigger null at matching frequency. The rule needs serial dependence in the equity curve; a random schedule must not reproduce the gain.</dd>
+        <dt>Kill</dt><dd class="kill">Must beat a permanently lower risk level at matched drawdown in <strong>&ge;7 of 10 years</strong>. Most published equity-curve rules fail exactly this.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <span class="code">T1.5</span><h4>Size the hedge as insurance, not alpha</h4>
+        <span class="cost">~day &middot; better after T1.7</span>
+      </div>
+      <p>The short side is the hedge, and it is measured: standalone Sharpe 1.00, but it lifted 2022 from 0.14 to 1.87 while costing roughly 12 percentage points of CAGR in aggregate. The temptation is to optimise the short weight on this sample. <strong>Do not</strong> &mdash; the effective sample for a hedging decision is the number of drawdowns, and there are two.</p>
+      <dl class="field">
+        <dt>Method</dt><dd>Fixed short weightings of 0%, 15%, 30%, 50% of risk budget. Report premium paid in bull years against drawdown relief in 2018 and 2022 <em>separately</em>, never blended.</dd>
+        <dt>Control</dt><dd>Against a smaller long book and against holding cash, at matched drawdown. A hedge must beat simply carrying less risk.</dd>
+        <dt>Kill</dt><dd class="kill">If a hedged book never beats an equally de-risked unhedged book, the short sleeve is a <strong>costlier way to do nothing</strong>.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <span class="code">T1.2</span><h4>Earnings-aware position management</h4>
+        <span class="cost">~days &middot; needs calendar</span>
+      </div>
+      <p>Do not predict the surprise on the first pass &mdash; that is a direction problem, and direction has never worked here. Ask the risk question: earnings are a dated, known-in-advance gap risk, which puts them in the management layer where every payoff in this programme has come from.</p>
+      <dl class="field">
+        <dt>Groundwork</dt><dd><code>equity.db</code> already carries an <code>analyst_earnings</code> table with exactly the right shape &mdash; ticker, reported date, reported and estimated EPS, surprise &mdash; and <strong>zero rows</strong>. Schema done; only population remains.</dd>
+        <dt>Method</dt><dd>Four arms: flat into the announcement, half size through it, wider stop through it, do nothing.</dd>
+        <dt>Data trap</dt><dd>Use announcement dates as known ex-ante. Many vendors silently restate dates and backfill estimates &mdash; audit before trusting.</dd>
+        <dt>Kill</dt><dd class="kill">Beats do-nothing at matched drawdown in <strong>&ge;7 of 10 years</strong>.</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="tier">
+    <div class="tier-head">
+      <span class="tier-num">TIER 2</span>
+      <h3>One pre-registered shot each</h3>
+      <span class="tier-note">start only after Tier 1</span>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <span class="code">T2.1</span><h4>Single-name options &mdash; direction only</h4>
+        <span class="cost">download running</span>
+      </div>
+      <p>The one surviving piece of the options thread. Index direction failed comprehensively, but single-name skew, the call/put implied-volatility spread and unusual options activity rest on a different and stronger literature.</p>
+      <dl class="field">
+        <dt>Status</dt><dd>The 40-symbol daily-aggregate pull is running: IWM, TSLA, AMZN and SLV complete, GOOGL in progress.</dd>
+        <dt>Method</dt><dd>Screen per-symbol skew, volatility spread and put-call ratios on the four hurdles the index screen used, with a price-momentum control.</dd>
+        <dt>Caveat</dt><dd>Coverage will be uneven &mdash; recent listings have thin chains and unreliable implied volatility. Screen session counts and usable-contract ratios first.</dd>
+        <dt>Kill</dt><dd class="kill">Nothing clears the screen &rarr; <strong>options close permanently</strong>. No per-symbol revisit.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <span class="code">T2.4</span><h4>Long/short macro regime tilt</h4>
+        <span class="cost">gated on T1.7</span>
+      </div>
+      <p>Run once on the current sample and it failed outright &mdash; Sharpe 2.24 against 2.63 banked, four years of ten, p&nbsp;=&nbsp;0.453, and beaten by its own reversal at 2.35. That is less evidence against the hypothesis than confirmation that <strong>one inversion episode cannot test one</strong>.</p>
+      <p>A refinement to pre-register now, from the historical record: recessions frequently begin <em>after</em> the inversion ends &mdash; ten months in 1989, six in 2006, three in 2000. The tradeable signal, if any, may be the <strong>un-inversion</strong> rather than the inverted state. Fix this before the extended sample exists and the temptation to fit appears.</p>
+      <dl class="field">
+        <dt>Method</dt><dd>Weight long against short by regime label, lagged one session, from market-priced rates only. Sweep the tilt and report the surface.</dd>
+        <dt>Power</dt><dd>Report episode count, not session count. Fifteen episodes justifies a tilt at most &mdash; never a hard switch.</dd>
+        <dt>Kill</dt><dd class="kill">Must clear the persistence-matched null, <strong>and</strong> exceed the calendar split, <strong>and</strong> beat its own reversal. Failing any, macro is dropped as a trading input.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <span class="code">T2.3</span><h4>CFTC positioning</h4>
+        <span class="chip chip-closed">Closed &mdash; rejected</span><span class="cost">done</span>
+      </div>
+      <p>The first candidate that was not a volatility forecast, and it failed anyway. Eighteen pre-registered arms &mdash; three contracts, three trader categories, one- and four-week horizons &mdash; and <strong>none beat its own circular-shift null</strong>. Reported in full in <a href="https://claude.ai/code/artifact/d7922f67-fa2f-4934-9340-a0d4255a7550">The Eleventh Rejection</a>.</p>
+      <p><b>Both defects were real, and both were mis-sized here.</b> The mixed date formats were <em>overstated</em>: <code>report_date</code> is clean ISO in every table and agrees with the US-format column on all 18,911 rows where both exist. The corruption sits in a redundant column that nothing needs to read. The missing release date was <em>understated</em>: keying on the as-of Tuesday leaked <strong>97% of the following week's average absolute move</strong>, not three days of hindsight. A release calendar now derives publication from observed NYSE sessions.</p>
+      <dl class="field">
+        <dt>Why it failed</dt><dd>Not the signal, the sample. Net positioning has lag-one autocorrelation between 0.91 and 0.97, so <strong>991 weekly filings carry 15 to 45 independent observations</strong> &mdash; about 3% of the row count. The test could only ever have detected an enormous effect.</dd>
+        <dt>Near miss</dt><dd>E-mini S&amp;P asset-manager positioning at four weeks: spread &minus;1.49% at p&nbsp;=&nbsp;0.055, the contrarian direction. Rejected anyway &mdash; eighteen arms make one such result expected by chance, its effective sample is 30, and the same arm at one week gives p&nbsp;=&nbsp;0.133.</dd>
+        <dt>Verdict</dt><dd class="kill">Dropped permanently, on effective sample size rather than on data quality. No vendor or history length fixes that. The release calendar stays: it is now the only correct way to join these tables for any purpose, including reporting.</dd>
+      </dl>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <span class="code">T2.2</span><h4>Scheduled macro events</h4>
+        <span class="cost">reuses T1.2</span>
+      </div>
+      <p>Management, not prediction. FOMC, CPI and payrolls are dated and known ex-ante, and the machinery built for earnings carries over almost unchanged, which is why this waits for it.</p>
+      <dl class="field">
+        <dt>Caveat</dt><dd>Roughly eight events a year against thousands of single-name earnings dates &mdash; perhaps 80 episodes, not 80,000 observations.</dd>
+        <dt>Kill</dt><dd class="kill">Beats do-nothing at matched drawdown in <strong>&ge;7 of 10 years</strong>.</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="tier">
+    <div class="tier-head">
+      <span class="tier-num">TIER 3</span>
+      <h3>Measure, do not trade</h3>
+      <span class="tier-note">reporting, not signal</span>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <span class="code">T3.1</span><h4>Macro regime stress report</h4>
+        <span class="cost">~day</span>
+      </div>
+      <p>Every regime <em>overlay</em> tried here has failed, for an understood reason: overlays cut risk, which flatters any comparison that is not exposure-matched. Do not build a switch &mdash; build a weather report. Conditional performance by rate regime, bear market and volatility regime, used to size the live allocation and to know which conditions hurt.</p>
+      <dl class="field">
+        <dt>Caveat</dt><dd>2017&ndash;2026 holds four to six independent regime episodes. That is the effective sample size regardless of session count.</dd>
+        <dt>Kill</dt><dd class="kill">Not applicable. Any tempting rule emerging from this goes through the full contract as its own pre-registered test.</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The list</h2>
+  <p class="sub">Every test in run order, with the data it needs and the criterion that decides it.</p>
+  <div class="scroll">
+  <table class="list-table">
+    <thead><tr><th>Ref</th><th>Test</th><th>Data needed</th><th>Decided by</th></tr></thead>
+    <tbody>
+      <tr class="done"><td><span class="dot dot-done"></span>&mdash;</td><td>Exit rule comparison</td><td>&mdash;</td><td>Done &mdash; chandelier 3N, 10/10 years, banked</td></tr>
+      <tr class="done"><td><span class="dot dot-done"></span>&mdash;</td><td>Options for volatility &amp; exits</td><td>&mdash;</td><td>Done &mdash; closed by the ceiling test</td></tr>
+      <tr class="done"><td><span class="dot dot-done"></span>T1.4</td><td>Short side measured</td><td>&mdash;</td><td>Done &mdash; 0 shorts ever taken; premium &asymp;12pp CAGR</td></tr>
+      <tr class="done"><td><span class="dot dot-done"></span>&mdash;</td><td>Macro tilt, run as a strategy</td><td>&mdash;</td><td>Done &mdash; p=0.45, beaten by its own reversal</td></tr>
+      <tr class="done"><td><span class="dot dot-done"></span>&mdash;</td><td>Selection &amp; survivorship measured</td><td>&mdash;</td><td>Done &mdash; premium &minus;0.1 to &minus;0.5 Sharpe</td></tr>
+      <tr class="done"><td><span class="dot dot-done"></span>&mdash;</td><td>Interval &amp; asset-class fragility</td><td>&mdash;</td><td>Done &mdash; 2.64 &rarr; 1.29 &rarr; 0.13</td></tr>
+      <tr class="done"><td><span class="dot dot-done"></span>&mdash;</td><td>COT release calendar repaired</td><td>&mdash;</td><td>Done &mdash; as-of keying leaked 97% of the week</td></tr>
+      <tr class="done"><td><span class="dot dot-done"></span>T2.3</td><td>CFTC positioning tested</td><td>&mdash;</td><td>Done &mdash; 0 of 18 arms; dropped permanently</td></tr>
+      <tr class="done"><td><span class="dot dot-done"></span>T1.9</td><td>Cost sweep on the 30-minute ETF book</td><td>&mdash;</td><td>Done &mdash; 2.57 at 2bp, 0.15 at 15bp</td></tr>
+      <tr><td><span class="dot dot-1"></span>T1.1</td><td>Exit validated out-of-sample</td><td>none</td><td>Held-out edge &ge; half the in-sample edge</td></tr>
+      <tr><td><span class="dot dot-1"></span>&mdash;</td><td><b>Re-sweep costs on the banked equity book</b></td><td>none</td><td>New. Sharpe at 15bp, reported beside 2bp</td></tr>
+      <tr><td><span class="dot dot-1"></span>T1.9</td><td>Finish the intraday backfill, re-test by regime</td><td>Alpha Vantage &middot; running</td><td>Whether the cost floor is regime-dependent</td></tr>
+      <tr><td><span class="dot dot-1"></span>T1.7</td><td>Extend the sample to 2000</td><td>on disk &middot; <b>blocks T2.4</b></td><td>Reproduces known behaviour on the overlap</td></tr>
+      <tr><td><span class="dot dot-1"></span>T1.3</td><td>Correlation-aware capacity</td><td>none</td><td>Beats random tie-break, matched DD, &ge;7/10</td></tr>
+      <tr><td><span class="dot dot-1"></span>T1.6</td><td>Equity-curve de-risking</td><td>none</td><td>Beats permanently lower risk, &ge;7/10</td></tr>
+      <tr><td><span class="dot dot-1"></span>T1.5</td><td>Hedge sized as insurance</td><td>none &middot; better after T1.7</td><td>Beats an equally de-risked unhedged book</td></tr>
+      <tr><td><span class="dot dot-1"></span>T1.2</td><td>Earnings-aware management</td><td>calendar &mdash; table ready, empty</td><td>Beats do-nothing, matched DD, &ge;7/10</td></tr>
+      <tr><td><span class="dot dot-2"></span>T2.1</td><td>Single-name options &mdash; direction</td><td>download running</td><td>Clears the screen, else options close for good</td></tr>
+      <tr><td><span class="dot dot-2"></span>T2.4</td><td>Long/short macro regime tilt</td><td>needs T1.7 first</td><td>Null, calendar split <em>and</em> its own reversal</td></tr>
+      <tr><td><span class="dot dot-2"></span>T2.2</td><td>Scheduled macro events</td><td>event calendar</td><td>Beats do-nothing, matched DD, &ge;7/10</td></tr>
+      <tr><td><span class="dot dot-3"></span>T3.1</td><td>Macro regime stress report</td><td>on disk</td><td>Reported, never traded</td></tr>
+      <tr><td><span class="dot dot-x"></span>&mdash;</td><td>Daily sentiment</td><td>&mdash;</td><td>Dropped &mdash; direction predictor, unauditable restatements</td></tr>
+      <tr><td><span class="dot dot-x"></span>&mdash;</td><td>Binance for commodities or bonds</td><td>&mdash;</td><td>Dropped &mdash; metals list 7&ndash;8 months; no oil, no bonds</td></tr>
+      <tr><td><span class="dot dot-x"></span>&mdash;</td><td>Regime overlays on volatility</td><td>&mdash;</td><td>Closed &mdash; redundant with N, ten rejections</td></tr>
+      <tr><td><span class="dot dot-x"></span>&mdash;</td><td>Duration &amp; FX in the 30-minute book</td><td>&mdash;</td><td>Dropped &mdash; below the cost floor; 13 of 21 take no trades</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="callout">
+    <p><b>Order is not arbitrary, and it has changed.</b> T1.1 still comes first because everything else is scored against a configuration not yet validated out-of-sample. The cost re-sweep is now second, ahead of the remaining acquisition work: the 30-minute cross-asset book lost almost all of its advantage over daily at 15bp, and there is no reason to assume the equity book is immune to the same test. T1.7 unblocks both macro items. T1.3, T1.6 and T1.5 need only compute and can run in parallel.</p>
+  </div>
+</section>
+
+<section>
+  <h2>The standing controls contract</h2>
+  <p class="sub">Applies to every item above without exception. Every rule was written after a specific mistake.</p>
+  <div class="contract">
+    <ol>
+      <li><b>Matched drawdown, always.</b> Any change that reduces risk must be compared at equal exposure. Cutting risk mechanically improves a losing strategy, and that has produced a false positive here more than once.</li>
+      <li><b>A rival forecast, not just a null.</b> The question is never &ldquo;better than nothing&rdquo; but &ldquo;better than the cheap price-based alternative&rdquo; &mdash; which is what killed the gamma trail.</li>
+      <li><b>Persistence-matched nulls.</b> Any autocorrelated state variable gets a circular-shift control preserving its persistence while destroying its alignment to price.</li>
+      <li><b>Beat your own reversal.</b> A signal performing no better than its opposite carries no information, whatever its <em>p</em>-value says. Nearly free, and it caught the macro tilt.</li>
+      <li><b>Validate every derived series against known history before using it.</b> A regime label that does not reproduce events you can look up is not measuring what its name says. Confusing GSW forward rates for zero-coupon yields silently deleted the largest inversion on record; the error was invisible in the code and obvious the moment the episode dates were printed.</li>
+      <li><b>The kill criterion is written before the run.</b> Not after seeing the result.</li>
+      <li><b>Per-year consistency, not aggregate significance.</b> &ge;7 of 10 years. An aggregate <em>p</em>-value hides a result that lived in one regime.</li>
+      <li><b>Mark-to-market accounting.</b> Open positions hit the equity curve on the day they move, not the day they close. Exit-marked drawdowns understate risk by different amounts for different exit rules.</li>
+      <li><b>Trailing percentiles and a one-session lag.</b> Never full-sample boundaries, never same-session features. Both have leaked into this work and had to be found and fixed.</li>
+      <li><b>Change one thing at a time.</b> The cross-asset daily run moved interval, universe, asset class and period at once and was uninterpretable until the interval was isolated separately.</li>
+      <li><b>Report the reversal.</b> Where a result was withdrawn or a prediction proved wrong, it is recorded rather than quietly dropped. Three claims have been withdrawn so far.</li>
+      <li><b>Effective sample size, computed before the test.</b> Every autocorrelated series gets <code>n&nbsp;&times;&nbsp;(1&minus;&rho;)/(1+&rho;)</code> reported beside its row count, and the test is judged against that. CFTC positioning looked like 991 observations and was 30; the macro tilt looked like a decade of sessions and was one inversion episode. Two proposals have now died of this after appearing well-powered.</li>
+      <li><b>Quote costs at the level you would actually pay.</b> Headline numbers here assume a 2bp round trip. The 30-minute cross-asset book scores 2.57 there and 0.15 at 15bp, so a cost assumption can be worth more than an interval choice. Every result gets a cost sweep, not a single point.</li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <h2>What is still open</h2>
+  <div class="callout">
+    <p><b>The options download.</b> Running, four symbols complete, aggregates only. Its sole remaining use is T2.1 &mdash; direction, not volatility. Nothing in Tier&nbsp;1 waits on it, and the disk sits at 95%.</p>
+    <p><b>The bull-sample problem.</b> Eight of the ten years in the intraday book were bull years. That inflates every level quoted here and makes T1.5 a judgement call rather than a measurement. T1.7 helps for regime questions but cannot fix it for the traded book &mdash; only a longer intraday history or live results will.</p>
+    <p><b>The fragility itself.</b> Nothing on this list explains <em>why</em> 30-minute breakouts work where daily ones do not. Until that is understood, the honest position is that the edge is real in-sample and of unknown durability out of it.</p>
+    <p><b>Whether the interval advantage survives its own costs.</b> Newly open, and the most consequential question here. On the cross-asset book the 30-minute edge over daily almost entirely disappears at 15bp. The banked equity book has not been re-swept at that level on the current universe, and until it has, the headline 2.64 should be read as a 2bp number rather than an expectation.</p>
+  </div>
+</section>
+
+<footer>
+  <p>Levels assume 2bp round-trip costs on a survivorship-selected 42-name universe, long-only, 2017&ndash;2026, 30-minute bars. On daily bars the same rules run 1.29; on daily cross-asset, 0.13, reproduced from source over 4,937 sessions and 1,491 trades. The 15bp figure previously quoted here for the banked equity book &mdash; &ldquo;nearer Sharpe 2.3&rdquo; &mdash; predates the cross-asset cost sweep and has not been re-measured on the current universe; it should be treated as unverified until the re-sweep now first in the queue is run. The claim that rankings are stable at every cost level no longer holds: on the cross-asset book, 2bp and 15bp reorder the instruments entirely and drop thirteen of twenty-one. Magnitudes here are optimistic and should not be quoted as expected live performance.</p>
+</footer>
+
+</div>
