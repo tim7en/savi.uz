@@ -287,7 +287,12 @@ def options_snapshot(
     finally:
         av.close()
         market.close()
-    latest_dates = [row["latest"].get("observation_date") for row in symbols.values() if row["latest"]]
+    latest_dates = []
+    for row in symbols.values():
+        if row["latest"].get("observation_date"):
+            latest_dates.append(row["latest"]["observation_date"])
+        if row["marketdata_latest"].get("observation_date"):
+            latest_dates.append(row["marketdata_latest"]["observation_date"])
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "latest_date": max(latest_dates, default=None), "symbols": symbols,
