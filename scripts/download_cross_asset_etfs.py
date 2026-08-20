@@ -99,6 +99,96 @@ UNIVERSE = {
 }
 
 
+#: Equity substitutes.  Everything above prices what stocks are valued *against*
+#: -- the curve, the dollar, the commodity complex -- and nothing in it is a
+#: stock.  That gap matters because the measured weakness of the equity book is
+#: not its rules but its universe: twenty-nine single names picked in 2026,
+#: which compounded at 34.2% a year simply held, so a long-only breakout system
+#: on that list looks good whatever it does.
+#:
+#: A fund cannot be picked that way.  Its constituents rotate by published rule,
+#: the sponsor never asks whether the holdings did well, and SPY in 2007 is SPY
+#: in 2026.  The selection rule here is therefore stated in advance and contains
+#: no reference to outcome: *every US-listed fund giving equity exposure -- broad
+#: index, style box, industry, or country -- that was trading before 2007 and is
+#: liquid enough to short.*  Post-2007 entries are tagged so they can be dropped.
+#:
+#: One residual bias survives and is worth naming rather than hiding: funds do
+#: close, and a list drawn today cannot contain the ones that did.  It is far
+#: smaller than the single-name version -- the rule selects on breadth and age,
+#: not on return -- but it is not zero.
+#:
+#: All of these short freely and all are optionable, which is what "goes both
+#: ways" has to mean once the crypto venue is off the table.
+EQUITY_SUBSTITUTES = {
+    # broad US market -- the direct substitute for holding stocks
+    "SPY":  ("index: large cap", None),
+    "DIA":  ("index: mega cap", None),
+    "QQQ":  ("index: nasdaq 100", None),
+    "MDY":  ("index: mid cap", None),
+    "IWM":  ("index: small cap", None),
+    "RSP":  ("index: equal weight", None),
+    # the Russell style grid, listed as a set in 2000 and unchanged since.
+    # Kept whole rather than sampled: taking three of six would be a choice, and
+    # the point of the rule is that no choice is made.
+    "IWF":  ("style: large growth", None),
+    "IWD":  ("style: large value", None),
+    "IWP":  ("style: mid growth", None),
+    "IWS":  ("style: mid value", None),
+    "IWO":  ("style: small growth", None),
+    "IWN":  ("style: small value", None),
+    # industry funds, finer than the eleven sectors.  A breakout is an industry
+    # event more often than a sector one -- semis move without technology, banks
+    # without financials -- and the sector fund averages that away.
+    "SMH":  ("industry: semiconductors", None),
+    "IBB":  ("industry: biotech", None),
+    "XBI":  ("industry: biotech equal wt", None),
+    "KRE":  ("industry: regional banks", None),
+    "KBE":  ("industry: banks", None),
+    "ITB":  ("industry: homebuilders", None),
+    "XHB":  ("industry: home supply", None),
+    "XOP":  ("industry: oil and gas E&P", None),
+    "OIH":  ("industry: oil services", None),
+    "XME":  ("industry: metals and mining", None),
+    "IYT":  ("industry: transports", None),
+    "XRT":  ("industry: retail", None),
+    "ITA":  ("industry: aerospace defence", None),
+    "IYR":  ("industry: real estate", None),
+    "GDXJ": ("industry: junior miners", None),
+    # country and region.  The single-name book holds three of these already
+    # (EWJ, EWT, EWY); the rest of the developed and emerging list is here for
+    # the same reason the style grid is kept whole.
+    "EFA":  ("region: developed ex-US", None),
+    "EEM":  ("region: emerging", None),
+    "VGK":  ("region: europe", None),
+    "ILF":  ("region: latin america", None),
+    "FXI":  ("country: china", None),
+    "EWZ":  ("country: brazil", None),
+    "EWG":  ("country: germany", None),
+    "EWU":  ("country: united kingdom", None),
+    "EWC":  ("country: canada", None),
+    "EWA":  ("country: australia", None),
+    "EWH":  ("country: hong kong", None),
+    "EWW":  ("country: mexico", None),
+    "EWJ":  ("country: japan", None),
+    "EWT":  ("country: taiwan", None),
+    "EWY":  ("country: south korea", None),
+    # post-2007, so excluded by the pre-2007 rule and tagged rather than
+    # dropped.  The factor funds are the awkward case: they were launched
+    # *because* the factors had backtested well, which is a selection story in
+    # the sponsor rather than in this list, and no cutoff repairs it.
+    "JETS": ("industry: airlines (2015)", None),
+    "XAR":  ("industry: aerospace (2011)", None),
+    "INDA": ("country: india (2012)", None),
+    "MTUM": ("factor: momentum (2013)", None),
+    "QUAL": ("factor: quality (2013)", None),
+    "USMV": ("factor: low volatility (2011)", None),
+    "VLUE": ("factor: value (2013)", None),
+}
+
+UNIVERSE.update(EQUITY_SUBSTITUTES)
+
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db", type=pathlib.Path,
