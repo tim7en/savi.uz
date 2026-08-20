@@ -1,330 +1,270 @@
-"""Resumable Alpha Vantage intraday OHLCV for the cross-asset ETF book.
+"""Five-minute history for the non-equity ETFs, from inception.
 
-Alpha Vantage returns at most one historical month per intraday request.  This
-downloader therefore records every completed ``(ticker, month)`` window in the
-same SQLite schema used by the rest of the project, so a stopped run resumes
-without spending requests on data already stored.
+The cross-asset case rests on two measured facts that point in opposite
+directions: six uncorrelated instruments bought as much Sharpe as thirty-two
+correlated ones, and the same rules score 0.13 on daily bars where they score
+2.64 at thirty minutes.  Testing that case needs intraday history for the
+diversifying names, which is what this fetches.
 
-Only regular-session bars are requested.  Timestamps arrive in US/Eastern and
-are converted to UTC before storage.  ``adjusted=true`` is intentional: the
-book contains split-heavy products such as VXX, and an unadjusted reverse split
-would otherwise look like a strategy windfall or collapse.
+It cannot start in 2000.  None of the twenty-one ETFs existed then -- the bond
+funds list in July 2002 and most of the rest in 2006 and 2007 -- so each symbol
+is pulled from its own inception month instead, which is as far back as the
+instrument goes rather than as far back as the vendor does.
+
+Five minutes rather than thirty, because Alpha Vantage bills by the month slice
+regardless of interval, so the finer bar is free and every existing script
+resamples from five-minute input anyway.
+
+Splits looked like the trap here and are not.  These funds have reverse split
+repeatedly -- USO one for eight in 2020, UNG four times, VXX eight -- so an
+unadjusted series would read those as overnight collapses the breakout logic
+would happily trade.  Alpha Vantage's intraday endpoint, however, already
+returns split-adjusted prices throughout its history: checked against the daily
+store, VXX in November 2010 agrees to a ratio of 1.000 despite a cumulative
+factor near 65,000, and USO's 2020 split shows no discontinuity.
+
+Applying an adjustment here would therefore be the actual bug, and was: a first
+version divided already-adjusted 2006 prices by eight.  Split events are still
+fetched and stored, because a silent change in vendor behaviour would otherwise
+be invisible, and because the check that caught this is worth being able to
+repeat.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import threading
+import pathlib
+import sqlite3
+import sys
 import time
 import urllib.parse
 import urllib.request
-import uuid
-from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
-from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
-from pathlib import Path
-from zoneinfo import ZoneInfo
+from concurrent.futures import ThreadPoolExecutor
 
-import sys
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-
-from savi_uz.config import get_alphavantage_api_key  # noqa: E402
-from savi_uz.intraday_store import IntradayStore  # noqa: E402
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 
 
-FREQUENCY = "30min"
-SOURCE = "ALPHAVANTAGE"
-BASE_URL = "https://www.alphavantage.co/query"
-DEFAULT_START = "2017-01"
-
-# Kept in sync with ``download_cross_asset_etfs.py``.  The 30-minute run is a
-# resolution test of the same book, not a fresh universe-selection exercise.
-UNIVERSE = {
-    "GLD": ("metals", "PAXGUSDT / XAUUSDT"),
-    "SLV": ("metals", "XAGUSDT"),
-    "GDX": ("metals", None),
-    "PPLT": ("metals", None),
-    "USO": ("energy", None),
-    "UNG": ("energy", None),
-    "BNO": ("energy", None),
-    "DBC": ("commodity", None),
-    "DBA": ("commodity", None),
-    "GSG": ("commodity", None),
-    "TLT": ("duration", None),
-    "IEF": ("duration", None),
-    "SHY": ("duration", None),
-    "TIP": ("duration", None),
-    "LQD": ("credit", None),
-    "HYG": ("credit", None),
-    "UUP": ("fx", "USDT complex"),
-    "FXE": ("fx", "EURUSDT"),
-    "FXY": ("fx", "JPY pairs, thin"),
-    "FXB": ("fx", "GBPUSDT"),
-    "VXX": ("volatility", None),
-}
-
-VENUE_SCHEMA = """
-CREATE TABLE IF NOT EXISTS venue_map (
-    ticker    TEXT PRIMARY KEY,
-    sleeve    TEXT,
-    binance   TEXT
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS bars (
+    ticker     TEXT NOT NULL,
+    frequency  TEXT NOT NULL,
+    ts         TEXT NOT NULL,
+    open       REAL, high REAL, low REAL, close REAL, volume REAL,
+    PRIMARY KEY (ticker, frequency, ts)
+);
+CREATE INDEX IF NOT EXISTS idx_bars_ticker_ts ON bars (ticker, ts);
+CREATE TABLE IF NOT EXISTS splits (
+    ticker TEXT NOT NULL, split_date TEXT NOT NULL, factor REAL NOT NULL,
+    PRIMARY KEY (ticker, split_date)
+);
+CREATE TABLE IF NOT EXISTS slice_log (
+    ticker TEXT NOT NULL, month TEXT NOT NULL, status TEXT, rows INTEGER,
+    note TEXT, logged_at TEXT, PRIMARY KEY (ticker, month)
 );
 """
 
 
-@dataclass(frozen=True)
-class IntradayBar:
-    ticker: str
-    frequency: str
-    timestamp: str
-    open: float
-    high: float
-    low: float
-    close: float
-    volume: float
-
-
-@dataclass(frozen=True)
-class MonthResult:
-    ticker: str
-    month: str
-    bars: tuple[IntradayBar, ...]
-    status: str
-    message: str = ""
-
-
-class RequestPacer:
-    """Thread-safe spacing between request starts, not response completions."""
-
-    def __init__(self, requests_per_minute: int):
-        if requests_per_minute < 1:
-            raise ValueError("requests_per_minute must be positive")
-        self.interval = 60.0 / requests_per_minute
-        self.lock = threading.Lock()
-        self.next_at = 0.0
-
-    def wait(self) -> None:
-        with self.lock:
-            now = time.monotonic()
-            delay = max(0.0, self.next_at - now)
-            self.next_at = max(now, self.next_at) + self.interval
-        if delay:
-            time.sleep(delay)
-
-
-def previous_month(today: date | None = None) -> str:
-    current = today or date.today()
-    if current.month == 1:
-        return f"{current.year - 1}-12"
-    return f"{current.year}-{current.month - 1:02d}"
-
-
-def month_range(first: str, last: str) -> list[str]:
-    try:
-        cursor = date.fromisoformat(first + "-01")
-        stop = date.fromisoformat(last + "-01")
-    except ValueError as exc:
-        raise ValueError("months must use YYYY-MM") from exc
-    if cursor > stop:
-        raise ValueError("start month is after end month")
-    months = []
-    while cursor <= stop:
-        months.append(cursor.strftime("%Y-%m"))
-        cursor = date(cursor.year + (cursor.month // 12), cursor.month % 12 + 1, 1)
-    return months
-
-
-def utc_timestamp(value: str) -> str:
-    eastern = ZoneInfo("America/New_York")
-    parsed = datetime.strptime(value, "%Y-%m-%d %H:%M:%S").replace(tzinfo=eastern)
-    return parsed.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
-
-
-def parse_series(ticker: str, payload: dict) -> tuple[IntradayBar, ...]:
-    series = payload.get(f"Time Series ({FREQUENCY})") or {}
-    bars = []
-    for stamp, values in series.items():
-        try:
-            bars.append(IntradayBar(
-                ticker=ticker,
-                frequency=FREQUENCY,
-                timestamp=utc_timestamp(stamp),
-                open=float(values["1. open"]),
-                high=float(values["2. high"]),
-                low=float(values["3. low"]),
-                close=float(values["4. close"]),
-                volume=float(values["5. volume"]),
-            ))
-        except (KeyError, TypeError, ValueError):
-            continue
-    return tuple(sorted(bars, key=lambda row: row.timestamp))
-
-
-def response_message(payload: dict) -> str:
-    return str(
-        payload.get("Information") or payload.get("Note")
-        or payload.get("Error Message") or "empty response"
-    )
-
-
-def fetch_month(
-    ticker: str, month: str, api_key: str, pacer: RequestPacer, attempts: int = 5,
-) -> MonthResult:
-    query = urllib.parse.urlencode({
-        "function": "TIME_SERIES_INTRADAY",
-        "symbol": ticker,
-        "interval": FREQUENCY,
-        "month": month,
-        "outputsize": "full",
-        "adjusted": "true",
-        "extended_hours": "false",
-        "apikey": api_key,
-    })
-    for attempt in range(attempts):
-        pacer.wait()
-        try:
-            request = urllib.request.Request(
-                f"{BASE_URL}?{query}", headers={"User-Agent": "savi-uz-research/1.0"}
-            )
-            with urllib.request.urlopen(request, timeout=90) as response:
-                payload = json.loads(response.read().decode("utf-8"))
-        except (OSError, TimeoutError, json.JSONDecodeError) as exc:
-            if attempt == attempts - 1:
-                return MonthResult(ticker, month, (), "error", f"{type(exc).__name__}: {exc}")
-            time.sleep(2 ** attempt)
-            continue
-
-        bars = parse_series(ticker, payload)
-        if bars:
-            return MonthResult(ticker, month, bars, "ok")
-        message = response_message(payload)
-        lowered = message.lower()
-        if "rate limit" in lowered or "call frequency" in lowered:
-            if attempt == attempts - 1:
-                return MonthResult(ticker, month, (), "rate_limited", message)
-            time.sleep(65)
-            continue
-        # Months before a fund listed legitimately have no bars.  Alpha Vantage
-        # normally returns an empty series; explicit API errors remain errors.
-        if message == "empty response":
-            return MonthResult(ticker, month, (), "ok", "no bars")
-        return MonthResult(ticker, month, (), "error", message)
-    return MonthResult(ticker, month, (), "error", "retry budget exhausted")
-
-
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--db", type=Path,
-                        default=Path("data/cross_assets/etf_30min.db"))
-    parser.add_argument("--symbols", nargs="+", default=sorted(UNIVERSE))
-    parser.add_argument("--start", default=DEFAULT_START, help="first month, YYYY-MM")
-    parser.add_argument("--end", default=previous_month(), help="last month, YYYY-MM")
-    parser.add_argument("--requests-per-minute", type=int, default=14)
-    parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--max-requests", type=int, default=0,
-                        help="live request cap; zero means no cap")
-    parser.add_argument("--force", action="store_true",
-                        help="refetch months already marked complete")
-    parser.add_argument("--plan", action="store_true")
+    parser.add_argument("--db", type=pathlib.Path,
+                        default=pathlib.Path("data/cross_assets/etf_intraday.db"))
+    parser.add_argument("--daily", type=pathlib.Path,
+                        default=pathlib.Path("data/cross_assets/etf_daily.db"))
+    parser.add_argument("--interval", default="5min")
+    parser.add_argument("--end", default="2026-08")
+    parser.add_argument("--symbols", nargs="+")
+    parser.add_argument("--workers", type=int, default=3)
+    parser.add_argument("--limit", type=int, default=0)
     return parser.parse_args(argv)
 
 
-def store_result(store: IntradayStore, result: MonthResult, run_id: str) -> None:
-    first = date.fromisoformat(result.month + "-01")
-    next_month = date(first.year + (first.month // 12), first.month % 12 + 1, 1)
-    last = next_month - timedelta(days=1)
-    store.write_bars(result.bars)
-    store.mark_window(
-        result.ticker, FREQUENCY, first, last, list(result.bars), False,
-        datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-    )
-    store.log(
-        run_id, datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-        SOURCE, f"{result.ticker}/{result.month}", len(result.bars), result.status,
-        result.message,
-    )
+def api_key() -> str:
+    for line in pathlib.Path(".env").read_text(encoding="utf-8").splitlines():
+        name, _, value = line.partition("=")
+        if name.strip() == "ALPHAVANTAGE_API_KEY":
+            return value.strip().strip('"').strip("'")
+    raise SystemExit("error: ALPHAVANTAGE_API_KEY missing from .env")
 
 
-def main(argv=None) -> int:
+def call(params, key, attempts=4):
+    query = urllib.parse.urlencode({**params, "apikey": key})
+    for attempt in range(attempts):
+        try:
+            request = urllib.request.Request(
+                f"https://www.alphavantage.co/query?{query}",
+                headers={"User-Agent": "research/1.0"})
+            with urllib.request.urlopen(request, timeout=90) as response:
+                payload = json.loads(response.read().decode())
+        except Exception as error:
+            if attempt == attempts - 1:
+                return None, f"{type(error).__name__}: {error}"
+            time.sleep(2 ** attempt)
+            continue
+        series = next((payload[k] for k in payload if "Time Series" in k), None)
+        if series is not None:
+            return series, "ok"
+        note = (payload.get("Note") or payload.get("Information")
+                or payload.get("Error Message") or str(payload)[:150])
+        if "limit" in note.lower() or "frequency" in note.lower():
+            time.sleep(15)
+            continue
+        return None, note
+    return None, "exhausted"
+
+
+def fetch_splits(symbol, key):
+    """Split events from the daily endpoint, oldest first."""
+    series, status = call({"function": "TIME_SERIES_DAILY_ADJUSTED",
+                           "symbol": symbol, "outputsize": "full"}, key)
+    if series is None:
+        return [], status
+    events = []
+    for day, values in series.items():
+        try:
+            coefficient = float(values.get("8. split coefficient", 1.0))
+        except ValueError:
+            continue
+        if abs(coefficient - 1.0) > 1e-9:
+            events.append((day, coefficient))
+    return sorted(events), "ok"
+
+
+def months_between(start: str, end: str):
+    year, month = int(start[:4]), int(start[5:7])
+    last_year, last_month = int(end[:4]), int(end[5:7])
+    out = []
+    while (year, month) <= (last_year, last_month):
+        out.append(f"{year:04d}-{month:02d}")
+        month += 1
+        if month == 13:
+            year, month = year + 1, 1
+    return out
+
+
+def splits_check(store, daily_path, symbol):
+    """Largest disagreement between an intraday close and the daily store.
+
+    Both series should already be split-adjusted, so this should sit at 1.0.  A
+    ratio near a split factor means the vendor changed behaviour and the bars
+    need adjusting after all.
+    """
+    daily = sqlite3.connect(f"file:{daily_path}?mode=ro", uri=True)
+    reference = dict(daily.execute(
+        "SELECT substr(ts,1,10), close FROM bars WHERE ticker=? AND frequency='daily'",
+        (symbol,)))
+    daily.close()
+    worst = 1.0
+    for day, close in store.execute(
+        "SELECT substr(ts,1,10), close FROM bars WHERE ticker=? "
+        "GROUP BY substr(ts,1,10) HAVING ts=MAX(ts)", (symbol,)
+    ):
+        other = reference.get(day)
+        if other:
+            ratio = close / other
+            if abs(ratio - 1.0) > abs(worst - 1.0):
+                worst = ratio
+    return worst
+
+
+def main(argv=None):
     args = parse_args(argv)
-    months = month_range(args.start, args.end)
-    symbols = tuple(dict.fromkeys(symbol.upper() for symbol in args.symbols))
-    if args.workers < 1:
-        raise SystemExit("error: --workers must be positive")
+    key = api_key()
+    args.db.parent.mkdir(parents=True, exist_ok=True)
+    store = sqlite3.connect(args.db)
+    store.executescript(SCHEMA)
+    store.commit()
 
-    with IntradayStore(args.db) as store:
-        store.connection.executescript(VENUE_SCHEMA)
-        for ticker, (sleeve, binance) in UNIVERSE.items():
-            store.connection.execute(
-                "INSERT OR REPLACE INTO venue_map VALUES (?,?,?)", (ticker, sleeve, binance)
-            )
-        store.connection.commit()
+    daily = sqlite3.connect(f"file:{args.daily}?mode=ro", uri=True)
+    inception = dict(daily.execute(
+        "SELECT ticker, MIN(ts) FROM bars WHERE frequency='daily' GROUP BY ticker"))
+    daily.close()
+    symbols = args.symbols or sorted(inception)
 
-        done = store.completed_windows(FREQUENCY)
-        jobs = [
-            (ticker, month) for ticker in symbols for month in months
-            if args.force or (ticker, int(month[:4]), int(month[5:])) not in done
-        ]
-        if args.max_requests:
-            jobs = jobs[:args.max_requests]
-        print(f"symbols: {len(symbols)}; months: {args.start}..{args.end}; "
-              f"pending requests: {len(jobs):,}; completed windows: {len(done):,}")
-        estimate = len(jobs) / max(args.requests_per_minute, 1)
-        print(f"pace: {args.requests_per_minute}/minute with {args.workers} workers; "
-              f"minimum wall time ~{estimate:.1f} minutes")
-        if args.plan or not jobs:
-            return 0
+    known = {t for (t,) in store.execute("SELECT DISTINCT ticker FROM splits")}
+    for symbol in symbols:
+        if symbol in known:
+            continue
+        events, status = fetch_splits(symbol, key)
+        for split_date, value in events:
+            store.execute("INSERT OR REPLACE INTO splits VALUES (?,?,?)",
+                          (symbol, split_date, value))
+        store.execute("INSERT OR REPLACE INTO splits VALUES (?,?,?)",
+                      (symbol, "0000-00-00", 1.0))  # marks the symbol as checked
+        store.commit()
+        if events:
+            print(f"  {symbol:5s} {len(events)} split(s): "
+                  + ", ".join(f"{d} x{v:g}" for d, v in events), flush=True)
+    print(flush=True)
 
-        api_key = get_alphavantage_api_key()
-        pacer = RequestPacer(args.requests_per_minute)
-        run_id = uuid.uuid4().hex[:12]
-        pending: dict[Future, tuple[str, str]] = {}
-        completed = stored = failures = 0
+    done = {(t, m) for t, m in store.execute(
+        "SELECT ticker, month FROM slice_log WHERE status='ok'")}
+    todo = []
+    for symbol in symbols:
+        start = inception[symbol][:7]
+        for month in months_between(start, args.end):
+            if (symbol, month) not in done:
+                todo.append((symbol, month))
+    if args.limit:
+        todo = todo[:args.limit]
+    print(f"{len(todo):,} (symbol, month) slices to fetch across {len(symbols)} "
+          f"symbols at {args.interval}\n", flush=True)
+    if not todo:
+        return 0
 
-        def consume(future: Future) -> None:
-            nonlocal completed, stored, failures
-            result = future.result()
-            completed += 1
-            if result.status == "ok":
-                store_result(store, result, run_id)
-                stored += len(result.bars)
-            else:
-                failures += 1
-                store.log(
-                    run_id, datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-                    SOURCE, f"{result.ticker}/{result.month}", 0, result.status,
-                    result.message,
-                )
-                print(f"  {result.ticker}/{result.month} {result.status}: "
-                      f"{result.message[:120]}", flush=True)
-            if completed % 25 == 0 or completed == len(jobs):
-                print(f"  progress {completed:,}/{len(jobs):,}; "
-                      f"{stored:,} bars; {failures} failures", flush=True)
+    def work(item):
+        symbol, month = item
+        series, status = call({"function": "TIME_SERIES_INTRADAY", "symbol": symbol,
+                               "interval": args.interval, "month": month,
+                               "outputsize": "full", "extended_hours": "false"}, key)
+        return symbol, month, series, status
 
-        with ThreadPoolExecutor(max_workers=args.workers) as pool:
-            for ticker, month in jobs:
-                while len(pending) >= args.workers:
-                    finished, _ = wait(pending, return_when=FIRST_COMPLETED)
-                    for future in finished:
-                        pending.pop(future, None)
-                        consume(future)
-                future = pool.submit(fetch_month, ticker, month, api_key, pacer)
-                pending[future] = (ticker, month)
-            while pending:
-                finished, _ = wait(pending, return_when=FIRST_COMPLETED)
-                for future in finished:
-                    pending.pop(future, None)
-                    consume(future)
+    started, stored, failed, bars = time.time(), 0, 0, 0
+    with ThreadPoolExecutor(max_workers=args.workers) as pool:
+        for symbol, month, series, status in pool.map(work, todo):
+            stamp = time.strftime("%Y-%m-%dT%H:%M:%S")
+            if series is None:
+                store.execute("INSERT OR REPLACE INTO slice_log VALUES (?,?,?,?,?,?)",
+                              (symbol, month, "fail", 0, status[:200], stamp))
+                store.commit()
+                failed += 1
+                continue
+            rows = []
+            for timestamp, values in series.items():
+                # No scaling: the vendor has already applied it. See the module
+                # docstring for the check, and splits_check() to repeat it.
+                try:
+                    rows.append((symbol, args.interval,
+                                 timestamp.replace(" ", "T") + ".000Z",
+                                 float(values["1. open"]),
+                                 float(values["2. high"]),
+                                 float(values["3. low"]),
+                                 float(values["4. close"]),
+                                 float(values["5. volume"])))
+                except (KeyError, ValueError):
+                    continue
+            store.executemany(
+                "INSERT OR REPLACE INTO bars VALUES (?,?,?,?,?,?,?,?)", rows)
+            store.execute("INSERT OR REPLACE INTO slice_log VALUES (?,?,?,?,?,?)",
+                          (symbol, month, "ok", len(rows), "", stamp))
+            store.commit()
+            stored += 1
+            bars += len(rows)
+            if stored % 100 == 0:
+                rate = stored / max(time.time() - started, 1e-9)
+                left = (len(todo) - stored - failed) / max(rate, 1e-9)
+                print(f"  {stored + failed:,}/{len(todo):,}  {bars:,} bars  "
+                      f"{rate * 60:.0f}/min  ~{left / 60:.0f} min left  "
+                      f"fails {failed}", flush=True)
 
-        coverage = store.coverage()
-        print(f"\nstored {stored:,} bars this run; {failures} failed requests")
-        print(f"database: {args.db}")
-        for ticker, frequency, first, last, rows in coverage:
-            if frequency == FREQUENCY:
-                print(f"  {ticker:5s} {rows:>7,d}  {first[:10]} -> {last[:10]}")
-        return 1 if failures else 0
+    total = store.execute("SELECT COUNT(*) FROM bars").fetchone()[0]
+    names = store.execute("SELECT COUNT(DISTINCT ticker) FROM bars").fetchone()[0]
+    span = store.execute("SELECT MIN(ts), MAX(ts) FROM bars").fetchone()
+    store.close()
+    print(f"\ndone: {stored:,} slices stored, {failed} failed")
+    print(f"  {names} symbols, {total:,} bars, {span[0][:10]} -> {span[1][:10]}")
+    print(f"  wrote {args.db}")
+    return 0
 
 
 if __name__ == "__main__":
