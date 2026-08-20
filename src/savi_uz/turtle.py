@@ -304,6 +304,7 @@ class _Phantom:
 def run_turtle(
     bars: list[Bar], *, config: TurtleConfig = TurtleConfig(),
     entries: dict[int, int] | None = None,
+    entry_prices: dict[int, float] | None = None,
     chandelier_by_bar: dict[int, float] | None = None,
     n_by_bar: dict[int, float] | None = None,
 ) -> tuple[list[TurtleTrade], TurtleAudit]:
@@ -495,7 +496,13 @@ def run_turtle(
             if candidate is None:
                 index += 1
                 continue
-            fill = bar.open
+            # The opening price is only right for a caller that means "enter at
+            # this bar's open".  A caller comparing execution styles means a
+            # specific level -- a stop fill at the breakout, or a resting limit
+            # at a retest -- and filling both at the open would erase exactly the
+            # difference being measured.
+            fill = bar.open if entry_prices is None else entry_prices.get(
+                index, bar.open)
             breakouts += 1
             floor = max(
                 config.minimum_n_fraction,
