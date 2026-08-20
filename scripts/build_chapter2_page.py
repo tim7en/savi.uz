@@ -21,6 +21,8 @@ def parse_args(argv=None):
     parser.add_argument("--data", type=Path, default=Path("out/report/chapter2.json"))
     parser.add_argument("--history", type=Path,
                         default=Path("out/report/chapter2_history.json"))
+    parser.add_argument("--reaction", type=Path,
+                        default=Path("out/report/chapter2_reaction.json"))
     parser.add_argument("--out", type=Path, default=Path("out/report/chapter2.html"))
     return parser.parse_args(argv)
 
@@ -198,6 +200,19 @@ def main(argv=None):
     bench = data["benchmarks"]
 
     history = json.loads(args.history.read_text(encoding="utf-8"))
+    reaction = json.loads(args.reaction.read_text(encoding="utf-8"))
+    react_rows = ""
+    for key, cell in reaction["summary"].items():
+        fmt = "{:,.0f}" if key == "payroll_3m" else "{:.2f}"
+        react_rows += (
+            f'<tr><td>{cell["label"]}</td>'
+            + "".join(f'<td class="n">{fmt.format(cell[a])}</td>'
+                      if cell.get(a) is not None else '<td class="n dim">&mdash;</td>'
+                      for a in ("Raised", "Held", "Cut"))
+            + "</tr>")
+    react_rows += ('<tr><td><b>Meetings</b></td>'
+                   + "".join(f'<td class="n"><b>{reaction["counts"][a]}</b></td>'
+                             for a in ("Raised", "Held", "Cut")) + "</tr>")
     cent = history["century"]
     decade_chart = decade_bars(list(cent["by_decade"].items()))
     drawdown_rows = "".join(
@@ -298,7 +313,8 @@ def main(argv=None):
                        ("__EPISODE_ROWS__", episode_rows),
                        ("__DECADE_CHART__", decade_chart),
                        ("__DRAWDOWN_ROWS__", drawdown_rows),
-                       ("__REGIME_ROWS__", regime_rows)):
+                       ("__REGIME_ROWS__", regime_rows),
+                       ("__REACTION_ROWS__", react_rows)):
         html = html.replace(key, value)
     # The prose quotes figures by hand, so it can drift from the data silently.
     # These are the load-bearing ones; a mismatch stops the build rather than
