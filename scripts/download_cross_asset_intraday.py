@@ -39,6 +39,7 @@ import sqlite3
 import sys
 import time
 import urllib.parse
+import threading
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
@@ -75,6 +76,11 @@ def parse_args(argv=None):
     parser.add_argument("--end", default="2026-08")
     parser.add_argument("--symbols", nargs="+")
     parser.add_argument("--workers", type=int, default=3)
+    parser.add_argument("--pace", type=float, default=0.82,
+                        help="minimum seconds between request starts, across all "
+                             "workers. The plan allows 75 calls a minute, which is "
+                             "0.80s; the default sits a shade under that so network "
+                             "jitter cannot push a burst over the line")
     parser.add_argument("--limit", type=int, default=0)
     return parser.parse_args(argv)
 
@@ -87,9 +93,33 @@ def api_key() -> str:
     raise SystemExit("error: ALPHAVANTAGE_API_KEY missing from .env")
 
 
-def call(params, key, attempts=4):
+#: Requests are paced to a fixed spacing rather than fired as fast as the pool
+#: allows.  The plan permits 75 calls a minute, so the spacing is 0.80s and the
+#: default leaves a little under that; the pool size then only decides how much
+#: latency is hidden, never the request rate.
+#:
+#: Worth knowing before tuning this: the "Burst pattern detected" rejections that
+#: prompted the pacer were not the vendor's doing.  Detached downloads survived
+#: the shutdown of the shell that started them, so five copies were running at
+#: once against one key.  Check for orphans before assuming a quota problem --
+#: the giveaway is that restarting makes it worse rather than better.
+_PACE = threading.Lock()
+_LAST = [0.0]
+_MIN_INTERVAL = [0.7]
+
+
+def pace():
+    with _PACE:
+        wait = _MIN_INTERVAL[0] - (time.monotonic() - _LAST[0])
+        if wait > 0:
+            time.sleep(wait)
+        _LAST[0] = time.monotonic()
+
+
+def call(params, key, attempts=5):
     query = urllib.parse.urlencode({**params, "apikey": key})
     for attempt in range(attempts):
+        pace()
         try:
             request = urllib.request.Request(
                 f"https://www.alphavantage.co/query?{query}",
@@ -106,8 +136,12 @@ def call(params, key, attempts=4):
             return series, "ok"
         note = (payload.get("Note") or payload.get("Information")
                 or payload.get("Error Message") or str(payload)[:150])
-        if "limit" in note.lower() or "frequency" in note.lower():
-            time.sleep(15)
+        # "Burst pattern detected" matches neither "limit" nor "frequency", so an
+        # earlier version treated throttling as a hard failure and burned the
+        # slice.  Any of these means wait and retry, not give up.
+        lowered = note.lower()
+        if any(word in lowered for word in ("limit", "frequency", "burst", "thank you")):
+            time.sleep(20 + 10 * attempt)
             continue
         return None, note
     return None, "exhausted"
@@ -170,6 +204,7 @@ def splits_check(store, daily_path, symbol):
 def main(argv=None):
     args = parse_args(argv)
     key = api_key()
+    _MIN_INTERVAL[0] = args.pace
     args.db.parent.mkdir(parents=True, exist_ok=True)
     store = sqlite3.connect(args.db)
     store.executescript(SCHEMA)
