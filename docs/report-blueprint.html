@@ -1,0 +1,363 @@
+<title>Ten Chapters, Four Gaps</title>
+<style>
+  :root {
+    --ground: #F6F7F9; --surface: #FFFFFF; --surface-sunk: #EEF0F4;
+    --rule: #D8DCE3; --rule-soft: #E7EAEF;
+    --ink: #14171D; --ink-2: #454E5C; --ink-3: #6E7887;
+    --accent: #24457A; --accent-soft: #E6ECF5;
+    --closed: #8C3A2E; --closed-soft: #F6E9E6;
+    --open: #1B6350; --open-soft: #E4F0EC;
+    --hold: #6B5D3E; --hold-soft: #F2EDE1;
+    --serif: ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #101318; --surface: #171B22; --surface-sunk: #1D222B;
+      --rule: #2B323D; --rule-soft: #232932;
+      --ink: #E6E9EE; --ink-2: #AEB6C2; --ink-3: #7F8896;
+      --accent: #8FB0DE; --accent-soft: #1B2534;
+      --closed: #D98878; --closed-soft: #2C1F1C;
+      --open: #6FBFA5; --open-soft: #16281F;
+      --hold: #C4AE7E; --hold-soft: #262117;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #101318; --surface: #171B22; --surface-sunk: #1D222B;
+    --rule: #2B323D; --rule-soft: #232932;
+    --ink: #E6E9EE; --ink-2: #AEB6C2; --ink-3: #7F8896;
+    --accent: #8FB0DE; --accent-soft: #1B2534;
+    --closed: #D98878; --closed-soft: #2C1F1C;
+    --open: #6FBFA5; --open-soft: #16281F;
+    --hold: #C4AE7E; --hold-soft: #262117;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground); color: var(--ink); font-family: var(--sans);
+    font-size: 16px; line-height: 1.6; margin: 0; padding: 0 20px 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; }
+  header { padding: 64px 0 34px; border-bottom: 2px solid var(--ink); }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--ink-3); margin: 0 0 20px;
+  }
+  h1 {
+    font-family: var(--serif); font-size: clamp(2.3rem, 6vw, 3.4rem);
+    line-height: 1.05; letter-spacing: -.02em; font-weight: 600;
+    margin: 0 0 18px; text-wrap: balance;
+  }
+  .standfirst {
+    font-family: var(--serif); font-size: 1.16rem; line-height: 1.5;
+    color: var(--ink-2); max-width: 62ch; margin: 0;
+  }
+  .tallies {
+    display: flex; flex-wrap: wrap; margin: 34px 0 0;
+    border: 1px solid var(--rule); background: var(--surface);
+  }
+  .tally { flex: 1 1 150px; padding: 16px 18px; border-right: 1px solid var(--rule); }
+  .tally:last-child { border-right: 0; }
+  .tally b {
+    display: block; font-family: var(--mono); font-size: 1.7rem; font-weight: 600;
+    letter-spacing: -.02em; font-variant-numeric: tabular-nums;
+  }
+  .tally span {
+    font-size: 12.5px; color: var(--ink-3); line-height: 1.35;
+    display: block; margin-top: 3px;
+  }
+  section { padding-top: 50px; }
+  h2 {
+    font-family: var(--serif); font-size: 1.6rem; letter-spacing: -.015em;
+    font-weight: 600; margin: 0 0 6px;
+  }
+  .sub { color: var(--ink-2); max-width: 68ch; margin: 0 0 24px; }
+  p { max-width: 68ch; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th {
+    text-align: left; font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3);
+    font-weight: 500; padding: 0 14px 9px 0;
+    border-bottom: 1px solid var(--rule); white-space: nowrap;
+  }
+  td {
+    padding: 12px 14px 12px 0; border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+  td:first-child {
+    font-family: var(--mono); color: var(--ink-3);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .chip {
+    display: inline-block; font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: .08em; text-transform: uppercase; padding: 3px 8px;
+    border-radius: 3px; white-space: nowrap; font-weight: 600;
+  }
+  .chip-ready   { background: var(--open-soft);   color: var(--open); }
+  .chip-partial { background: var(--hold-soft);   color: var(--hold); }
+  .chip-missing { background: var(--closed-soft); color: var(--closed); }
+  .chip-blocked { background: var(--accent-soft); color: var(--accent); }
+
+  .ch {
+    background: var(--surface); border: 1px solid var(--rule);
+    border-top: 0; padding: 22px 24px;
+  }
+  .ch:first-of-type { border-top: 1px solid var(--ink); }
+  .ch-head {
+    display: flex; align-items: baseline; gap: 12px;
+    flex-wrap: wrap; margin-bottom: 10px;
+  }
+  .ch-num {
+    font-family: var(--mono); font-size: 12px; color: var(--accent);
+    font-weight: 600;
+  }
+  .ch-head h3 {
+    font-family: var(--serif); font-size: 1.16rem; margin: 0;
+    font-weight: 600; letter-spacing: -.01em;
+  }
+  .ch-head .chip { margin-left: auto; }
+  .ch p { margin: 0 0 10px; font-size: 15px; }
+  .ch p:last-child { margin-bottom: 0; }
+  .thesis {
+    font-family: var(--serif); font-size: 1.02rem; color: var(--ink);
+    border-left: 3px solid var(--accent); padding-left: 14px; margin: 0 0 14px;
+  }
+  .field {
+    display: grid; grid-template-columns: 92px 1fr; gap: 4px 16px;
+    margin-top: 12px; padding-top: 12px;
+    border-top: 1px dashed var(--rule); font-size: 14px;
+  }
+  .field dt {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-3); padding-top: 3px;
+  }
+  .field dd { margin: 0; color: var(--ink-2); }
+  .field dd strong { color: var(--ink); font-weight: 600; }
+  .contract {
+    background: var(--surface-sunk); border: 1px solid var(--rule);
+    padding: 8px 26px 26px; margin-top: 20px;
+  }
+  .contract ol { margin: 0; padding-left: 0; list-style: none; counter-reset: c; }
+  .contract li {
+    counter-increment: c; padding: 15px 0 15px 42px;
+    border-bottom: 1px solid var(--rule-soft); position: relative; max-width: 74ch;
+  }
+  .contract li:last-child { border-bottom: 0; padding-bottom: 4px; }
+  .contract li::before {
+    content: counter(c, decimal-leading-zero); position: absolute; left: 0;
+    top: 16px; font-family: var(--mono); font-size: 12px;
+    color: var(--accent); font-weight: 600;
+  }
+  .callout {
+    border-left: 3px solid var(--accent); background: var(--accent-soft);
+    padding: 16px 20px; margin: 22px 0 0; font-size: 14.5px;
+  }
+  .callout p { margin: 0; max-width: 66ch; }
+  .callout p + p { margin-top: 10px; }
+  footer {
+    margin-top: 60px; padding-top: 22px; border-top: 1px solid var(--rule);
+    font-size: 13px; color: var(--ink-3); max-width: 70ch;
+  }
+  code {
+    font-family: var(--mono); font-size: .88em; background: var(--surface-sunk);
+    padding: 1px 5px; border-radius: 3px;
+  }
+  @media (max-width: 620px) {
+    .field { grid-template-columns: 1fr; gap: 2px; }
+    .field dt { padding-top: 10px; }
+    .ch-head .chip { margin-left: 0; }
+  }
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Report blueprint &middot; drafted 20 Aug 2026</p>
+  <h1>Ten Chapters, Four Gaps</h1>
+  <p class="standfirst">A structure for the report, and an honest account of which chapters the evidence can support today. Seven can be written now. Three cannot, and this says exactly what closes each one and what it costs.</p>
+  <div class="tallies">
+    <div class="tally"><b>7</b><span>chapters writable from evidence in hand</span></div>
+    <div class="tally"><b>3</b><span>gaps needing research first</span></div>
+    <div class="tally"><b>2</b><span>that would be invention if written today</span></div>
+    <div class="tally"><b>16</b><span>rejections the report has to account for</span></div>
+  </div>
+</header>
+
+<section>
+  <h2>The argument the book makes</h2>
+  <p class="sub">A report needs a spine, or it becomes a list of tables. This is the spine.</p>
+  <p>A quarter of a century of data, twelve tested propositions, and one surviving improvement. The book's subject is not a trading system; it is <b>the difference between what an investor can know and what merely looks knowable</b>, told through a single strategy pushed until it broke.</p>
+  <p>Three findings carry the argument, and each arrived by disproving something. <b>The strategy is far narrower than its name suggests</b> &mdash; Turtle rules that score 2.64 on 30-minute US equities score 0.13 on the daily cross-asset book the original Turtles actually traded. <b>Its edge is a cost phenomenon</b> &mdash; the same book runs 2.64 at 2bp and 0.25 at 15bp, so the question is not whether the signal exists but whether it survives being acted on. And <b>almost everything that felt explanatory was noise</b> &mdash; options, dealer gamma, macro regimes and CFTC positioning each looked promising and each failed a control.</p>
+  <p>A fourth finding arrived after this blueprint was first drafted and may be the book's best chapter. <b>Sector rate sensitivity is enormous and completely unusable here.</b> Market-adjusted beta to a one-point move in the ten-year yield runs &minus;3.98 for real estate and +6.41 for energy, with t-statistics past thirteen &mdash; and four separate attempts to route that into a breakout book all failed their controls. The relationship is real; the strategy has no channel through which to collect it. That gap, between a true fact about markets and a usable one, is the book's subject stated in miniature.</p>
+  <p>Graham's separation of investment from speculation maps onto this cleanly: the operation that promises safety of principal and an adequate return is the one whose evidence survives being attacked. The chapters below are ordered so the reader can attack them too.</p>
+</section>
+
+<section>
+  <h2>Chapter skeleton</h2>
+  <p class="sub">Each chapter states its thesis, what evidence exists, and what is missing.</p>
+
+  <div class="ch">
+    <div class="ch-head"><span class="ch-num">01</span><h3>The question, and how it was asked</h3>
+      <span class="chip chip-ready">Writable</span></div>
+    <p class="thesis">The method is the finding. Twelve propositions were tested against pre-registered kill criteria; eleven died, and the survivor only half-survived.</p>
+    <p>Introduces the discipline before any result: matched drawdown, rival forecasts rather than nulls, persistence-matched shuffles, synthetic noise, effective sample size, and the rule that a signal must beat its own reversal. Each of these was added after a specific mistake, and naming the mistake is what makes the rule credible.</p>
+    <dl class="field">
+      <dt>Have</dt><dd>The full standing contract and the incident behind each clause &mdash; three withdrawn claims, four data-integrity bugs, one goalpost moved.</dd>
+    </dl>
+  </div>
+
+  <div class="ch">
+    <div class="ch-head"><span class="ch-num">02</span><h3>The quarter century</h3>
+      <span class="chip chip-ready">Writable</span></div>
+    <p class="thesis">What the period actually offered, before any strategy is discussed, so later claims can be checked against the ground.</p>
+    <p>A hundred dollars in each of eleven sectors; the S&amp;P price index beside its total-return twin; commodities, duration, credit and the dollar; Shiller-style valuation at the turning points; GDP, CPI and unemployment; the rate cycles and the inversions. Event markers from the dot-com unwind to the end of the longest inversion on record.</p>
+    <dl class="field">
+      <dt>Have</dt><dd>Sector daily 1999&ndash;2026, index prices 2000&ndash;2026, Shiller monthly to 1871, GDP/CPI/UNRATE/PAYEMS, commodity and rate series, the GSW curve, COT. <code>build_market_overview.py</code> is written and unrun.</dd>
+      <dt>Caveat</dt><dd>Sector prices are split-adjusted but <strong>not dividend-adjusted</strong>, which understates utilities and staples most and technology least. The gap must be quantified against the total-return index rather than mentioned in passing. No Wilshire series is held; <code>^SP500TR</code> stands in and the substitution is stated.</dd>
+      <dt>To do</dt><dd>Run the script. <strong>Under an hour.</strong></dd>
+    </dl>
+  </div>
+
+  <div class="ch">
+    <div class="ch-head"><span class="ch-num">03</span><h3>The strategy, and the idea beneath it</h3>
+      <span class="chip chip-ready">Writable</span></div>
+    <p class="thesis">A breakout system is a bet that large moves cluster. Everything else &mdash; sizing, stops, pyramids, trails &mdash; is a single volatility unit wearing four hats.</p>
+    <p>The Turtle lineage and what was kept. Why <code>N</code> is the whole risk architecture. The exit study that produced the one banked improvement, its out-of-sample validation, and the uncomfortable detail that the validation endorsed the <em>family</em> while rejecting the specific multiple. Then the two findings that narrow it: the interval decomposition, and the cost curve &mdash; <b>2.64 at 2bp falling to 0.25 at 15bp</b>, which is the number the whole book turns on and which this programme itself quoted wrongly for two days.</p>
+    <dl class="field">
+      <dt>Have</dt><dd>Everything. Exit comparison, matched-drawdown scoring, T1.1 walk-forward, interval decomposition, the full cost sweep from 2bp to 20bp.</dd>
+    </dl>
+  </div>
+
+  <div class="ch">
+    <div class="ch-head"><span class="ch-num">04</span><h3>Sectors and their sensitivity to regime</h3>
+      <span class="chip chip-ready">Writable &mdash; and the best chapter</span></div>
+    <p class="thesis">The rate effect is real, large, and worth nothing to this strategy. Both halves of that sentence are the point.</p>
+    <p>Utilities and real estate are bond proxies; financials earn on a steeper curve; energy answers to inflation. The data agrees emphatically. Market-adjusted beta to a one-point daily move in the ten-year yield: <b>real estate &minus;3.98 (t &minus;13.55), utilities &minus;3.24, staples &minus;1.47, industrials +1.31, financials +3.42 (t +13.35), energy +6.41 (t +11.62)</b>. Technology, contrary to the long-duration prior, comes out flat at +0.18.</p>
+    <p>Then four attempts to trade it, each better specified than the last, and each failing its control. A binary regime split: nothing, because a persistent state is nearly orthogonal to a beta on daily changes. A pre-registered signed basket statistic: 0 of 6 cells significant. A continuous tilt on sizing and direction: p&nbsp;=&nbsp;0.508 against a synthetic beta with matched persistence. A conditional-expectancy grid on leading-versus-lagging by favourable-versus-adverse: p&nbsp;=&nbsp;0.903 on sectors, 0.935 on single names, and the ordering <em>inverted</em> on single names.</p>
+    <div class="callout">
+      <p><b>The detail that carries the chapter.</b> Breakout win rate across every cell of both grids sits between <b>22.3% and 26.3%</b>. Whether the instrument leads or lags, whether macro helps or hinders, a breakout converts about a quarter of the time. The odds do not move. Only the size of the winners does, and that variation does not follow the hypothesis.</p>
+      <p>The structural reason, which generalises well past this strategy: <b>a breakout already selects on movement.</b> By the time a 55-bar channel breaks, whatever macro was going to contribute to that instrument's move is in the price. Conditioning afterwards asks the data to say the same thing twice.</p>
+    </div>
+    <dl class="field">
+      <dt>Have</dt><dd>All eleven sectors at 30-minute resolution back to 2000, the betas, four negative trading tests with their controls, and the win-rate invariance.</dd>
+      <dt>Honesty</dt><dd>One prediction was mis-specified before the run: &ldquo;hurt by rising rates&rdquo; was applied to curve inversion, which signals expected <em>cuts</em>. Bond proxies should gain there, and did. The chapter records the error rather than quietly rescoring.</dd>
+      <dt>Sequel</dt><dd>The construction that <em>would</em> collect this is long-short on beta-ranked names, rebalanced on rate changes. That is a different strategy needing its own validation, and the book should name it as the honest next step rather than imply this one can be patched.</dd>
+    </dl>
+  </div>
+
+  <div class="ch">
+    <div class="ch-head"><span class="ch-num">05</span><h3>Options, and what they were worth</h3>
+      <span class="chip chip-missing">Per-sector data absent</span></div>
+    <p class="thesis">Options priced volatility accurately and were still worthless to this strategy, because the strategy was already volatility-normalised end to end.</p>
+    <p>The strongest negative chapter in the book, and the one with the clearest mechanism. Implied volatility forecasts realised volatility at &rho;&nbsp;&asymp;&nbsp;0.78; dealer gamma sorts next-session volatility 2.5:1. Neither helped. The trail conditioned on gamma failed against an instrument's own realised volatility; the risk unit rebuilt from implied volatility was beaten by <em>pure noise</em> in 22 of 25 draws; and the entry channel turned out to be implicitly volatility-normalised already, at a stable 9.9N.</p>
+    <dl class="field">
+      <dt>Have</dt><dd>42 equity symbols, 95,366 daily option snapshots, 2017&ndash;2026, with GEX, implied volatility, skew and term structure.</dd>
+      <dt>Gap</dt><dd><strong>Only XLE among the eleven sectors has options data.</strong> A per-sector options chapter cannot be written from what exists, and writing one anyway would be invention.</dd>
+      <dt>To close</dt><dd>Fetch the ten remaining sector ETFs &mdash; roughly 25,000 calls at 73/min, <strong>about six hours</strong>, aggregates only.</dd>
+      <dt>Or</dt><dd>Narrow the chapter to what is held and say so. The mechanism argument does not need sector detail to stand.</dd>
+    </dl>
+  </div>
+
+  <div class="ch">
+    <div class="ch-head"><span class="ch-num">06</span><h3>Positioning, and the illusion of sample size</h3>
+      <span class="chip chip-ready">Writable</span></div>
+    <p class="thesis">A thousand weekly filings look like a thousand observations and are worth perhaps thirty. This is the chapter about effective sample size.</p>
+    <p>Two independent tests, both negative, reached by different routes. Eighteen pre-registered arms against equity index futures: none beat a circular-shift null, and 991 filings carried <b>15 to 45 independent observations</b>. Then managed-money positioning in gold, silver, crude, gas and wheat mapped to their commodity funds: folded into a 132-cell table whose largest gap fell <em>below</em> the shuffled median.</p>
+    <dl class="field">
+      <dt>Have</dt><dd>Both studies. The release-date repair matters and belongs in the text: keying on the as-of Tuesday rather than the Friday publication leaked 97% of the following week's move.</dd>
+    </dl>
+  </div>
+
+  <div class="ch">
+    <div class="ch-head"><span class="ch-num">07</span><h3>Earnings and fundamentals</h3>
+      <span class="chip chip-missing">Nothing built</span></div>
+    <p class="thesis">Earnings are a dated, known-in-advance gap risk. That makes them a management problem, not a forecasting one &mdash; which is where every payoff in this programme has come from.</p>
+    <p><b>No analysis exists.</b> The <code>analyst_earnings</code> table has the right schema &mdash; ticker, reported date, reported and estimated EPS, surprise &mdash; and zero rows. There are 2.7 million SEC XBRL facts on disk, untouched.</p>
+    <dl class="field">
+      <dt>Gap</dt><dd>Total. This chapter is currently a title.</dd>
+      <dt>To close</dt><dd>Populate the earnings calendar, then run the four-arm management test: flat into the announcement, half size through it, wider stop through it, do nothing. <strong>Days, not hours.</strong></dd>
+      <dt>Trap</dt><dd>Vendors restate announcement dates and backfill estimates. The audit for that comes before any result is believed, not after.</dd>
+    </dl>
+  </div>
+
+  <div class="ch">
+    <div class="ch-head"><span class="ch-num">08</span><h3>Where the disciplines meet</h3>
+      <span class="chip chip-blocked">Blocked by 04, 05, 07</span></div>
+    <p class="thesis">Four bodies of evidence, one recurring structure: each failed for the same reason, and the reason is worth more than any of them succeeding would have been.</p>
+    <p>The synthesis chapter, and by construction the last written. On present evidence it is largely a negative-results chapter &mdash; which is a legitimate and unusual thing for a book to be, and the honest shape of what was found. The through-line is that a volatility-normalised system has no unexploited volatility surface, and that most macro and positioning claims founder on episode counts rather than on data quality.</p>
+    <dl class="field">
+      <dt>Warning</dt><dd>This is the chapter most likely to overreach. It must synthesise measured results only, and where a discipline was never measured &mdash; sector options, earnings &mdash; it says so rather than reasoning by analogy from the others.</dd>
+    </dl>
+  </div>
+
+  <div class="ch">
+    <div class="ch-head"><span class="ch-num">09</span><h3>Selecting the pool</h3>
+      <span class="chip chip-partial">Taxonomy missing</span></div>
+    <p class="thesis">The universe was chosen in 2026 and backtested from 2017. Measuring what that is worth matters more than any refinement to the rules.</p>
+    <p>Survivorship and selection, quantified: nine of forty-two names had not listed at the start, and restricting to instruments with almost no single-name selection bias costs 0.5 Sharpe &mdash; though most of that gap turned out to be breadth rather than hindsight. Then breadth itself, the capacity cap, and the tie-break that is currently a coin flip.</p>
+    <dl class="field">
+      <dt>Have</dt><dd>Selection-bias measurement, the breadth curve, the cost curve, T1.1 validation.</dd>
+      <dt>Gap</dt><dd>No <strong>sectoral taxonomy of the 42 names</strong>, so the claim that favourable conditions amplify a breakout cannot yet be tested at single-name level. That test is chapter 4's design applied to stocks.</dd>
+      <dt>To do</dt><dd>Map the 42 to sectors, then re-run chapter 4's signed statistic on them. <strong>Hours</strong>, once chapter 4 exists.</dd>
+    </dl>
+  </div>
+
+  <div class="ch">
+    <div class="ch-head"><span class="ch-num">10</span><h3>Risk, and the margin of safety</h3>
+      <span class="chip chip-ready">Writable</span></div>
+    <p class="thesis">The binding constraint is not the signal. It is cost, correlation and the number of independent bets &mdash; and only the first of those has been measured properly.</p>
+    <p>The chapter Graham would have insisted on. <code>N</code> as the risk unit and the finding that pure noise on its scale beats it. Matched drawdown as the only honest comparison. The short side priced as insurance rather than alpha &mdash; it lifted 2022 from 0.14 to 1.87 and cost about twelve points of compound return for the privilege. And the cost curve as the fact that governs everything: <b>2.64 at 2bp, 1.51 at 6bp, 0.25 at 15bp</b>. An edge that falls by half between two and six basis points is a statement about execution, not about markets, and no risk framework repairs it.</p>
+    <dl class="field">
+      <dt>Have</dt><dd>All of the above, measured.</dd>
+      <dt>Open</dt><dd>Correlation-aware capacity and equity-curve de-risking are both designed, pre-registered and unrun. The chapter should state them as open rather than imply the risk work is finished.</dd>
+    </dl>
+  </div>
+</section>
+
+<section>
+  <h2>Order of work</h2>
+  <p class="sub">Dependencies first, then cost. Two decisions are yours.</p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>#</th><th>Step</th><th>Unblocks</th><th>Cost</th><th>Decision</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Run the market overview script</td><td>Ch. 2</td><td>&lt; 1 hour</td><td>&mdash;</td></tr>
+      <tr><td>2</td><td><s>Pre-registered sector regime test</s></td><td>Ch. 4 &mdash; <b>done</b></td><td>&mdash;</td><td>&mdash;</td></tr>
+      <tr><td>3</td><td>Relative strength alone, with its own null</td><td>Ch. 4, 9</td><td>hours</td><td>&mdash;</td></tr>
+      <tr><td>4</td><td>Sector-ETF options download</td><td>Ch. 5, 8</td><td>~6 hours</td><td><b>yours</b></td></tr>
+      <tr><td>5</td><td>Earnings calendar and the four-arm test</td><td>Ch. 7, 8</td><td>days</td><td><b>yours</b></td></tr>
+      <tr><td>6</td><td>Draft chapters 1, 3, 6, 10</td><td>&mdash;</td><td>writing only</td><td>&mdash;</td></tr>
+      <tr><td>7</td><td>Draft 2, 4, 9; then 5, 7; then 8 last</td><td>&mdash;</td><td>writing only</td><td>&mdash;</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="callout">
+    <p><b>One live lead.</b> Across every macro test, the only component with a pulse was <b>plain relative strength</b> &mdash; leaders beat laggards by +0.082R on sectors and +0.103R on single names, correctly signed on two independent universes, with no macro involved. It has not been null-tested on its own. That is one clean question and it should be asked before the book claims the cross-sectional dimension is empty.</p>
+  <p><b>The two decisions.</b> Step 4 costs six hours of downloading to make chapter 5 a per-sector chapter rather than an index-and-single-name one; the mechanism argument stands either way, so this buys detail, not the conclusion. Step 5 is the larger commitment and the only one that could still produce a <em>positive</em> result &mdash; earnings are the one untested surface with a dated, known-in-advance structure, which is the shape that has paid before.</p>
+    <p>If both are declined, the book is eight chapters and says plainly why the other two are absent. That is a weaker book but not a dishonest one.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Standing constraints on the writing</h2>
+  <p class="sub">The report inherits the programme's contract. These are the clauses that bite hardest in prose, where a hedge is easy to drop for the sake of a sentence.</p>
+  <div class="contract">
+    <ol>
+      <li><b>Every performance number carries its cost assumption.</b> A Sharpe of 2.64 without &ldquo;at 2bp&rdquo; beside it is misleading, because the same book returns 0.25 at 15bp. No exceptions, including in summaries and captions.</li>
+      <li><b>Effective sample size beside every regime claim.</b> Episodes, not sessions. Thirty-seven inversion episodes in twenty-four years is the honest denominator, and quoting six thousand sessions instead would be the single easiest way to mislead a reader in this material.</li>
+      <li><b>Negative results are findings and are given the same space as positive ones.</b> Twelve rejections are the book's substance, not its throat-clearing.</li>
+      <li><b>Where a discipline was not measured, say so in the chapter that would have contained it.</b> Not in a footnote, and never covered by analogy from a neighbouring chapter.</li>
+      <li><b>Distinguish structure from parameter.</b> &ldquo;A chandelier beats a Donchian exit&rdquo; survived validation; &ldquo;3N is the right trail&rdquo; did not. The book must not let the second ride on the first.</li>
+      <li><b>Never let a measured relationship imply a tradeable one.</b> The rate betas are among the most solid numbers in the book and are worth nothing to the strategy. Prose slides from &ldquo;utilities fall when yields rise&rdquo; to &ldquo;so avoid utility breakouts when yields rise&rdquo; almost without friction, and the second does not follow.</li>
+      <li><b>Record the process failures.</b> The moved goalpost, the four data bugs, the four withdrawn claims, the mis-specified prediction, and the wrong cost figure repeated for two days. A report that only shows the tidy path teaches the reader nothing about how to do this themselves.</li>
+    </ol>
+  </div>
+</section>
+
+<footer>
+  <p>Companion to the research agenda, which tracks the open experiments rather than the exposition. This document is the blueprint only; no chapter text has been written. Figures quoted here are from runs already completed and carry their own caveats in the source studies.</p>
+</footer>
+
+</div>
