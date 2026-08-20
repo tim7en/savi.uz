@@ -80,6 +80,22 @@ UNIVERSE = {
     "FXB":  ("fx", "GBPUSDT"),
     # volatility -- nothing on Binance
     "VXX":  ("volatility", None),
+    # US equity sectors. Added after the macro-regime study found nothing: that
+    # book held commodities, duration, FX and volatility, so the contrast with
+    # the clearest rate mechanism -- utilities and real estate as bond proxies,
+    # financials earning on a steeper curve, technology as long-duration growth
+    # -- was absent from it entirely. The SPDR sectors carry history to 1998.
+    "XLF":  ("sector: financials", None),
+    "XLU":  ("sector: utilities", None),
+    "XLK":  ("sector: technology", None),
+    "XLV":  ("sector: health care", None),
+    "XLP":  ("sector: staples", None),
+    "XLI":  ("sector: industrials", None),
+    "XLY":  ("sector: discretionary", None),
+    "XLB":  ("sector: materials", None),
+    "XLRE": ("sector: real estate", None),
+    "XLC":  ("sector: communications", None),
+    "XLE":  ("sector: energy", None),
 }
 
 
