@@ -67,7 +67,8 @@ def parse_args(argv=None):
     parser.add_argument("--cost", type=float, default=0.0002,
                         help="strategy round-trip cost")
     parser.add_argument("--switch-cost", type=float, default=0.0010,
-                        help="round-trip cost of moving exposure, on the amount moved")
+                        help="ROUND-TRIP cost of moving exposure out and back, on the "
+                             "amount moved; charged half on each leg")
     parser.add_argument("--trials", type=int, default=30)
     parser.add_argument("--nulls", type=int, default=200)
     parser.add_argument("--out", type=Path,
@@ -163,7 +164,8 @@ def path(by_day, calendar, exposure, risk, switch_cost):
         e = exposure.get(day, 1.0)
         turn = abs(e - previous_exposure)
         previous_exposure = e
-        gain = by_day.get(day, 0.0) * risk * e - turn * switch_cost
+        # switch_cost is the full out-and-back charge, so each leg pays half.
+        gain = by_day.get(day, 0.0) * risk * e - turn * switch_cost / 2.0
         nav = max(0.0, nav * (1.0 + gain))
         peak = max(peak, nav)
         worst = min(worst, nav / peak - 1.0)
@@ -237,15 +239,39 @@ def main(argv=None):
             for s in range(args.trials)]
     print(f"{len(pooled):,} trades\n", flush=True)
 
-    def schedule(days, weight):
-        return {d: weight for d in days if d in set(calendar)}
+    index_of = {d: i for i, d in enumerate(calendar)}
+
+    def window(days, weight, before=0, after=0):
+        """Weight applied from `before` sessions ahead of each date to `after` past."""
+        out = {}
+        for day in days:
+            if day not in index_of:
+                continue
+            start = max(0, index_of[day] - before)
+            end = min(len(calendar) - 1, index_of[day] + after)
+            for i in range(start, end + 1):
+                out[calendar[i]] = weight
+        return out
 
     variants = [("untouched book", {})]
-    for weight in (0.75, 0.50, 0.25, 0.0):
-        variants.append((f"all meetings at {weight:.0%}",
-                         schedule(in_sample, weight)))
-    variants.append(("projection meetings at 50%",
-                     schedule([d for d in in_sample if d in projections], 0.50)))
+    # Reducing exposure was tested first and lost; the same machinery now asks
+    # the opposite question, since these turned out to be the best days to hold.
+    for weight in (0.50, 0.25):
+        variants.append((f"cut to {weight:.0%} on the day",
+                         window(in_sample, weight)))
+    for weight in (1.5, 2.0, 3.0):
+        variants.append((f"raise to {weight:.0%} on the day",
+                         window(in_sample, weight)))
+    variants.append(("2x, day before as well", window(in_sample, 2.0, before=1)))
+    variants.append(("2x, day before only",
+                     {calendar[index_of[d] - 1]: 2.0 for d in in_sample
+                      if d in index_of and index_of[d] > 0}))
+    variants.append(("2x, held five sessions after",
+                     window(in_sample, 2.0, after=5)))
+    variants.append(("2x, held twenty sessions after",
+                     window(in_sample, 2.0, after=20)))
+    variants.append(("2x on projection meetings only",
+                     window([d for d in in_sample if d in projections], 2.0)))
 
     report, base = {}, None
     print(f"  {'variant':30s} {'exposure':>9s} {'lev':>8s} {'Sharpe':>7s} "
@@ -264,7 +290,8 @@ def main(argv=None):
               f"{result['sharpe']:>7.2f} {result['cagr']:>8.1%} "
               f"{result['sharpe'] - flat['sharpe']:>+9.3f}", flush=True)
 
-    best = max((v for k, v in report.items() if k != "untouched book"),
+    best = max((v for k, v in report.items()
+                if k != "untouched book" and isinstance(v, dict) and "sharpe" in v),
                key=lambda v: v["sharpe"])
     label = next(k for k, v in report.items() if v is best)
     years = sorted(base["years"])
@@ -277,13 +304,13 @@ def main(argv=None):
 
     print(f"\n  {args.nulls} random-date calendars, matched in number...", flush=True)
     rng = random.Random(5)
-    weight = 0.50
+    weight = 2.0
     nulls = []
     for _ in range(args.nulls):
         fake = rng.sample(calendar, len(in_sample))
         nulls.append(score(maps, calendar, {d: weight for d in fake}, args)["sharpe"])
     nulls.sort()
-    real = report["all meetings at 50%"]["sharpe"]
+    real = report["raise to 200% on the day"]["sharpe"]
     beat = sum(1 for v in nulls if v >= real)
     pick = lambda f: nulls[min(int(f * len(nulls)), len(nulls) - 1)]
     p_value = (beat + 1) / (len(nulls) + 1)
