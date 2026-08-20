@@ -1,0 +1,456 @@
+<title>The Quarter Century</title>
+<style>
+  :root {
+    --paper: #F7F7F4; --card: #FFFFFF; --sunk: #EFEFEA;
+    --rule: #DAD9D2; --rule-soft: #E8E7E0;
+    --ink: #1A1A17; --ink-2: #4A4A42; --ink-3: #77776C;
+    --accent: #2264A8;
+    --s1: #2264A8; --s2: #D08A1C; --s3: #A63D6B;
+    --band: rgba(34,100,168,.09);
+    --serif: ui-serif, Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #131316; --card: #1A1A1E; --sunk: #202027;
+      --rule: #32323A; --rule-soft: #27272E;
+      --ink: #E9E8E3; --ink-2: #B4B3AC; --ink-3: #83827A;
+      --accent: #7FB0E4;
+      --s1: #4A8CC4; --s2: #BE831C; --s3: #AD4F74;
+      --band: rgba(127,176,228,.12);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #131316; --card: #1A1A1E; --sunk: #202027;
+    --rule: #32323A; --rule-soft: #27272E;
+    --ink: #E9E8E3; --ink-2: #B4B3AC; --ink-3: #83827A;
+    --accent: #7FB0E4;
+    --s1: #4A8CC4; --s2: #BE831C; --s3: #AD4F74;
+    --band: rgba(127,176,228,.12);
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper); color: var(--ink); font-family: var(--serif);
+    font-size: 17px; line-height: 1.68; margin: 0; padding: 0 22px 110px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 800px; margin: 0 auto; }
+  header { padding: 72px 0 30px; }
+  .chapter {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .18em;
+    text-transform: uppercase; color: var(--ink-3); margin: 0 0 22px;
+  }
+  h1 {
+    font-family: var(--serif); font-size: clamp(2.4rem, 6.5vw, 3.6rem);
+    line-height: 1.04; letter-spacing: -.02em; font-weight: 600;
+    margin: 0 0 22px; text-wrap: balance;
+  }
+  .epigraph {
+    font-size: 1.05rem; color: var(--ink-2); font-style: italic;
+    border-left: 2px solid var(--rule); padding-left: 18px; margin: 0 0 8px;
+    max-width: 56ch;
+  }
+  .epigraph cite { display: block; font-style: normal; font-size: .82rem;
+    color: var(--ink-3); margin-top: 8px; letter-spacing: .02em; }
+  hr.rule { border: 0; border-top: 2px solid var(--ink); margin: 34px 0 0; }
+  section { padding-top: 54px; }
+  h2 {
+    font-family: var(--serif); font-size: 1.55rem; font-weight: 600;
+    letter-spacing: -.015em; margin: 0 0 18px; text-wrap: balance;
+  }
+  p { max-width: 68ch; margin: 0 0 18px; }
+  p.lead > b:first-child, p > b.open { font-weight: 700; }
+  .figure { margin: 30px 0 8px; }
+  .figure svg { width: 100%; height: auto; display: block; }
+  figcaption {
+    font-family: var(--sans); font-size: 12.5px; color: var(--ink-3);
+    line-height: 1.5; margin-top: 12px; max-width: 70ch;
+  }
+  .legend {
+    font-family: var(--sans); font-size: 12.5px; color: var(--ink-2);
+    display: flex; gap: 20px; flex-wrap: wrap; margin: 4px 0 14px;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .swatch { width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
+  .sw-a { background: var(--s1); }
+  .sw-b { background: var(--s2); }
+  .scroll { overflow-x: auto; margin: 22px 0 8px; }
+  table { border-collapse: collapse; width: 100%; font-family: var(--sans);
+    font-size: 14px; }
+  th {
+    text-align: left; font-family: var(--mono); font-size: 10px;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3);
+    font-weight: 500; padding: 0 14px 8px 0; border-bottom: 1px solid var(--rule);
+    white-space: nowrap;
+  }
+  th.n, td.n { text-align: right; }
+  td {
+    padding: 9px 14px 9px 0; border-bottom: 1px solid var(--rule-soft);
+    white-space: nowrap;
+  }
+  td.n { font-variant-numeric: tabular-nums; }
+  tbody tr:hover { background: var(--sunk); }
+  td.best  { color: var(--s1); font-weight: 700; }
+  td.worst { color: var(--s3); font-weight: 700; }
+  td.dim   { color: var(--ink-3); }
+  .note {
+    background: var(--sunk); border-left: 3px solid var(--accent);
+    padding: 18px 22px; margin: 26px 0 0; font-size: 15.5px;
+  }
+  .note p { margin: 0; max-width: 64ch; }
+  .note p + p { margin-top: 12px; }
+  footer {
+    margin-top: 70px; padding-top: 24px; border-top: 1px solid var(--rule);
+    font-family: var(--sans); font-size: 12.5px; color: var(--ink-3);
+    max-width: 72ch;
+  }
+  /* ---- chart primitives ---- */
+  svg .grid { stroke: var(--rule-soft); stroke-width: 1; }
+  svg .zero { stroke: var(--ink-3); stroke-width: 1.5; stroke-dasharray: 4 3; }
+  svg .band { fill: var(--band); }
+  svg .tick { font-family: var(--sans); font-size: 10.5px; fill: var(--ink-3); }
+  svg .cat  { font-family: var(--sans); font-size: 12px; fill: var(--ink-2); }
+  svg .val  { font-family: var(--mono); font-size: 11px; fill: var(--ink-2);
+              font-variant-numeric: tabular-nums; }
+  svg .bar-a { fill: var(--s1); }
+  svg .bar-pos { fill: var(--s1); }
+  svg .bar-neg { fill: var(--s3); }
+  svg .bar-b { fill: var(--s2); }
+  svg .line { fill: none; stroke-width: 2; stroke-linejoin: round;
+              stroke-linecap: round; }
+  svg .line.s1, svg .dot.s1 { stroke: var(--s1); }
+  svg .line.s2, svg .dot.s2 { stroke: var(--s2); }
+  svg .dot { fill: var(--paper); stroke-width: 2; }
+  svg .series-label { font-family: var(--sans); font-size: 11.5px; font-weight: 600; }
+  svg .series-label.s1 { fill: var(--s1); }
+  svg .series-label.s2 { fill: var(--s2); }
+  @media (max-width: 640px) {
+    body { font-size: 16px; }
+    .legend { gap: 12px; }
+  }
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="chapter">Chapter Two</p>
+  <h1>The Quarter Century</h1>
+  <p class="epigraph">An investor who has not troubled to learn what the market
+    did to people before him is in no position to judge what it may do to him.
+    <cite>The ground beneath the argument, before any strategy is discussed</cite></p>
+  <hr class="rule">
+</header>
+
+<section>
+  <h2>What a hundred dollars became</h2>
+  <p class="lead"><b>The first duty of a market history is arithmetic, and the
+    arithmetic of the eleven American sectors since January 2000 is less dramatic
+    than the period's reputation suggests.</b> A hundred dollars committed to
+    consumer discretionary shares at the opening of the century, with dividends
+    reinvested, became $1,068. The same hundred in financial shares became $521.
+    Between the best sector and the worst lies a factor of two — over twenty-six
+    years that encompassed two catastrophes and the longest bull market in living
+    memory. The investor who agonised over sector selection was arguing about
+    less than he supposed.</p>
+
+  <p>The ranking itself would have surprised the participants. Technology, whose
+    collapse opens the period and whose ascent closes it, finishes fourth. Energy,
+    which spent the decade after 2014 being written off, finishes third. Utilities
+    — the dullest holding available, the one an ambitious investor would have been
+    embarrassed to name — finish sixth, ahead of materials, staples and financials.
+    Only real estate and communications trail badly, and both are shortened
+    histories rather than poor ones: neither fund existed for the whole period.</p>
+
+  <div class="figure">
+    <div class="legend">
+      <span><i class="swatch sw-a"></i> price only</span>
+      <span><i class="swatch sw-b"></i> with dividends reinvested</span>
+    </div>
+    __SECTOR_BARS__
+    <figcaption>Growth of $100 invested 3 January 2000, ranked by total return.
+      Real estate and communications begin in October 2015 and June 2018
+      respectively, being the inception of their funds; their bars therefore
+      describe a shorter and easier period and are not comparable with the
+      rest.</figcaption>
+  </div>
+</section>
+
+<section>
+  <h2>The dividend, which is most of the answer</h2>
+  <p class="lead"><b>The gap between the two bars in that chart is the part of the
+    return that arrives as cash rather than as price, and for several sectors it
+    is larger than the price gain itself.</b> Utilities returned $321 on price
+    alone and $811 with dividends reinvested — the income more than doubled the
+    outcome. Financials show the same pattern, $251 against $521. Technology, which
+    pays little, shows the smallest gap of the long-lived sectors at 35%.</p>
+
+  <p>This is not a footnote to be acknowledged and set aside. An investor
+    comparing sectors on price charts — which is what most charts are — would
+    conclude that utilities returned a third of what discretionary shares did.
+    With dividends counted, the ratio is closer to three-quarters. <b>The entire
+    case for one sector over another can be manufactured or destroyed by the
+    choice of measure</b>, and the measure is usually chosen by whoever drew the
+    chart rather than by the investor reading it.</p>
+
+  <div class="scroll">
+    <table>
+      <thead><tr>
+        <th>Sector</th><th class="n">Price</th><th class="n">Total</th>
+        <th class="n">Dividend</th><th class="n">CAGR</th>
+        <th class="n">Worst fall</th><th class="n">Up years</th>
+      </tr></thead>
+      <tbody>__SECTOR_ROWS__</tbody>
+    </table>
+  </div>
+  <p style="font-family:var(--sans);font-size:12.5px;color:var(--ink-3);max-width:70ch">
+    Price return is split-adjusted only; total return additionally reinvests
+    dividends. Worst fall is the deepest peak-to-trough decline in the period.</p>
+</section>
+
+<section>
+  <h2>The index and its twin</h2>
+  <p class="lead"><b>The same distinction governs the market as a whole, and here
+    it is worth $336 on a hundred.</b> The S&amp;P 500 price index turned $100 into
+    $535 over the period, a compound 6.5% a year. Its total-return twin turned the
+    same $100 into $871, or 8.5%. Two percentage points a year, compounded across
+    twenty-six years, is the difference between tripling one's money and multiplying
+    it by nine.</p>
+
+  <p>The two lines below are the same market. They diverge for no reason other than
+    bookkeeping. An investor who spent the period reading the first line and
+    receiving the second was consistently more prosperous than he believed — and
+    one who compared his own dividend-paying holdings against the price index was
+    flattering himself by exactly the amount of his own income.</p>
+
+  <div class="figure">
+    __SP_CHART__
+    <figcaption>$100 invested in the S&amp;P 500 on 3 January 2000, monthly.
+      The upper line reinvests dividends; the lower does not. Both fall 55% to
+      57% from peak at their worst.</figcaption>
+  </div>
+
+  <div class="note">
+    <p><b>On the two catastrophes.</b> The price index fell 57% between October
+      2007 and March 2009, and 49% between March 2000 and October 2002. The Nasdaq
+      100, over the same span, fell 83%. An investor holding that index needed a
+      six-fold gain merely to return to where he began, and did not see it again
+      until 2015 — fifteen years of waiting to break even, during which the
+      arithmetic of the thing was never in doubt and the patience of the holder
+      was tested continuously.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Commodities, duration, credit and the dollar</h2>
+  <p class="lead"><b>Outside equities the period was far less kind, and in two
+    instruments it was ruinous in a way that no market decline explains.</b> Gold
+    turned $100 into $933 since November 2004, compounding at 10.8% — better than
+    the S&amp;P's total return over a comparable window, and the single best
+    holding in this table. Investment-grade credit returned 4.4% a year, long
+    Treasuries 3.6%, the dollar 1.6%.</p>
+
+  <p>Then the wreckage. A hundred dollars in the crude oil fund became $24; in the
+    natural gas fund it became, to the nearest dollar, nothing. The volatility fund
+    lost 51.8% a year, every year, for seventeen years. <b>These are not bets that
+    went wrong; they are instruments that consume capital by construction.</b> Each
+    holds futures that must be rolled forward, and each rolled at a loss so
+    persistently that the underlying commodity's own price movement became
+    irrelevant. Natural gas cost roughly the same in 2026 as in 2007. The fund that
+    tracked it lost essentially everything.</p>
+
+  <div class="scroll">
+    <table>
+      <thead><tr>
+        <th>Instrument</th><th class="n">From</th><th class="n">$100 became</th>
+        <th class="n">CAGR</th><th class="n">Worst fall</th>
+      </tr></thead>
+      <tbody>__OTHER_ROWS__</tbody>
+    </table>
+  </div>
+  <p style="font-family:var(--sans);font-size:12.5px;color:var(--ink-3);max-width:70ch">
+    Total return from each fund's own inception, which differs by instrument;
+    the figures are therefore not directly comparable with one another.</p>
+</section>
+
+<section>
+  <h2>How the sectors answer to interest rates</h2>
+  <p class="lead"><b>Beneath the sector returns lies the most dependable
+    relationship in this entire record, and it is not a market opinion but very
+    nearly an accounting identity.</b> When the ten-year Treasury yield rises by a
+    percentage point, real estate shares fall 4.4% relative to the market, and
+    utilities 3.8%. Financial shares rise 3.3%, energy 2.8%. Nine of the eleven
+    sectors show the effect at a statistical strength that leaves no room for
+    argument &mdash; utilities at a t-statistic of 20, real estate at 17,
+    financials at 16.</p>
+
+  <p>The mechanism is a discount rate, and it requires no cleverness to see. A
+    utility is a long stream of regulated cash flows; a real estate trust is a
+    long stream of rents. Both are, in the arithmetic that matters, bonds wearing
+    equity certificates, and both must fall when the rate at which their distant
+    cash is discounted goes up. A bank, by contrast, earns the spread between what
+    it pays for deposits and what it charges for loans, and a steeper curve widens
+    that spread directly. <b>These are not correlations discovered by searching;
+    they are consequences one could have written down in advance</b> &mdash; and,
+    unusually for this book, they are.</p>
+
+  <div class="figure">
+    __BETA_CHART__
+    <figcaption>Sector return relative to the eleven-sector average, per one
+      percentage point move in the ten-year Treasury yield, 2000&ndash;2026.
+      Ordinary least squares on daily observations; a negative figure means the
+      sector falls when yields rise.</figcaption>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead><tr>
+        <th>Sector</th><th class="n">Per 1pp</th><th class="n">t</th>
+        <th>Character</th>
+      </tr></thead>
+      <tbody>__BETA_ROWS__</tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <p><b>A caution the investor should take from this section rather than a
+      recommendation.</b> The relationship is real, large and stable. It does not
+      follow that it can be turned into money. A later chapter puts precisely this
+      measurement to work &mdash; sizing positions by it, gating their direction,
+      switching sectors off when the rate environment is against them &mdash; and
+      reports four separate failures, each against a control designed in advance.
+      The reader is asked to hold both facts at once, because the distance between
+      them is the subject of this book.</p>
+  </div>
+</section>
+
+<section>
+  <h2>The sectors through the cycles</h2>
+  <p class="lead"><b>Set the same eleven sectors against the eight episodes that
+    make up the period and a second pattern appears, older and simpler than the
+    rate arithmetic: the holdings that protect capital in the declines are the
+    ones that surrender it in the advances.</b> Consumer staples were the best
+    sector of the dot-com decline, losing nothing across two and a half years
+    while technology lost 82%. They were the best again through the financial
+    crisis, down 29% against financials' 81%, and best again in the pandemic
+    crash. In every one of the three great advances they finished last or nearly
+    so.</p>
+
+  <p>This is the whole of defensive investing in one row of a table. The staples
+    holder was not clever; he was differently exposed, and he paid for his
+    comfort in the years when comfort was unnecessary. <b>An investor who wants
+    the protection must accept the cost, and the cost is paid continuously while
+    the protection is drawn upon rarely.</b> Energy demonstrates the reverse with
+    equal clarity: worst in the pandemic crash at &minus;56%, best in the recovery
+    that followed at +166%, best again in the tightening bear of 2022 when
+    everything else fell.</p>
+
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Episode</th><th class="n">From</th>__EPISODE_HEAD__</tr></thead>
+      <tbody>__EPISODE_ROWS__</tbody>
+    </table>
+  </div>
+  <p style="font-family:var(--sans);font-size:12.5px;color:var(--ink-3);max-width:70ch">
+    Total return over each episode. The best sector in each row is marked in
+    blue, the worst in plum. Real estate and communications are absent from the
+    earlier episodes, their funds not yet existing.</p>
+</section>
+
+<section>
+  <h2>What the market was willing to pay</h2>
+  <p class="lead"><b>Valuation over the period did not oscillate around a mean so
+    much as visit two extremes and spend most of its time nearer the higher
+    one.</b> On a cyclically adjusted basis — price against a ten-year average of
+    earnings — the market began the century at 47.9, a level without precedent in
+    the record and not approached since. It fell to 24.5 by the 2002 trough,
+    recovered to 30.7 before the 2007 peak, and reached 14.9 in March 2009. That
+    last figure is the only genuinely cheap reading in twenty-six years.</p>
+
+  <p>Since then the direction has been one way. The pandemic low of 26.7 was
+    higher than the 2007 peak. By December 2021 the ratio stood at 42.9, and it
+    has spent the years since between 40 and 43 — a range that in 1999 would have
+    been considered a bubble and is now simply the weather. <b>The investor who
+    resolved in 2013 to wait for cheapness has now waited thirteen years</b>, and
+    the discipline that protected him in 2000 has cost him the entire subsequent
+    advance.</p>
+
+  <div class="figure">
+    __CAPE_CHART__
+    <figcaption>Cyclically adjusted price-earnings ratio, monthly, price against
+      a trailing ten-year mean of earnings. Shaded bands mark sustained
+      inversions of the ten-year against the two-year Treasury yield.</figcaption>
+  </div>
+</section>
+
+<section>
+  <h2>The economy underneath</h2>
+  <p class="lead"><b>The real economy grew steadily and unspectacularly throughout,
+    which is worth stating because the market's behaviour bore so little
+    resemblance to it.</b> Real output rose 75% across the period. Consumer prices
+    rose 97%, so that a dollar of January 2000 purchases 51 cents today.
+    Unemployment began at 4.0% and stands at 4.1% — a symmetry that conceals a
+    journey to 14.8% in April 2020 and down to 3.4% in April 2023, the lowest
+    reading in half a century.</p>
+
+  <p>Set the two records side by side and the disproportion is the lesson. Output
+    grew by three-quarters; the total-return index multiplied by nearly nine. The
+    excess is not production. It is some combination of profit margins, the price
+    the market is willing to pay for a dollar of earnings, and the long decline in
+    interest rates that ended in 2022. <b>Only the first of those is properly the
+    investor's, and none of the three is his to forecast.</b></p>
+</section>
+
+<section>
+  <h2>The rate cycles, and the four inversions</h2>
+  <p class="lead"><b>The clearest macroeconomic signal available to an investor
+    over this period announced itself four times, and the record of what followed
+    is neither as reliable nor as useless as either camp maintains.</b> The
+    ten-year Treasury yield fell below the two-year in March 2000, again in
+    December 2006, and most recently between July 2022 and August 2024 — the
+    longest inversion ever recorded, twenty-five months. The first two preceded
+    the two great declines of the era. The third preceded nothing: equities rose
+    strongly throughout it.</p>
+
+  <p>That is the whole sample. Three episodes, two of them followed by disaster
+    and one by a boom, and the investor is invited to draw conclusions. He should
+    decline. <b>A signal with three observations is not a signal; it is an
+    anecdote with a chart.</b> The deepest inversion of the period, at 1.04
+    percentage points in July 2023, was followed by two of the better years in the
+    record.</p>
+
+  <div class="figure">
+    __CURVE_CHART__
+    <figcaption>Ten-year minus two-year Treasury yield, monthly, in percentage
+      points. Below the dashed line the curve is inverted; shaded bands mark
+      sustained episodes.</figcaption>
+  </div>
+
+  <div class="note">
+    <p><b>What the period offers, and what it withholds.</b> Twenty-six years
+      supplies a great deal of data and remarkably few independent events. There
+      are two equity catastrophes, one pandemic, one inflation, three inversions
+      and perhaps six distinct rate cycles. Every claim in the chapters that
+      follow — about regimes, about positioning, about which conditions favour
+      which holdings — rests on a denominator of that size, whatever the number of
+      daily observations may suggest.</p>
+    <p>This is the reason the arithmetic came first. An investor who knows that a
+      hundred dollars became somewhere between five hundred and eleven hundred
+      almost regardless of where he put it, and that the difference between the
+      best sector and the worst was smaller than the difference between counting
+      dividends and ignoring them, is properly armed against the chapters that
+      follow. He will not expect too much from them.</p>
+  </div>
+</section>
+
+<footer>
+  <p>Sources: sector and commodity funds from end-of-day and thirty-minute price
+    records, split-adjusted throughout, with total return additionally reinvesting
+    dividends; index levels and cyclically adjusted earnings from long-run market
+    records; output, prices and employment from official statistics; the yield
+    curve from fitted zero-coupon Treasury rates. Figures run to 19 August 2026.
+    Sector funds are capitalisation-weighted baskets and carry the survivorship of
+    their own index rules; a sector's constituents in 2026 are not those of 2000.</p>
+</footer>
+
+</div>

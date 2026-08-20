@@ -164,6 +164,68 @@ def main(argv=None):
                                 - date.fromisoformat(r[0])).days >= 30]
     macro.close()
 
+    # ---- how each sector answers to rates, and to the named episodes -------
+    intraday = sqlite3.connect(f"file:{args.intraday}?mode=ro", uri=True)
+    macro2 = sqlite3.connect(f"file:{args.macro}?mode=ro", uri=True)
+    level = dict(macro2.execute(
+        "SELECT curve_date, value FROM gsw_rates WHERE mnemonic='SVENY10'"))
+    macro2.close()
+    ordered = sorted(d for d in level if level[d] is not None)
+    change = {ordered[i]: level[ordered[i]] - level[ordered[i - 1]]
+              for i in range(1, len(ordered))}
+
+    prices = {t: closes(intraday, t, False) for t in SECTORS}
+    intraday.close()
+    returns = {}
+    for ticker, series in prices.items():
+        days = sorted(series)
+        returns[ticker] = {days[i]: series[days[i]] / series[days[i - 1]] - 1.0
+                           for i in range(1, len(days)) if series[days[i - 1]] > 0}
+    common = sorted({d for r in returns.values() for d in r})
+    market = {}
+    for day in common:
+        values = [returns[t][day] for t in returns if day in returns[t]]
+        if len(values) >= 8:
+            market[day] = statistics.fmean(values)
+
+    betas = {}
+    for ticker, own in returns.items():
+        pairs = [(change[d], own[d] - market[d]) for d in own
+                 if d in change and d in market]
+        if len(pairs) < 500:
+            continue
+        xs = [x for x, _ in pairs]
+        ys = [y for _, y in pairs]
+        mx, my = statistics.fmean(xs), statistics.fmean(ys)
+        sxx = sum((x - mx) ** 2 for x in xs)
+        beta = sum((x - mx) * (y - my) for x, y in pairs) / sxx if sxx else 0.0
+        resid = [y - (my + beta * (x - mx)) for x, y in pairs]
+        se = ((sum(r * r for r in resid) / (len(pairs) - 2) / sxx) ** 0.5
+              if sxx else float("nan"))
+        betas[ticker] = {"name": SECTORS[ticker], "beta": beta * 100,
+                         "t": beta / se if se else float("nan"), "n": len(pairs)}
+    report["rate_betas"] = betas
+
+    EPISODES = [
+        ("Dot-com decline", "2000-03-24", "2002-10-09"),
+        ("Recovery to the peak", "2002-10-09", "2007-10-09"),
+        ("Financial crisis", "2007-10-09", "2009-03-09"),
+        ("The long expansion", "2009-03-09", "2020-02-19"),
+        ("Pandemic crash", "2020-02-19", "2020-03-23"),
+        ("Stimulus rally", "2020-03-23", "2022-01-03"),
+        ("Tightening bear", "2022-01-03", "2022-10-12"),
+        ("Since the trough", "2022-10-12", "2026-08-19"),
+    ]
+    episodes = []
+    for name, start, end in EPISODES:
+        row = {"name": name, "from": start, "to": end, "sectors": {}}
+        for ticker, series in prices.items():
+            window = [d for d in sorted(series) if start <= d <= end]
+            if len(window) > 15:
+                row["sectors"][ticker] = series[window[-1]] / series[window[0]] - 1.0
+        episodes.append(row)
+    report["episodes"] = episodes
+
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, separators=(",", ":")), encoding="utf-8")
     size = args.out.stat().st_size
