@@ -202,7 +202,18 @@ def main(argv=None):
     beta_rows = "".join(
         f'<tr><td>{b["name"]}</td><td class="n">{b["beta"]:+.2f}%</td>'
         f'<td class="n">{b["t"]:+.1f}</td>'
-        f'<td>{"bond proxy" if b["beta"] < -1 else "cyclical" if b["beta"] > 1 else "neither"}</td>'
+        f'<td class="n dim">'
+        f'{b["lagged_beta"]:+.2f}%</td>' if b["lagged_beta"] is not None
+        else '<td class="n dim">&mdash;</td>'
+        for b in betas)
+    beta_rows = "".join(
+        f'<tr><td>{b["name"]}</td><td class="n">{b["beta"]:+.2f}%</td>'
+        f'<td class="n">{b["t"]:+.1f}</td>'
+        + (f'<td class="n dim">{b["lagged_beta"]:+.2f}%</td>'
+           f'<td class="n dim">{b["lagged_t"]:+.1f}</td>'
+           if b["lagged_beta"] is not None
+           else '<td class="n dim">&mdash;</td><td class="n dim">&mdash;</td>')
+        + f'<td>{"bond proxy" if b["beta"] < -1 else "cyclical" if b["beta"] > 1 else "neither"}</td>'
         f'</tr>' for b in betas)
 
     names = {k: v["name"] for k, v in sectors.items()}
@@ -238,6 +249,24 @@ def main(argv=None):
                        ("__EPISODE_HEAD__", head),
                        ("__EPISODE_ROWS__", episode_rows)):
         html = html.replace(key, value)
+    # The prose quotes figures by hand, so it can drift from the data silently.
+    # These are the load-bearing ones; a mismatch stops the build rather than
+    # shipping a chapter that disagrees with its own tables.
+    cape = dict(data["cape"])
+    checks = [
+        ("S&P price", f"${bench['S&P 500 price']['hundred']:,.0f}"),
+        ("S&P total", f"${bench['S&P 500 total']['hundred']:,.0f}"),
+        ("CAPE 2000-03", f"{cape.get('2000-03')}"),
+        ("CAPE 2009-03", f"{cape.get('2009-03')}"),
+        ("CAPE 2021-12", f"{cape.get('2021-12')}"),
+        ("utilities beta", f"{data['rate_betas']['XLU']['beta']:.2f}"),
+        ("financials beta", f"{data['rate_betas']['XLF']['beta']:.2f}"),
+    ]
+    missing = [name for name, needle in checks
+               if needle.lstrip("$").rstrip("%") not in html]
+    if missing:
+        raise SystemExit("prose disagrees with the data for: " + ", ".join(missing))
+
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(html, encoding="utf-8")
     print(f"  wrote {args.out} ({args.out.stat().st_size / 1024:.0f} KB)")

@@ -214,8 +214,8 @@
     it is worth $336 on a hundred.</b> The S&amp;P 500 price index turned $100 into
     $535 over the period, a compound 6.5% a year. Its total-return twin turned the
     same $100 into $871, or 8.5%. Two percentage points a year, compounded across
-    twenty-six years, is the difference between tripling one's money and multiplying
-    it by nine.</p>
+    twenty-six years, is the difference between multiplying one's money by 5.4 and
+    multiplying it by 8.7.</p>
 
   <p>The two lines below are the same market. They diverge for no reason other than
     bookkeeping. An investor who spent the period reading the first line and
@@ -256,8 +256,10 @@
     went wrong; they are instruments that consume capital by construction.</b> Each
     holds futures that must be rolled forward, and each rolled at a loss so
     persistently that the underlying commodity's own price movement became
-    irrelevant. Natural gas cost roughly the same in 2026 as in 2007. The fund that
-    tracked it lost essentially everything.</p>
+    irrelevant. Natural gas itself fell by about half, averaging $6.97 in 2007 against
+    $3.63 in 2026 — a decline no holder would welcome, and nothing
+    remotely like the fund's outcome. The commodity halved; the instrument
+    tracking it lost essentially everything.</p>
 
   <div class="scroll">
     <table>
@@ -275,14 +277,14 @@
 
 <section>
   <h2>How the sectors answer to interest rates</h2>
-  <p class="lead"><b>Beneath the sector returns lies the most dependable
-    relationship in this entire record, and it is not a market opinion but very
-    nearly an accounting identity.</b> When the ten-year Treasury yield rises by a
-    percentage point, real estate shares fall 4.4% relative to the market, and
-    utilities 3.8%. Financial shares rise 3.3%, energy 2.8%. Nine of the eleven
-    sectors show the effect at a statistical strength that leaves no room for
-    argument &mdash; utilities at a t-statistic of 20, real estate at 17,
-    financials at 16.</p>
+  <p class="lead"><b>Beneath the sector returns lies the sharpest relationship in this record,
+    and also the most easily misread: it describes what happens on the day rates
+    move, and says nothing whatever about the day after.</b> On sessions when the
+    ten-year Treasury yield rises by a percentage point, real estate shares fall
+    4.9% relative to the other sectors, and utilities 4.2%. Financial shares rise
+    3.7%, energy 3.1%. Nine of the eleven sectors show the effect with
+    t-statistics between 5 and 13, computed with standard errors that allow for
+    the autocorrelation daily returns carry.</p>
 
   <p>The mechanism is a discount rate, and it requires no cleverness to see. A
     utility is a long stream of regulated cash flows; a real estate trust is a
@@ -294,19 +296,30 @@
     they are consequences one could have written down in advance</b> &mdash; and,
     unusually for this book, they are.</p>
 
+  <p>What they are not is a forecast. Lag the yield change by a single session
+    — ask not how sectors move <em>with</em> rates but how they move
+    <em>after</em> them — and the structure evaporates. Financials fall
+    from +3.68 to +0.13, technology from +1.49 to +0.04, utilities from
+    &minus;4.22 to &minus;0.51. Not one sector keeps a coefficient a tenth the
+    size of its contemporaneous one. <b>This is repricing, not prediction.</b>
+    Sectors do not respond to yesterday's rate move; they are marked to today's
+    as it happens, and by the close there is nothing left to collect.</p>
+
   <div class="figure">
     __BETA_CHART__
     <figcaption>Sector return relative to the eleven-sector average, per one
       percentage point move in the ten-year Treasury yield, 2000&ndash;2026.
-      Ordinary least squares on daily observations; a negative figure means the
-      sector falls when yields rise.</figcaption>
+      Newey-West standard errors, five lags; the comparison basket excludes the
+      sector being measured. A negative figure means the sector falls when yields
+      rise. Real estate is measured from October 2015 and communications from
+      June 2018, their funds not existing earlier.</figcaption>
   </div>
 
   <div class="scroll">
     <table>
       <thead><tr>
-        <th>Sector</th><th class="n">Per 1pp</th><th class="n">t</th>
-        <th>Character</th>
+        <th>Sector</th><th class="n">Same day</th><th class="n">t</th>
+        <th class="n">Next day</th><th class="n">t</th><th>Character</th>
       </tr></thead>
       <tbody>__BETA_ROWS__</tbody>
     </table>
@@ -314,13 +327,15 @@
 
   <div class="note">
     <p><b>A caution the investor should take from this section rather than a
-      recommendation.</b> The relationship is real, large and stable. It does not
-      follow that it can be turned into money. A later chapter puts precisely this
-      measurement to work &mdash; sizing positions by it, gating their direction,
-      switching sectors off when the rate environment is against them &mdash; and
-      reports four separate failures, each against a control designed in advance.
-      The reader is asked to hold both facts at once, because the distance between
-      them is the subject of this book.</p>
+      recommendation.</b> The same-day relationship is real and large. It cannot be
+      traded, and the reason sits in the table rather than in a later chapter:
+      acting on it would require knowing the day's yield move before the day's
+      close, and by the close the repricing is done.</p>
+    <p>A later chapter puts the measurement to work anyway &mdash; sizing
+      positions by it, gating direction, switching sectors off when rates are
+      against them &mdash; and reports four failures, each against a control fixed
+      in advance. Those failures look less like bad luck than like the arithmetic
+      of the next-day column being what it is.</p>
   </div>
 </section>
 
@@ -333,8 +348,7 @@
     sector of the dot-com decline, losing nothing across two and a half years
     while technology lost 82%. They were the best again through the financial
     crisis, down 29% against financials' 81%, and best again in the pandemic
-    crash. In every one of the three great advances they finished last or nearly
-    so.</p>
+    crash. In the three great advances they finished last or nearly so.</p>
 
   <p>This is the whole of defensive investing in one row of a table. The staples
     holder was not clever; he was differently exposed, and he paid for his
@@ -353,32 +367,37 @@
   </div>
   <p style="font-family:var(--sans);font-size:12.5px;color:var(--ink-3);max-width:70ch">
     Total return over each episode. The best sector in each row is marked in
-    blue, the worst in plum. Real estate and communications are absent from the
-    earlier episodes, their funds not yet existing.</p>
+    blue, the worst in plum. Sectors covering less than ninety per cent of an episode are excluded from
+    the best and worst marks: real estate lists in 2015 and communications in
+    2018, so ranking their partial histories against funds that lived through the
+    whole period would compare different spans under one label.</p>
 </section>
 
 <section>
   <h2>What the market was willing to pay</h2>
   <p class="lead"><b>Valuation over the period did not oscillate around a mean so
     much as visit two extremes and spend most of its time nearer the higher
-    one.</b> On a cyclically adjusted basis — price against a ten-year average of
-    earnings — the market began the century at 47.9, a level without precedent in
-    the record and not approached since. It fell to 24.5 by the 2002 trough,
-    recovered to 30.7 before the 2007 peak, and reached 14.9 in March 2009. That
-    last figure is the only genuinely cheap reading in twenty-six years.</p>
+    one.</b> On a cyclically adjusted basis — real price against a ten-year mean of
+    real earnings — the market began the century at 43.2, a level without
+    precedent in the record and not approached since. It fell to 22.0 by the 2002
+    trough, recovered to 27.3 before the 2007 peak, and reached 13.3 in March
+    2009. That last figure is the only genuinely cheap reading in the period.</p>
 
-  <p>Since then the direction has been one way. The pandemic low of 26.7 was
-    higher than the 2007 peak. By December 2021 the ratio stood at 42.9, and it
-    has spent the years since between 40 and 43 — a range that in 1999 would have
-    been considered a bubble and is now simply the weather. <b>The investor who
-    resolved in 2013 to wait for cheapness has now waited thirteen years</b>, and
+  <p>Since then the direction has been one way. The pandemic low of 24.8 sat
+    below the 2007 peak but above every reading between 2002 and 2017. By
+    December 2021 the ratio stood at 38.3, and it has since ranged between 27 and
+    39 — a band that in 1999 would have been called a bubble and is now
+    simply the weather. <b>The investor who resolved in 2013 to wait for
+    cheapness has now waited more than a decade</b>, and
     the discipline that protected him in 2000 has cost him the entire subsequent
     advance.</p>
 
   <div class="figure">
     __CAPE_CHART__
-    <figcaption>Cyclically adjusted price-earnings ratio, monthly, price against
-      a trailing ten-year mean of earnings. Shaded bands mark sustained
+    <figcaption>Cyclically adjusted price-earnings ratio, monthly, as published:
+      inflation-adjusted price against a trailing ten-year mean of
+      inflation-adjusted earnings. <b>This series ends September 2024</b>, two
+      years short of the rest of the chapter. Shaded bands mark sustained
       inversions of the ten-year against the two-year Treasury yield.</figcaption>
   </div>
 </section>
@@ -404,20 +423,23 @@
 <section>
   <h2>The rate cycles, and the four inversions</h2>
   <p class="lead"><b>The clearest macroeconomic signal available to an investor
-    over this period announced itself four times, and the record of what followed
-    is neither as reliable nor as useless as either camp maintains.</b> The
-    ten-year Treasury yield fell below the two-year in March 2000, again in
-    December 2006, and most recently between July 2022 and August 2024 — the
-    longest inversion ever recorded, twenty-five months. The first two preceded
-    the two great declines of the era. The third preceded nothing: equities rose
-    strongly throughout it.</p>
+    over this period announced itself four times in three clusters, and the record
+    of what followed is neither as reliable nor as useless as either camp
+    maintains.</b> The ten-year Treasury yield fell below the two-year twice
+    during 2000, once from October 2006 to March 2007, and most recently between
+    July 2022 and September 2024 — the longest episode in this sample at
+    twenty-six months, though the record here begins only in 2000. The first two
+    clusters preceded the two great declines of the era. The third preceded
+    nothing: equities rose strongly throughout it.</p>
 
-  <p>That is the whole sample. Three episodes, two of them followed by disaster
+  <p>That is the whole sample. Three clusters, two of them followed by disaster
     and one by a boom, and the investor is invited to draw conclusions. He should
     decline. <b>A signal with three observations is not a signal; it is an
     anecdote with a chart.</b> The deepest inversion of the period, at 1.04
     percentage points in July 2023, was followed by two of the better years in the
-    record.</p>
+    record. Note too that both the merging of brief interruptions and the
+    thirty-day minimum are applied looking backwards: on the first inverted day
+    an investor cannot know which sort of episode he is in.</p>
 
   <div class="figure">
     __CURVE_CHART__
@@ -448,7 +470,10 @@
     records, split-adjusted throughout, with total return additionally reinvesting
     dividends; index levels and cyclically adjusted earnings from long-run market
     records; output, prices and employment from official statistics; the yield
-    curve from fitted zero-coupon Treasury rates. Figures run to 19 August 2026.
+    curve from fitted zero-coupon Treasury rates. Endpoints differ by series: sector and commodity prices run to 19 August
+    2026, index levels to 14 August, the yield curve to 7 August, output to the
+    second quarter, prices and employment to July, and the cyclically adjusted
+    ratio only to September 2024.
     Sector funds are capitalisation-weighted baskets and carry the survivorship of
     their own index rules; a sector's constituents in 2026 are not those of 2000.</p>
 </footer>
