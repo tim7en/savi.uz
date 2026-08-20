@@ -61,7 +61,7 @@ BASE = dict(entry_window=55, exit_window=20, atr_window=20, skip_after_winner=Fa
             use_channel_exit=False, chandelier_atr=3.0, directions=(1,))
 
 WINDOWS = (2, 4, 8, 13, 26)
-TAKER_SIDE = 0.000025
+TAKER_SIDE = 0.00025
 
 
 def parse_args(argv=None):
@@ -276,13 +276,13 @@ def main(argv=None):
           f"from fees")
     print(f"  {'arm':<22s} {'trades':>8s} {'Sharpe':>8s} {'CAGR':>8s}")
     report = {}
-    base_taker = run_arm(book, 0.00005, 8, "taker")
+    base_taker = run_arm(book, 0.0005, 8, "taker")
     item = score(base_taker, calendar, args)
     report["taker @5bp"] = item
     print(f"  {'taker breakout':<22s} {item['trades']:>8,d} "
           f"{item['sharpe']:>8.2f} {item['cagr']:>7.1%}")
     for window in WINDOWS:
-        pooled = run_arm(book, 0.00005, window, "maker")
+        pooled = run_arm(book, 0.0005, window, "maker")
         item = score(pooled, calendar, args)
         report[f"maker w{window} @5bp"] = item
         label = f"maker retest {window}b"
@@ -295,7 +295,7 @@ def main(argv=None):
     print(f"\nstep 2 -- real fees: taker pays 5bp round trip, maker pays 2.5bp "
           f"(maker in, taker out)")
     print(f"  {'arm':<22s} {'cost':>6s} {'trades':>8s} {'Sharpe':>8s} {'CAGR':>8s}")
-    item = score(run_arm(book, 0.00005, 8, "taker"), calendar, args)
+    item = score(run_arm(book, 0.0005, 8, "taker"), calendar, args)
     report["taker real"] = item
     print(f"  {'taker breakout':<22s} {'5.0bp':>6s} {item['trades']:>8,d} "
           f"{item['sharpe']:>8.2f} {item['cagr']:>7.1%}")
@@ -308,7 +308,7 @@ def main(argv=None):
             print(f"  {label:<22s} {'2.5bp':>6s} {item['trades']:>8,d} "
                   f"{item['sharpe']:>8.2f} {item['cagr']:>7.1%}")
     for window in (4, 8, 13):
-        pooled = run_arm(book, 0.00004, window, "hybrid")
+        pooled = run_arm(book, 0.0004, window, "hybrid")
         item = score(pooled, calendar, args)
         report[f"hybrid w{window}"] = item
         label = f"hybrid {window}b"
