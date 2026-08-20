@@ -19,6 +19,8 @@ SERIES = ("var(--s1)", "var(--s2)", "var(--s3)")
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", type=Path, default=Path("out/report/chapter2.json"))
+    parser.add_argument("--history", type=Path,
+                        default=Path("out/report/chapter2_history.json"))
     parser.add_argument("--out", type=Path, default=Path("out/report/chapter2.html"))
     return parser.parse_args(argv)
 
@@ -155,11 +157,64 @@ def diverging_bars(rows, width=760, row_height=28, pad_left=124):
     return "".join(parts)
 
 
+def decade_bars(rows, width=760, bar=34):
+    """Real total return by decade: a diverging column chart around zero."""
+    height = 210
+    span = max(abs(v) for _, v in rows) * 1.15
+    step = (width - 60) / len(rows)
+    zero = 40 + (height - 80) / 2
+    scale = (height - 80) / 2 / span
+    parts = [f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="Real total '
+             f'return by decade" preserveAspectRatio="xMidYMid meet">']
+    parts.append(f'<line class="zero" x1="46" y1="{zero:.1f}" '
+                 f'x2="{width - 14}" y2="{zero:.1f}"/>')
+    for level in (-10, 0, 10):
+        y = zero - level * scale
+        if level:
+            parts.append(f'<line class="grid" x1="46" y1="{y:.1f}" '
+                         f'x2="{width - 14}" y2="{y:.1f}"/>')
+        parts.append(f'<text class="tick" x="40" y="{y + 4:.1f}" '
+                     f'text-anchor="end">{level:+d}%</text>')
+    for index, (name, value) in enumerate(rows):
+        x = 52 + index * step
+        h = abs(value) * scale
+        y = zero - h if value > 0 else zero
+        css = "bar-pos" if value > 0 else "bar-neg"
+        parts.append(f'<rect class="{css}" x="{x:.1f}" y="{y:.1f}" '
+                     f'width="{step - 8:.1f}" height="{max(h, 1):.1f}" rx="2"/>')
+        parts.append(f'<text class="tick" x="{x + (step - 8) / 2:.1f}" '
+                     f'y="{height - 22}" text-anchor="middle">{name[:4]}</text>')
+        label_y = y - 5 if value > 0 else y + h + 12
+        parts.append(f'<text class="val" x="{x + (step - 8) / 2:.1f}" '
+                     f'y="{label_y:.1f}" text-anchor="middle">{value:+.0f}</text>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
 def main(argv=None):
     args = parse_args(argv)
     data = json.loads(args.data.read_text(encoding="utf-8"))
     sectors = data["sectors"]
     bench = data["benchmarks"]
+
+    history = json.loads(args.history.read_text(encoding="utf-8"))
+    cent = history["century"]
+    decade_chart = decade_bars(list(cent["by_decade"].items()))
+    drawdown_rows = "".join(
+        f'<tr><td>{d["from"]}</td><td>{d["trough"]}</td>'
+        f'<td class="n">{d["depth"]:.0f}%</td></tr>' for d in cent["drawdowns"][:6])
+    names = {k: v["name"] for k, v in sectors.items()} if sectors else {}
+    regime_rows = ""
+    for s in history["regimes"]:
+        best = (f'{names.get(s["best"], s["best"])} '
+                f'{s["sectors"][s["best"]]:+.0f}%') if s["best"] else "&mdash;"
+        worst = (f'{names.get(s["worst"], s["worst"])} '
+                 f'{s["sectors"][s["worst"]]:+.0f}%') if s["worst"] else "&mdash;"
+        regime_rows += (
+            f'<tr><td>{s["label"]}</td><td class="n dim">{s["from"][:7]}</td>'
+            f'<td class="n dim">{s["months"]}m</td>'
+            f'<td class="n">{s["rate_from"]:.2f}&rarr;{s["rate_to"]:.2f}</td>'
+            f'<td>{best}</td><td>{worst}</td></tr>')
 
     ordered = sorted(sectors.values(), key=lambda s: -s["total"]["hundred"])
     sector_bars = bars_chart([(s["name"], s["price"]["hundred"],
@@ -240,7 +295,10 @@ def main(argv=None):
                        ("__BETA_CHART__", beta_chart),
                        ("__BETA_ROWS__", beta_rows),
                        ("__EPISODE_HEAD__", head),
-                       ("__EPISODE_ROWS__", episode_rows)):
+                       ("__EPISODE_ROWS__", episode_rows),
+                       ("__DECADE_CHART__", decade_chart),
+                       ("__DRAWDOWN_ROWS__", drawdown_rows),
+                       ("__REGIME_ROWS__", regime_rows)):
         html = html.replace(key, value)
     # The prose quotes figures by hand, so it can drift from the data silently.
     # These are the load-bearing ones; a mismatch stops the build rather than
