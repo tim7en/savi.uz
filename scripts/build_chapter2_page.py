@@ -202,13 +202,6 @@ def main(argv=None):
     beta_rows = "".join(
         f'<tr><td>{b["name"]}</td><td class="n">{b["beta"]:+.2f}%</td>'
         f'<td class="n">{b["t"]:+.1f}</td>'
-        f'<td class="n dim">'
-        f'{b["lagged_beta"]:+.2f}%</td>' if b["lagged_beta"] is not None
-        else '<td class="n dim">&mdash;</td>'
-        for b in betas)
-    beta_rows = "".join(
-        f'<tr><td>{b["name"]}</td><td class="n">{b["beta"]:+.2f}%</td>'
-        f'<td class="n">{b["t"]:+.1f}</td>'
         + (f'<td class="n dim">{b["lagged_beta"]:+.2f}%</td>'
            f'<td class="n dim">{b["lagged_t"]:+.1f}</td>'
            if b["lagged_beta"] is not None
