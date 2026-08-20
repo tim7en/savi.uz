@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import sqlite3
+import math
 import statistics
 from datetime import date
 from pathlib import Path
@@ -65,11 +66,25 @@ def summarise(series, start=START):
         drop = series[day] / peak - 1.0
         if drop < worst:
             worst, trough_day = drop, day
-    by_year = {}
+    # Calendar-year returns measured close-of-prior-year to close-of-year. The
+    # first-to-last-observation-within-the-year form used earlier silently drops
+    # the turn-of-year move and counts a partial final year as a whole one.
+    ends, by_year = {}, {}
     for year in sorted({d[:4] for d in days}):
         window = [d for d in days if d[:4] == year]
-        if len(window) > 100:
-            by_year[year] = series[window[-1]] / series[window[0]] - 1.0
+        if window:
+            ends[year] = series[window[-1]]
+    years_present = sorted(ends)
+    final_year = days[-1][:4]
+    partial_year = None
+    for index in range(1, len(years_present)):
+        year = years_present[index]
+        previous = years_present[index - 1]
+        value = ends[year] / ends[previous] - 1.0
+        if year == final_year and days[-1][5:7] != "12":
+            partial_year = {"year": year, "return": value, "to": days[-1]}
+            continue
+        by_year[year] = value
     monthly, seen = [], set()
     base = series[days[0]]
     for day in days:
@@ -81,7 +96,7 @@ def summarise(series, start=START):
             "max_drawdown": worst, "trough": trough_day, "by_year": by_year,
             "path": monthly,
             "positive_years": sum(1 for v in by_year.values() if v > 0),
-            "total_years": len(by_year)}
+            "total_years": len(by_year), "partial_year": partial_year}
 
 
 def main(argv=None):
@@ -115,15 +130,16 @@ def main(argv=None):
         if result:
             report.setdefault("benchmarks", {})[label] = result
 
+    # The published cyclically adjusted ratio, not a reconstruction. An earlier
+    # version divided a nominal price by a ten-year mean of nominal earnings,
+    # which omits the inflation adjustment the measure is defined by and ran 1.6
+    # to 6.2 points high; the table carries the correct series already.
     shiller = equity.execute(
-        "SELECT obs_date, sp500_price, earnings FROM shiller_monthly "
-        "WHERE obs_date >= '1990-01-01' ORDER BY obs_date").fetchall()
-    cape = []
-    for i, (day, price, _) in enumerate(shiller):
-        window = [e for _, _, e in shiller[max(0, i - 119):i + 1] if e]
-        if price and len(window) >= 60 and statistics.fmean(window) > 0:
-            cape.append([day[:7], round(price / statistics.fmean(window), 1)])
+        "SELECT obs_date, cape FROM shiller_monthly WHERE obs_date >= '1990-01-01' "
+        "AND cape IS NOT NULL ORDER BY obs_date").fetchall()
+    cape = [[day[:7], round(value, 1)] for day, value in shiller]
     report["cape"] = cape
+    report["cape_ends"] = cape[-1][0] if cape else None
     equity.close()
 
     macro = sqlite3.connect(f"file:{args.macro}?mode=ro", uri=True)
@@ -159,9 +175,25 @@ def main(argv=None):
         elif not state and inverted and start:
             runs.append([start, day])
         inverted = state
-    report["inversions"] = [r for r in runs
-                            if (date.fromisoformat(r[1])
-                                - date.fromisoformat(r[0])).days >= 30]
+    # A curve that un-inverts for two sessions has not ended an episode. Runs
+    # separated by less than a fortnight are joined before the length filter is
+    # applied, which is what turns the March-to-September 2000 pair into the one
+    # episode a reader would recognise.
+    merged = []
+    for run in runs:
+        if merged and (date.fromisoformat(run[0])
+                       - date.fromisoformat(merged[-1][1])).days <= 14:
+            merged[-1][1] = run[1]
+        else:
+            merged.append(list(run))
+    report["inversions"] = [
+        r for r in merged
+        if (date.fromisoformat(r[1]) - date.fromisoformat(r[0])).days >= 30]
+    report["inversion_note"] = (
+        "Runs separated by 14 days or fewer are treated as one episode; episodes "
+        "shorter than 30 days are dropped. Both rules are applied with hindsight "
+        "and describe the record rather than a rule an investor could have "
+        "followed on the first inverted day.")
     macro.close()
 
     # ---- how each sector answers to rates, and to the named episodes -------
@@ -188,22 +220,68 @@ def main(argv=None):
         if len(values) >= 8:
             market[day] = statistics.fmean(values)
 
-    betas = {}
-    for ticker, own in returns.items():
-        pairs = [(change[d], own[d] - market[d]) for d in own
-                 if d in change and d in market]
+    def newey_west(pairs, beta, intercept, lags=5):
+        """Standard error robust to the autocorrelation daily returns carry."""
+        n = len(pairs)
+        xs = [x for x, _ in pairs]
+        mean_x = statistics.fmean(xs)
+        sxx = sum((x - mean_x) ** 2 for x in xs)
+        if sxx <= 0:
+            return float("nan")
+        resid = [y - (intercept + beta * (x - mean_x)) for x, y in pairs]
+        centred = [(x - mean_x) * r for (x, _), r in zip(pairs, resid)]
+        total = sum(v * v for v in centred)
+        for lag in range(1, lags + 1):
+            weight = 1.0 - lag / (lags + 1)
+            total += 2 * weight * sum(centred[i] * centred[i - lag]
+                                      for i in range(lag, n))
+        return math.sqrt(max(total, 0.0)) / sxx
+
+    def regress(own, driver, exclude):
+        """Sector return against a rate change, net of the other sectors.
+
+        The comparison basket leaves the sector itself out. Including it puts a
+        fraction of the dependent variable on both sides and pulls every
+        coefficient toward zero.
+        """
+        pairs = []
+        for day, value in own.items():
+            if day not in driver or driver[day] is None:
+                continue
+            peers = [returns[o][day] for o in returns
+                     if o != exclude and day in returns[o]]
+            if len(peers) < 7:
+                continue
+            pairs.append((driver[day], value - statistics.fmean(peers)))
         if len(pairs) < 500:
-            continue
+            return None
         xs = [x for x, _ in pairs]
         ys = [y for _, y in pairs]
-        mx, my = statistics.fmean(xs), statistics.fmean(ys)
-        sxx = sum((x - mx) ** 2 for x in xs)
-        beta = sum((x - mx) * (y - my) for x, y in pairs) / sxx if sxx else 0.0
-        resid = [y - (my + beta * (x - mx)) for x, y in pairs]
-        se = ((sum(r * r for r in resid) / (len(pairs) - 2) / sxx) ** 0.5
-              if sxx else float("nan"))
-        betas[ticker] = {"name": SECTORS[ticker], "beta": beta * 100,
-                         "t": beta / se if se else float("nan"), "n": len(pairs)}
+        mean_x, mean_y = statistics.fmean(xs), statistics.fmean(ys)
+        sxx = sum((x - mean_x) ** 2 for x in xs)
+        if sxx <= 0:
+            return None
+        beta = sum((x - mean_x) * (y - mean_y) for x, y in pairs) / sxx
+        se = newey_west(pairs, beta, mean_y)
+        return {"beta": beta * 100, "t": beta / se if se else float("nan"),
+                "n": len(pairs)}
+
+    ordered_days = sorted(change)
+    lagged = {ordered_days[i]: change[ordered_days[i - 1]]
+              for i in range(1, len(ordered_days))}
+
+    betas = {}
+    for ticker, own in returns.items():
+        same = regress(own, change, ticker)
+        after = regress(own, lagged, ticker)
+        if not same:
+            continue
+        days_covered = sorted(own)
+        betas[ticker] = {
+            "name": SECTORS[ticker], "beta": same["beta"], "t": same["t"],
+            "n": same["n"], "from": days_covered[0][:7],
+            "lagged_beta": after["beta"] if after else None,
+            "lagged_t": after["t"] if after else None}
     report["rate_betas"] = betas
 
     EPISODES = [
@@ -218,11 +296,25 @@ def main(argv=None):
     ]
     episodes = []
     for name, start, end in EPISODES:
-        row = {"name": name, "from": start, "to": end, "sectors": {}}
+        row = {"name": name, "from": start, "to": end, "sectors": {},
+               "partial": []}
+        span = (date.fromisoformat(end) - date.fromisoformat(start)).days
         for ticker, series in prices.items():
             window = [d for d in sorted(series) if start <= d <= end]
-            if len(window) > 15:
-                row["sectors"][ticker] = series[window[-1]] / series[window[0]] - 1.0
+            if len(window) < 15:
+                continue
+            # A fund that listed midway through an episode did not live through
+            # it, and ranking it against those that did is a comparison of
+            # different periods wearing one label.
+            covered = (date.fromisoformat(window[-1])
+                       - date.fromisoformat(window[0])).days
+            row["sectors"][ticker] = series[window[-1]] / series[window[0]] - 1.0
+            if covered < span * 0.9:
+                row["partial"].append(ticker)
+        full = {k: v for k, v in row["sectors"].items()
+                if k not in row["partial"]}
+        row["best"] = max(full, key=full.get) if full else None
+        row["worst"] = min(full, key=full.get) if full else None
         episodes.append(row)
     report["episodes"] = episodes
 

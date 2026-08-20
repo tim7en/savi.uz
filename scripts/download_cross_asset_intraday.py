@@ -40,8 +40,9 @@ import sys
 import time
 import urllib.parse
 import threading
+from typing import NamedTuple
 import urllib.request
-from datetime import datetime
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 from concurrent.futures import ThreadPoolExecutor
 
@@ -182,7 +183,21 @@ def to_utc(stamp: str) -> str:
             .strftime("%Y-%m-%dT%H:%M:%S.000Z"))
 
 
-def months_between(start: str, end: str):
+class Row(NamedTuple):
+    """One stored bar, already converted out of the vendor's local time."""
+
+    ticker: str
+    frequency: str
+    timestamp: str
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float
+
+
+def month_range(start: str, end: str) -> list[str]:
+    """Every ``YYYY-MM`` from ``start`` to ``end``, both ends included."""
     year, month = int(start[:4]), int(start[5:7])
     last_year, last_month = int(end[:4]), int(end[5:7])
     out = []
@@ -192,6 +207,41 @@ def months_between(start: str, end: str):
         if month == 13:
             year, month = year + 1, 1
     return out
+
+
+def previous_month(day: date) -> str:
+    """The ``YYYY-MM`` before the month containing ``day``."""
+    year, month = day.year, day.month - 1
+    if month == 0:
+        year, month = year - 1, 12
+    return f"{year:04d}-{month:02d}"
+
+
+def parse_series(symbol: str, payload: dict, month: str | None = None) -> list[Row]:
+    """Turn a vendor payload into rows, in UTC, restricted to ``month``.
+
+    Two corrections live here rather than at the call site so that they cannot be
+    forgotten by a second caller.  Stamps arrive as US Eastern wall-clock and are
+    converted; and a request for a month before the vendor's intraday coverage
+    silently returns the *current* month instead of an empty response, so
+    anything outside the month asked for is discarded.
+    """
+    key = next((k for k in payload if "Time Series" in k), None)
+    if key is None:
+        return []
+    frequency = key.split("(")[-1].rstrip(")") if "(" in key else "unknown"
+    rows = []
+    for stamp, values in payload[key].items():
+        if month is not None and stamp[:7] != month:
+            continue
+        try:
+            rows.append(Row(symbol, frequency, to_utc(stamp),
+                            float(values["1. open"]), float(values["2. high"]),
+                            float(values["3. low"]), float(values["4. close"]),
+                            float(values["5. volume"])))
+        except (KeyError, ValueError):
+            continue
+    return sorted(rows, key=lambda r: r.timestamp)
 
 
 def splits_check(store, daily_path, symbol):
@@ -255,7 +305,7 @@ def main(argv=None):
     todo = []
     for symbol in symbols:
         start = inception[symbol][:7]
-        for month in months_between(start, args.end):
+        for month in month_range(start, args.end):
             if (symbol, month) not in done:
                 todo.append((symbol, month))
     if args.limit:
@@ -269,7 +319,12 @@ def main(argv=None):
         symbol, month = item
         series, status = call({"function": "TIME_SERIES_INTRADAY", "symbol": symbol,
                                "interval": args.interval, "month": month,
-                               "outputsize": "full", "extended_hours": "false"}, key)
+                               "outputsize": "full", "extended_hours": "false",
+                               # Stated rather than inherited: the chapter's split
+                               # between price and total return depends on this
+                               # being adjusted, and a changed vendor default
+                               # would otherwise alter it silently.
+                               "adjusted": "true"}, key)
         return symbol, month, series, status
 
     started, stored, failed, bars = time.time(), 0, 0, 0
@@ -282,28 +337,11 @@ def main(argv=None):
                 store.commit()
                 failed += 1
                 continue
-            rows, out_of_month = [], 0
-            for timestamp, values in series.items():
-                # A month before the vendor's intraday coverage begins does not
-                # return empty -- it returns the *current* month instead, which
-                # would land undated junk in the store under a 1999 label. Only
-                # bars inside the month that was asked for are kept.
-                if timestamp[:7] != month:
-                    out_of_month += 1
-                    continue
-                # No scaling: the vendor has already applied it. See the module
-                # docstring for the check, and splits_check() to repeat it.
-                try:
-                    rows.append((symbol, args.interval, to_utc(timestamp),
-                                 float(values["1. open"]),
-                                 float(values["2. high"]),
-                                 float(values["3. low"]),
-                                 float(values["4. close"]),
-                                 float(values["5. volume"])))
-                except (KeyError, ValueError):
-                    continue
-            store.executemany(
-                "INSERT OR REPLACE INTO bars VALUES (?,?,?,?,?,?,?,?)", rows)
+            parsed = parse_series(symbol, {f"Time Series ({args.interval})":
+                                            series}, month)
+            out_of_month = len(series) - len(parsed)
+            rows = [(r.ticker, args.interval, r.timestamp, r.open, r.high,
+                     r.low, r.close, r.volume) for r in parsed]
             note = (f"dropped {out_of_month} bars outside {month}"
                     if out_of_month else "")
             store.execute("INSERT OR REPLACE INTO slice_log VALUES (?,?,?,?,?,?)",
