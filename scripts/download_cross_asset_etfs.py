@@ -155,29 +155,46 @@ def fetch(symbol: str, key: str, attempts: int = 4):
 
 
 def rows_for(symbol: str, series: dict):
-    """OHLC bars with splits removed, dividends left alone."""
-    out = []
-    for day, values in series.items():
+    """OHLC bars restated in post-split terms, dividends left alone.
+
+    Splits are taken from the vendor's own split coefficient rather than inferred
+    from the ratio of adjusted to raw close.  The inference is what an earlier
+    version did, treating any ratio inside 0.2 to 5.0 as dividends: a two-for-one
+    split produces a ratio of almost exactly 0.5 and sailed through untouched,
+    so every pre-split price was stored raw.  That silently doubled the older
+    half of XLK, XLU, SLV and others, and turned a 27-year sector comparison into
+    nonsense while looking entirely plausible.
+
+    Dividends are deliberately not removed: the engine needs an internally
+    consistent bar, and a dividend-adjusted close beside unadjusted highs and lows
+    produces true ranges that never happened.
+    """
+    days = sorted(series)
+    cumulative, factors = 1.0, {}
+    # Walk backwards: a bar before a split must be divided by everything that
+    # happened after it.
+    for day in reversed(days):
+        factors[day] = cumulative
         try:
-            close = float(values["4. close"])
-            adjusted = float(values["5. adjusted close"])
-            factor = adjusted / close if close else 1.0
-            # Dividend adjustment would shift the close relative to the high and
-            # low; only the split component is wanted, and it is the part that
-            # moves in discrete jumps far from 1.
-            if not 0.2 < factor < 5.0:
-                scale = factor
-            else:
-                scale = 1.0
+            coefficient = float(series[day].get("8. split coefficient", 1.0))
+        except (TypeError, ValueError):
+            coefficient = 1.0
+        if abs(coefficient - 1.0) > 1e-9:
+            cumulative /= coefficient
+    out = []
+    for day in days:
+        values = series[day]
+        scale = factors[day]
+        try:
             out.append((symbol, "daily", f"{day}T00:00:00.000Z",
                         float(values["1. open"]) * scale,
                         float(values["2. high"]) * scale,
                         float(values["3. low"]) * scale,
-                        close * scale,
+                        float(values["4. close"]) * scale,
                         float(values["6. volume"])))
         except (KeyError, ValueError):
             continue
-    return sorted(out, key=lambda r: r[2])
+    return out
 
 
 def main(argv=None):
