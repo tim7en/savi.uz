@@ -305,6 +305,7 @@ def run_turtle(
     bars: list[Bar], *, config: TurtleConfig = TurtleConfig(),
     entries: dict[int, int] | None = None,
     chandelier_by_bar: dict[int, float] | None = None,
+    n_by_bar: dict[int, float] | None = None,
 ) -> tuple[list[TurtleTrade], TurtleAudit]:
     """Replay the system over ``bars``; returns the trades and an audit.
 
@@ -318,6 +319,15 @@ def run_turtle(
     The value is read once, at entry, and held for the life of the trade: the
     trail only ratchets tighter, so a multiplier that widened mid-trade could
     never loosen an existing stop and would silently do nothing.
+
+    ``n_by_bar`` replaces Wilder's N with an outside volatility estimate, which
+    changes position size, the hard stop, pyramid spacing and the trail together
+    because all four are quoted in N.  Bars without an entry are unaffected, and
+    any bar the map does not cover falls back to the ATR, so a forecast with
+    gaps degrades to the default rather than skipping the trade.  Substituting a
+    differently-scaled series would alter average risk as well as its timing, so
+    a caller testing forecast quality should rescale to the ATR's trailing mean
+    first and leave only the timing to differ.
     """
     rows = sorted(bars, key=lambda bar: bar.timestamp)
     atr = wilder_atr(rows, config.atr_window)
@@ -362,6 +372,10 @@ def run_turtle(
     while index < len(rows):
         bar = rows[index]
         previous_n = atr[index - 1]
+        if n_by_bar is not None:
+            supplied = n_by_bar.get(index)
+            if supplied is not None and supplied > 0:
+                previous_n = supplied
         if math.isnan(previous_n) or previous_n <= 0:
             index += 1
             continue
