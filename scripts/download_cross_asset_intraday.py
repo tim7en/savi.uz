@@ -282,8 +282,15 @@ def main(argv=None):
                 store.commit()
                 failed += 1
                 continue
-            rows = []
+            rows, out_of_month = [], 0
             for timestamp, values in series.items():
+                # A month before the vendor's intraday coverage begins does not
+                # return empty -- it returns the *current* month instead, which
+                # would land undated junk in the store under a 1999 label. Only
+                # bars inside the month that was asked for are kept.
+                if timestamp[:7] != month:
+                    out_of_month += 1
+                    continue
                 # No scaling: the vendor has already applied it. See the module
                 # docstring for the check, and splits_check() to repeat it.
                 try:
@@ -297,8 +304,11 @@ def main(argv=None):
                     continue
             store.executemany(
                 "INSERT OR REPLACE INTO bars VALUES (?,?,?,?,?,?,?,?)", rows)
+            note = (f"dropped {out_of_month} bars outside {month}"
+                    if out_of_month else "")
             store.execute("INSERT OR REPLACE INTO slice_log VALUES (?,?,?,?,?,?)",
-                          (symbol, month, "ok", len(rows), "", stamp))
+                          (symbol, month, "ok" if rows else "empty",
+                           len(rows), note, stamp))
             store.commit()
             stored += 1
             bars += len(rows)
