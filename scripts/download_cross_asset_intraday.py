@@ -41,6 +41,8 @@ import time
 import urllib.parse
 import threading
 import urllib.request
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from concurrent.futures import ThreadPoolExecutor
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
@@ -164,6 +166,22 @@ def fetch_splits(symbol, key):
     return sorted(events), "ok"
 
 
+EASTERN = ZoneInfo("America/New_York")
+UTC = ZoneInfo("UTC")
+
+
+def to_utc(stamp: str) -> str:
+    """Alpha Vantage returns Eastern wall-clock; the bar store is UTC.
+
+    Labelling an Eastern stamp with a Z shifts every session four or five hours,
+    and the session filter downstream then discards the lot -- an empty book
+    rather than a wrong one, but wrong at the source either way.
+    """
+    naive = datetime.strptime(stamp[:19].replace(" ", "T"), "%Y-%m-%dT%H:%M:%S")
+    return (naive.replace(tzinfo=EASTERN).astimezone(UTC)
+            .strftime("%Y-%m-%dT%H:%M:%S.000Z"))
+
+
 def months_between(start: str, end: str):
     year, month = int(start[:4]), int(start[5:7])
     last_year, last_month = int(end[:4]), int(end[5:7])
@@ -269,8 +287,7 @@ def main(argv=None):
                 # No scaling: the vendor has already applied it. See the module
                 # docstring for the check, and splits_check() to repeat it.
                 try:
-                    rows.append((symbol, args.interval,
-                                 timestamp.replace(" ", "T") + ".000Z",
+                    rows.append((symbol, args.interval, to_utc(timestamp),
                                  float(values["1. open"]),
                                  float(values["2. high"]),
                                  float(values["3. low"]),
