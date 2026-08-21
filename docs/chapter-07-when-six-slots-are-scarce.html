@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chapter Seven: When Six Slots Are Scarce</title>
+<style>
+  :root {
+    --ground:#F2F4F3; --surface:#FBFCFB; --ink:#141C1B; --ink-2:#3C4A47;
+    --ink-3:#71807C; --rule:#D3DAD8; --teal:#007F73; --amber:#B76718;
+    --brick:#A6463B; --slate:#506276; --teal-soft:#DDEEEA; --amber-soft:#F5E7D6;
+    --serif:"Iowan Old Style","Palatino Linotype",Georgia,serif;
+    --sans:"Segoe UI",Candara,sans-serif;
+    --mono:"Cascadia Mono","SFMono-Regular",Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark) { :root:not([data-theme="light"]) {
+    --ground:#12191B; --surface:#18211F; --ink:#E3EAE7; --ink-2:#C2CDC9;
+    --ink-3:#93A29E; --rule:#2C3835; --teal:#48B7AA; --amber:#D4924D;
+    --brick:#DC7C72; --slate:#94A4C3; --teal-soft:#10302B; --amber-soft:#382717;
+  } }
+  html { overflow-x:clip; }
+  * { box-sizing:border-box; }
+  body { margin:0; overflow-x:clip; background:var(--ground); color:var(--ink); font:17px/1.66 var(--serif); }
+  .wrap { width:min(1040px,calc(100% - 40px)); margin:0 auto; padding:72px 0 100px; }
+  header { max-width:760px; padding-bottom:42px; border-bottom:2px solid var(--ink); }
+  .eyebrow, .label { font:600 11px/1.3 var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3); }
+  h1 { font:600 clamp(40px,6vw,72px)/1.02 var(--serif); letter-spacing:0; margin:14px 0 20px; max-width:13ch; }
+  h1 em { color:var(--teal); font-style:italic; }
+  .standfirst { font-size:22px; line-height:1.48; color:var(--ink-2); margin:0; max-width:42ch; }
+  .tallies { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); margin:36px 0 0; border:1px solid var(--rule); }
+  .tally { background:var(--surface); min-height:112px; padding:18px; border-right:1px solid var(--rule); }
+  .tally:last-child { border:0; }
+  .tally b { display:block; font:600 27px/1 var(--mono); letter-spacing:0; }
+  .tally span { display:block; color:var(--ink-3); font:13px/1.35 var(--sans); margin-top:9px; }
+  section { max-width:760px; padding-top:58px; }
+  h2 { font:600 31px/1.15 var(--serif); letter-spacing:0; margin:0 0 12px; }
+  h3 { font:600 13px/1.3 var(--sans); letter-spacing:.1em; text-transform:uppercase; color:var(--teal); margin:36px 0 12px; }
+  p { margin:0 0 18px; }
+  strong { font-weight:700; }
+  .lead { color:var(--ink-2); font-size:19px; max-width:43ch; }
+  .note { border-left:3px solid var(--teal); background:var(--teal-soft); padding:17px 20px; color:var(--ink-2); font-size:16px; }
+  .rule { border-left-color:var(--amber); background:var(--amber-soft); }
+  .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin:30px 0 0; max-width:920px; }
+  .metric { border-top:2px solid var(--ink); padding:14px 0 0; }
+  .metric b { display:block; font:600 31px/1 var(--mono); letter-spacing:0; }
+  .metric span { color:var(--ink-3); font:13px/1.35 var(--sans); display:block; margin-top:8px; }
+  figure { width:100%; margin:34px 0; }
+  .fig-head { display:flex; justify-content:space-between; gap:16px; padding-bottom:9px; border-bottom:1px solid var(--rule); color:var(--ink-2); font:600 13px/1.4 var(--sans); }
+  .fig-head span:last-child { color:var(--ink-3); font:11px/1.4 var(--mono); text-transform:uppercase; letter-spacing:.08em; }
+  svg { display:block; width:100%; height:auto; margin-top:16px; }
+  .scroll { width:calc(100vw - 40px); max-width:1000px; overflow-x:auto; margin:28px 0; }
+  table { border-collapse:collapse; min-width:780px; width:100%; font:14px/1.45 var(--sans); }
+  th { text-align:right; color:var(--ink-3); font:600 10px/1.25 var(--mono); letter-spacing:.08em; text-transform:uppercase; padding:0 10px 9px; border-bottom:1px solid var(--rule); }
+  th:first-child { text-align:left; padding-left:0; }
+  td { text-align:right; padding:12px 10px; border-bottom:1px solid var(--rule); font-variant-numeric:tabular-nums; }
+  td:first-child { text-align:left; padding-left:0; min-width:220px; }
+  td strong { display:block; color:var(--ink); }
+  td small { display:block; color:var(--ink-3); font:11px/1.25 var(--sans); margin-top:3px; }
+  .protocol { margin:26px 0 0; padding:0; list-style:none; counter-reset:item; }
+  .protocol li { counter-increment:item; position:relative; padding:14px 0 14px 42px; border-bottom:1px solid var(--rule); }
+  .protocol li::before { content:counter(item,decimal-leading-zero); position:absolute; left:0; top:15px; color:var(--teal); font:600 12px var(--mono); }
+  footer { max-width:760px; border-top:1px solid var(--rule); margin-top:64px; padding-top:20px; color:var(--ink-3); font:13px/1.5 var(--sans); }
+  code { font:12px var(--mono); background:var(--surface); border:1px solid var(--rule); padding:2px 5px; }
+  @media (max-width:700px) { .wrap { width:min(100% - 28px,1040px); padding-top:46px; } .tallies { grid-template-columns:repeat(2,minmax(0,1fr)); } .tally:nth-child(2) { border-right:0; } .tally:nth-child(-n+2) { border-bottom:1px solid var(--rule); } h1 { font-size:44px; } .grid { grid-template-columns:1fr; } .scroll { width:calc(100vw - 28px); } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <div class="eyebrow">Chapter Seven &middot; 13F conviction and capacity</div>
+    <h1>When Six Slots Are <em>Scarce</em></h1>
+    <p class="standfirst">A public filing cannot say when to buy. It can say which breakout deserves a scarce place in a full book, and how much risk the book can justify taking.</p>
+    <div class="tallies">
+      <div class="tally"><b>143</b><span>high-conviction 13F names with daily history</span></div>
+      <div class="tally"><b>661,577</b><span>Alpha Vantage daily bars, locally cached</span></div>
+      <div class="tally"><b>4,752</b><span>independent Turtle positions offered to six slots</span></div>
+      <div class="tally"><b>4,058</b><span>positions refused because the book was already full</span></div>
+    </div>
+  </header>
+
+  <section>
+    <div class="eyebrow">I &middot; The question changes with capacity</div>
+    <h2>The filing is not an entry.</h2>
+    <p class="lead">The original 13F result was clear: copying a manager after a forty-five-day disclosure lag is not a trade. The unresolved question was narrower: when a six-position Turtle book has more valid breakouts than room, can disclosed conviction decide which one gets the slot?</p>
+    <p>The test takes every long-only 55-day channel breakout across the 143-name panel. Entry remains a stop at the channel edge; the system retains its 20-day exit, 2N protective stop, half-N pyramiding to four units and 2bp round-trip cost. A name becomes conviction-active only after its actual public 13F filing, where a concentrated manager reported a new position of at least 5% of the disclosed book. It stays active for one year.</p>
+    <div class="note"><strong>There are two distinct uses of that information.</strong> A hard gate takes only active names. Priority leaves every valid breakout eligible, but gives an active high-conviction name first claim on a same-day slot. The second is an allocation rule; the first is a different strategy.</div>
+    <div class="grid">
+      <div class="metric"><b>28,431</b><span>raw daily channel breaches before the Turtle lifecycle resolves overlapping signals</span></div>
+      <div class="metric"><b>3,207</b><span>of those breaches while an eligible high-conviction 13F window was active</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">II &middot; What the allocator sees</div>
+    <h2>A hard gate is a trade-off. Priority is the cleaner result.</h2>
+    <p>The hard gate greatly reduced drawdown in the 2023+ validation slice, but it also cut the full-period CAGR from 22.70% to 9.15%. It is therefore not a free quality filter. Capacity priority uses the same full opportunity set, changes no stop or exit, and only breaks same-day contention using information public before the entry.</p>
+    <figure>
+  <div class="fig-head"><span>Full-period Calmar ratio</span><span>higher is better</span></div>
+  <svg viewBox="0 0 880 292" role="img" aria-label="Full-period Calmar ratio">
+    <style>
+      .grid{stroke:var(--rule);stroke-width:1} .axis{font:11px var(--mono);fill:var(--ink-3)}
+      .label{font:600 12px var(--sans);fill:var(--ink-2)} .value{font:600 12px var(--mono);fill:var(--ink)}
+    </style><line x1="218.0" x2="218.0" y1="44" y2="244" class="grid"/><text x="218.0" y="273" text-anchor="middle" class="axis">0.00</text><line x1="372.5" x2="372.5" y1="44" y2="244" class="grid"/><text x="372.5" y="273" text-anchor="middle" class="axis">0.20</text><line x1="527.0" x2="527.0" y1="44" y2="244" class="grid"/><text x="527.0" y="273" text-anchor="middle" class="axis">0.40</text><line x1="681.5" x2="681.5" y1="44" y2="244" class="grid"/><text x="681.5" y="273" text-anchor="middle" class="axis">0.60</text><line x1="836.0" x2="836.0" y1="44" y2="244" class="grid"/><text x="836.0" y="273" text-anchor="middle" class="axis">0.80</text><text x="204" y="71" text-anchor="end" class="label">Baseline</text><text x="204" y="119" text-anchor="end" class="label">Hard 13F gate</text><text x="204" y="167" text-anchor="end" class="label">Conviction priority</text><text x="204" y="215" text-anchor="end" class="label">2x risk cap</text><rect x="218" y="54" width="452.2" height="25" rx="3" fill="#506276"/><text x="679.2" y="71" class="value">0.583</text><rect x="218" y="102" width="184.2" height="25" rx="3" fill="#A6463B"/><text x="411.2" y="119" class="value">0.238</text><rect x="218" y="150" width="551.8" height="25" rx="3" fill="#007F73"/><text x="778.8" y="167" class="value">0.712</text><rect x="218" y="198" width="509.8" height="25" rx="3" fill="#B76718"/><text x="736.8" y="215" class="value">0.658</text>
+  </svg>
+</figure>
+    <figure>
+  <div class="fig-head"><span>2023+ validation Calmar ratio</span><span>higher is better</span></div>
+  <svg viewBox="0 0 880 292" role="img" aria-label="2023+ validation Calmar ratio">
+    <style>
+      .grid{stroke:var(--rule);stroke-width:1} .axis{font:11px var(--mono);fill:var(--ink-3)}
+      .label{font:600 12px var(--sans);fill:var(--ink-2)} .value{font:600 12px var(--mono);fill:var(--ink)}
+    </style><line x1="218.0" x2="218.0" y1="44" y2="244" class="grid"/><text x="218.0" y="273" text-anchor="middle" class="axis">0.00</text><line x1="372.5" x2="372.5" y1="44" y2="244" class="grid"/><text x="372.5" y="273" text-anchor="middle" class="axis">0.52</text><line x1="527.0" x2="527.0" y1="44" y2="244" class="grid"/><text x="527.0" y="273" text-anchor="middle" class="axis">1.04</text><line x1="681.5" x2="681.5" y1="44" y2="244" class="grid"/><text x="681.5" y="273" text-anchor="middle" class="axis">1.57</text><line x1="836.0" x2="836.0" y1="44" y2="244" class="grid"/><text x="836.0" y="273" text-anchor="middle" class="axis">2.09</text><text x="204" y="71" text-anchor="end" class="label">Baseline</text><text x="204" y="119" text-anchor="end" class="label">Hard 13F gate</text><text x="204" y="167" text-anchor="end" class="label">Conviction priority</text><text x="204" y="215" text-anchor="end" class="label">2x risk cap</text><rect x="218" y="54" width="340.6" height="25" rx="3" fill="#506276"/><text x="567.6" y="71" class="value">1.151</text><rect x="218" y="102" width="551.8" height="25" rx="3" fill="#A6463B"/><text x="778.8" y="119" class="value">1.864</text><rect x="218" y="150" width="450.2" height="25" rx="3" fill="#007F73"/><text x="677.2" y="167" class="value">1.521</text><rect x="218" y="198" width="454.1" height="25" rx="3" fill="#B76718"/><text x="681.1" y="215" class="value">1.534</text>
+  </svg>
+</figure>
+    <div class="note rule"><strong>The result that survives both periods:</strong> priority raises the full-period Calmar ratio from 0.583 to 0.712, while validation rises from 1.151 to 1.521. It does this with fewer selected trades and lower exit-marked drawdown, rather than by simply increasing aggregate leverage.</div>
+  </section>
+
+  <section>
+    <div class="eyebrow">III &middot; Conviction and risk</div>
+    <h2>More size helps here. That does not make it a rule yet.</h2>
+    <p>The sizing test leaves every breakout in the book. It applies a multiplier that rises linearly from 1.0 at zero disclosed conviction to the cap at 10% of a manager's book. The largest tested cap, 2x, did not double portfolio exposure: qualifying positions were uncommon, so the mean risk multiplier was only 1.087x over the full period and 1.088x in validation.</p>
+    <p>That cap improved return and Calmar in both samples, but the drawdown rose from -38.92% to -41.26% over the full period. It was tested alongside two smaller caps after the original 13F result was known. The right conclusion is not &ldquo;double risk&rdquo;; it is that the multiplier is a candidate for a frozen forward test.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Variant</th><th>Trades</th><th>Total R</th><th>PF</th><th>CAGR</th><th>Exit-marked DD</th><th>Calmar</th></tr></thead>
+        <tbody><tr>
+  <td><strong>Baseline</strong><small>Random same-day tie breaks</small></td>
+  <td>694</td>
+  <td>1,182.96</td>
+  <td>1.559</td>
+  <td>22.70%</td>
+  <td>-38.92%</td>
+  <td>0.583</td>
+</tr>
+<tr>
+  <td><strong>Hard 13F gate</strong><small>Only active high-conviction windows</small></td>
+  <td>434</td>
+  <td>523.62</td>
+  <td>1.397</td>
+  <td>9.15%</td>
+  <td>-38.52%</td>
+  <td>0.238</td>
+</tr>
+<tr>
+  <td><strong>Conviction priority</strong><small>All breakouts; conviction gets contested slots</small></td>
+  <td>680</td>
+  <td>1,329.62</td>
+  <td>1.656</td>
+  <td>26.35%</td>
+  <td>-37.03%</td>
+  <td>0.712</td>
+</tr>
+<tr>
+  <td><strong>2x risk cap</strong><small>All breakouts; max tilt at 10% conviction</small></td>
+  <td>694</td>
+  <td>1,436.30</td>
+  <td>1.624</td>
+  <td>27.13%</td>
+  <td>-41.26%</td>
+  <td>0.658</td>
+</tr></tbody>
+      </table>
+    </div>
+    <h3>2023+ validation</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Variant</th><th>Trades</th><th>Total R</th><th>PF</th><th>CAGR</th><th>Exit-marked DD</th><th>Calmar</th></tr></thead>
+        <tbody><tr>
+  <td><strong>Baseline</strong><small>Random same-day tie breaks</small></td>
+  <td>272</td>
+  <td>616.89</td>
+  <td>1.733</td>
+  <td>32.15%</td>
+  <td>-27.93%</td>
+  <td>1.151</td>
+</tr>
+<tr>
+  <td><strong>Hard 13F gate</strong><small>Only active high-conviction windows</small></td>
+  <td>177</td>
+  <td>501.86</td>
+  <td>2.013</td>
+  <td>26.91%</td>
+  <td>-14.44%</td>
+  <td>1.864</td>
+</tr>
+<tr>
+  <td><strong>Conviction priority</strong><small>All breakouts; conviction gets contested slots</small></td>
+  <td>266</td>
+  <td>654.97</td>
+  <td>1.824</td>
+  <td>35.36%</td>
+  <td>-23.25%</td>
+  <td>1.521</td>
+</tr>
+<tr>
+  <td><strong>2x risk cap</strong><small>All breakouts; max tilt at 10% conviction</small></td>
+  <td>272</td>
+  <td>754.86</td>
+  <td>1.824</td>
+  <td>38.56%</td>
+  <td>-25.13%</td>
+  <td>1.534</td>
+</tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">IV &middot; What is licensed</div>
+    <h2>A forward rule, not a retrospective promise.</h2>
+    <ol class="protocol">
+      <li>Track actual public 13F filings. Admit only newly disclosed positions at or above 5% of a concentrated manager's reported equity book.</li>
+      <li>Keep each name on the watchlist for one year after the filing. Do not buy it because of the filing.</li>
+      <li>Use the existing long-only daily 55/20 Turtle entry, stop, pyramid and exit rules unchanged.</li>
+      <li>When same-day entries compete for the sixth slot, rank active names by their largest public manager weight before using a random tie break.</li>
+      <li>Freeze any risk multiplier before forward deployment. The 2x cap is evidence to test, not permission to change live risk.</li>
+    </ol>
+    <div class="note"><strong>Three limits travel with this result.</strong> The 143-name panel is the union of historically observed high-conviction positions, so its absolute return inherits hindsight-universe bias. Alpha Vantage daily history is a current vendor history, not an archived vintage. And the drawdowns here are marked only when a trade exits; intratrade adverse excursion would be worse. The priority comparison is cleaner because it holds the panel, entries, exits and capacity fixed, but it is still a research result rather than a live mandate.</div>
+  </section>
+
+  <footer>
+    Inputs: <code>data/13f/holdings_major.json</code>, <code>data/13f/h13f.pkl</code>, <code>data/13f/book13f.pkl</code>, and <code>data/13f/alphavantage_daily.db</code>. Generated from <code>out/strategy/13f_turtle_full_panel.json</code> by <code>scripts/build_chapter7_13f_turtle.py</code>. The data and analysis output are locally cached and intentionally gitignored; this rendered chapter and its generator are the durable research record.
+  </footer>
+</main>
+</body>
+</html>

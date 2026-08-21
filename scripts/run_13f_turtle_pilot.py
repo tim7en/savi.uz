@@ -34,6 +34,8 @@ from savi_uz.sweep_engulf import resample_regular_session  # noqa: E402
 from savi_uz.turtle import TurtleConfig, TurtleTrade, rolling_extremes, run_turtle  # noqa: E402
 from savi_uz.volume_profile import Bar  # noqa: E402
 
+DATA_DIR = Path("data/13f")
+
 
 @dataclass(frozen=True)
 class TaggedTrade:
@@ -44,14 +46,14 @@ class TaggedTrade:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--bars", type=Path, default=Path("data/intraday/bars.db"))
-    parser.add_argument("--frequency", choices=("5min", "daily"), default="5min",
+    parser.add_argument("--bars", type=Path, default=DATA_DIR / "alphavantage_daily.db")
+    parser.add_argument("--frequency", choices=("5min", "daily"), default="daily",
                         help="Stored bar frequency; daily Alpha Vantage bars are already split-consistent")
-    parser.add_argument("--holdings", type=Path, required=True,
+    parser.add_argument("--holdings", type=Path, default=DATA_DIR / "holdings_major.json",
                         help="Raw holdings_major.json with exact filing dates")
-    parser.add_argument("--matched-holdings", type=Path, required=True,
+    parser.add_argument("--matched-holdings", type=Path, default=DATA_DIR / "h13f.pkl",
                         help="h13f.pkl, retaining raw row indexes and mapped tickers")
-    parser.add_argument("--book", type=Path, required=True,
+    parser.add_argument("--book", type=Path, default=DATA_DIR / "book13f.pkl",
                         help="book13f.pkl with is_new and position weights")
     parser.add_argument("--start", default="2017-01-01")
     parser.add_argument("--split", default="2023-01-01",
