@@ -1,0 +1,380 @@
+<title>Where the Bar Closes</title>
+<style>
+  :root{
+    color-scheme:light;
+    --ground:#F1F2F4; --surface:#FFFFFF; --sunken:#E5E7EB; --rule:#D3D7DD;
+    --rule-soft:#E3E6EA;
+    --ink:#12151A; --ink-2:#454C56; --ink-3:#7A828E;
+    --cold:#9E4534; --mid:#B08A3C; --hot:#1E7A5E;
+    --accent:#1F4E79; --accent-soft:#E2EAF2;
+    --display:"Helvetica Neue",Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --body:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0D1014; --surface:#161A20; --sunken:#1D222A; --rule:#2A303A;
+    --rule-soft:#232830;
+    --ink:#E6EAF0; --ink-2:#AEB6C2; --ink-3:#7C8593;
+    --cold:#D9806C; --mid:#D8B665; --hot:#4FBF97;
+    --accent:#7FB0DC; --accent-soft:#152331;
+  }}
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --ground:#0D1014; --surface:#161A20; --sunken:#1D222A; --rule:#2A303A;
+    --rule-soft:#232830;
+    --ink:#E6EAF0; --ink-2:#AEB6C2; --ink-3:#7C8593;
+    --cold:#D9806C; --mid:#D8B665; --hot:#4FBF97;
+    --accent:#7FB0DC; --accent-soft:#152331;
+  }
+  :root[data-theme="light"]{
+    color-scheme:light;
+    --ground:#F1F2F4; --surface:#FFFFFF; --sunken:#E5E7EB; --rule:#D3D7DD;
+    --rule-soft:#E3E6EA;
+    --ink:#12151A; --ink-2:#454C56; --ink-3:#7A828E;
+    --cold:#9E4534; --mid:#B08A3C; --hot:#1E7A5E;
+    --accent:#1F4E79; --accent-soft:#E2EAF2;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;padding:0 20px 88px;background:var(--ground);color:var(--ink);
+       font-family:var(--body);font-size:16px;line-height:1.62;
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:920px;margin:0 auto}
+
+  header{padding:58px 0 30px;border-bottom:3px solid var(--ink);
+         display:flex;flex-direction:column;gap:14px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+           text-transform:uppercase;color:var(--ink-3);margin:0}
+  h1{font-family:var(--display);font-weight:800;font-size:clamp(2.4rem,7vw,4rem);
+     line-height:.98;letter-spacing:-.035em;margin:0;text-wrap:balance}
+  .standfirst{font-size:1.14rem;line-height:1.55;color:var(--ink-2);
+              max-width:60ch;margin:0}
+
+  .tallies{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+           gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:20px}
+  .tally{background:var(--surface);padding:15px 17px;display:flex;
+         flex-direction:column;gap:3px}
+  .tally b{font-family:var(--mono);font-size:1.6rem;font-weight:700;
+           letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1}
+  .tally span{font-size:12px;color:var(--ink-3);line-height:1.36}
+  .t-hot{color:var(--hot)} .t-cold{color:var(--cold)} .t-mid{color:var(--mid)}
+
+  section{padding-top:48px;display:flex;flex-direction:column;gap:15px}
+  h2{font-family:var(--display);font-size:1.72rem;font-weight:750;margin:0;
+     letter-spacing:-.025em;text-wrap:balance}
+  h3{font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+     text-transform:uppercase;color:var(--ink-3);margin:0 0 7px;font-weight:600}
+  p{margin:0;max-width:68ch}
+  .lede{color:var(--ink-2)}
+
+  .card{background:var(--surface);border:1px solid var(--rule);padding:21px 23px;
+        display:flex;flex-direction:column;gap:11px}
+  .k-hot{border-left:3px solid var(--hot)}
+  .k-cold{border-left:3px solid var(--cold)}
+  .k-mid{border-left:3px solid var(--mid)}
+  .split{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px}
+
+  .scroll{overflow-x:auto;border:1px solid var(--rule);background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;
+        font-variant-numeric:tabular-nums}
+  caption{text-align:left;padding:14px 17px 2px;font-size:12.5px;color:var(--ink-3)}
+  th{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+     color:var(--ink-3);font-weight:600;text-align:right;padding:10px 13px;
+     border-bottom:1px solid var(--rule);white-space:nowrap}
+  td{padding:9px 13px;text-align:right;border-bottom:1px solid var(--rule-soft);
+     white-space:nowrap;font-family:var(--mono);font-size:12.5px}
+  th:first-child,td:first-child{text-align:left;font-family:var(--body);
+     font-size:13.5px;white-space:normal;min-width:180px}
+  tbody tr:last-child td{border-bottom:0}
+  tr.hi td{background:var(--sunken);font-weight:600}
+  td.hot{color:var(--hot)} td.cold{color:var(--cold)} td.dim{color:var(--ink-3)}
+
+  .verdict{display:inline-block;font-family:var(--mono);font-size:10px;
+           letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;
+           font-weight:700;border-radius:2px}
+  .v-pass{background:color-mix(in srgb,var(--hot) 16%,transparent);color:var(--hot)}
+  .v-fail{background:color-mix(in srgb,var(--cold) 16%,transparent);color:var(--cold)}
+  .v-open{background:var(--accent-soft);color:var(--accent)}
+
+  figure{margin:0;display:flex;flex-direction:column;gap:11px}
+  figcaption{font-size:13px;color:var(--ink-3);max-width:74ch}
+  .plate{background:var(--surface);border:1px solid var(--rule);padding:22px}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .axis{font-family:var(--mono);font-size:10.5px;fill:var(--ink-3);
+        font-variant-numeric:tabular-nums}
+  .gridline{stroke:var(--rule);stroke-width:1}
+  .zero{stroke:var(--ink-3);stroke-width:1.4}
+
+  ul,ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:9px;
+        max-width:70ch}
+  li::marker{color:var(--ink-3)}
+  code{font-family:var(--mono);font-size:.87em;background:var(--sunken);
+       padding:1px 5px;border-radius:2px}
+  .note{font-size:14px;color:var(--ink-2);border-top:1px solid var(--rule);
+        padding-top:16px;max-width:76ch}
+  footer{margin-top:54px;padding-top:20px;border-top:1px solid var(--rule);
+         font-size:12.5px;color:var(--ink-3);max-width:76ch;line-height:1.6}
+  a{color:var(--accent)}
+  a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Breakout anatomy &middot; 118 US equities &middot; 51,759 breakouts &middot; 2015&ndash;2026</p>
+  <h1>Where the Bar Closes</h1>
+  <p class="standfirst">A breakout that spikes through the channel and closes near
+  the low of its own bar is not a weak signal. It is a losing one — it stops out
+  86.8% of the time. This is the largest conditional effect measured anywhere in
+  the programme, and it may still be untradeable.</p>
+
+  <div class="tallies">
+    <div class="tally"><b class="t-cold">&minus;1.203R</b>
+      <span>mean, bars closing in the bottom third of their range</span></div>
+    <div class="tally"><b class="t-hot">+1.140R</b>
+      <span>mean, bars closing in the top 8%</span></div>
+    <div class="tally"><b>+14.2pp</b>
+      <span>right-tail gap, top quintile minus bottom</span></div>
+    <div class="tally"><b class="t-mid">72%</b>
+      <span>of breakouts refused — the book is full</span></div>
+  </div>
+</header>
+
+<section>
+  <h2>The shape of the bar beats everything else measured</h2>
+  <p class="lede">Three characteristics of the breakout bar, each bucketed into
+  quintiles across 51,759 breakouts at a 5bp round trip. Every one separates
+  monotonically. The null shuffles outcomes across the same feature labels, holding
+  the outcome distribution fixed and destroying only the association.</p>
+  <figure>
+    <div class="plate">
+      <svg id="candles" viewBox="0 0 1000 330" role="img"
+           aria-label="Mean R and stop-out rate by where the breakout bar closed within its own range"></svg>
+    </div>
+    <figcaption>Each candle marks where the close fell inside the bar's range.
+    Mean R rises and the stop-out rate falls monotonically as the close moves up
+    the bar.</figcaption>
+  </figure>
+  <div class="scroll">
+    <table>
+      <caption>Close location: where the breakout bar closed within its own high-low range.</caption>
+      <thead><tr><th>Quintile</th><th>Range</th><th>Trades</th><th>Mean R</th>
+      <th>Median R</th><th>&gt;+3R</th><th>Stopped</th></tr></thead>
+      <tbody id="loc"></tbody>
+    </table>
+  </div>
+  <div class="scroll">
+    <table>
+      <caption>Top-minus-bottom quintile spread for all three features, against a label-shuffling null.</caption>
+      <thead><tr><th>Feature</th><th>Mean R spread</th><th>Right-tail spread</th>
+      <th><em>p</em></th><th>Shape</th></tr></thead>
+      <tbody>
+        <tr class="hi"><td>Close location in bar</td><td class="hot">+2.343</td>
+          <td class="hot">+14.2pp</td><td>&lt;0.001</td><td class="dim">monotone, all five buckets</td></tr>
+        <tr><td>Thrust beyond channel, in N</td><td class="hot">+1.585</td>
+          <td class="hot">+5.8pp</td><td>&lt;0.001</td><td class="dim">monotone, all five buckets</td></tr>
+        <tr><td>Relative volume</td><td class="hot">+1.042</td>
+          <td>+1.9pp</td><td>0.002</td><td class="dim">middle quintiles flat</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Volume is real but the weakest of the three, and its middle
+  quintiles are flat — the bar's own <em>shape</em> carries more than its
+  participation does. That is worth stating plainly because the programme spent
+  two rejected overlays on volume and none on bar geometry.</p>
+</section>
+
+<section>
+  <h2>The catch: none of it is knowable when the order fills</h2>
+  <div class="card k-cold">
+    <h3>An arithmetic problem, not a statistical one</h3>
+    <p>A stop order fills mid-bar at the channel edge. The bar's close, its high
+    and its volume are all final only when the bar is. Acting on any of these
+    three features therefore requires <strong>close-confirmed entry</strong>, which
+    surrenders the channel fill.</p>
+    <p>That cost is measured: at 5bp, plain stop entry scores <strong>0.59</strong>
+    against close-confirm's <strong>0.22</strong> — about <strong>0.37 Sharpe</strong>
+    given up to make the bar observable. So the question is whether a +2.343R
+    selection effect is worth more than the entry it costs.</p>
+    <p>Volume already answered this shape of question with a no: filtered
+    close-confirm recovered roughly what the entry change cost and netted to a wash
+    against plain stop entry. Close location is a far larger effect, so it gets its
+    own answer rather than an inherited one. <span class="verdict v-open">test running</span></p>
+  </div>
+</section>
+
+<section>
+  <h2>Why this argues against buying the pullback</h2>
+  <div class="card k-cold">
+    <p>Targeting a better fill by waiting for price to return toward VWAP looks
+    like free money and is the opposite. <strong>A limit order below the breakout
+    only fills when price comes back</strong> — and the breakouts that come back are
+    by construction the ones closing lower in their range.</p>
+    <p>That is quintile one and two: mean R <strong>&minus;1.203</strong> and
+    <strong>+0.226</strong>, stopping out <strong>86.8%</strong> and 76.3% of the
+    time. You would be systematically filled on the losers and missed on the
+    winners, buying a better price on precisely the trades not worth owning.</p>
+    <p>Any test of a pullback entry has to count unfilled signals as forgone
+    winners rather than dropping them. Otherwise it reports an excellent average
+    fill price and a worse book.</p>
+  </div>
+</section>
+
+<section>
+  <h2>What else survived, and what did not</h2>
+  <p class="lede">Four proposals tested against the same universe and the same
+  controls. Each had to beat its own reversal, and each that changes exposure was
+  matched to the same median drawdown first.</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Proposal</th><th>Result</th><th>Control it faced</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr class="hi"><td>Half size below a moving average, full above</td>
+          <td class="hot">0.79 &rarr; 0.84</td>
+          <td class="dim">Beats its reversal +0.15 to +0.17 at 50, 100 and 200 sessions; beats constant same-mean exposure +0.05</td>
+          <td><span class="verdict v-pass">Survived</span></td></tr>
+        <tr><td>Relative-strength ranking for the contested slot</td>
+          <td>0.87 / 0.75 / 0.73</td>
+          <td class="dim">Beats reversal at 63 sessions, loses at 126 and 252, below random at both</td>
+          <td><span class="verdict v-fail">Failed</span></td></tr>
+        <tr><td>Hold 30% back, deploy it at &minus;10% drawdown</td>
+          <td>+0.009</td>
+          <td class="dim">Constant 70%, 85% and 100% all give identical 0.82 once matched</td>
+          <td><span class="verdict v-fail">Null</span></td></tr>
+        <tr><td>Volume-burst filter, on consolidated volume</td>
+          <td>0.70 &rarr; 1.03</td>
+          <td class="dim">Recovers the close-confirm cost, ties plain stop entry at 1.05</td>
+          <td><span class="verdict v-fail">Wash</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="split">
+    <div class="card k-hot">
+      <h3>The moving-average result is the real one</h3>
+      <p>It is the first overlay in the programme to beat its own reversal
+      <em>consistently across a parameter sweep</em>. Halving size below the average
+      helps; halving above it hurts by a similar margin, so the label carries
+      directional information rather than merely modulating exposure.</p>
+      <p>It also explains why the earlier higher-timeframe trend filter was
+      rejected. That was a <strong>gate</strong>, and removing those trades removed
+      +1,205R of winners along with the losers. Halving keeps the winners at reduced
+      size. Gate versus sizing is the whole difference.</p>
+    </div>
+    <div class="card k-mid">
+      <h3>Two ways to be fooled, both avoided here</h3>
+      <p><strong>Exposure is not a strategy.</strong> Constant 70%, 85% and 100%
+      produce identical Sharpe once matched to the same drawdown — only the
+      risk-per-R differs. Any rule that merely changes average size is
+      re-parameterising leverage, which is why the reserve rule contributed +0.009.</p>
+      <p><strong>Random tie-breaks hide everything.</strong> The Sharpe band across
+      capacity orderings is [0.57&ndash;0.96]. Effects smaller than 0.4 are invisible
+      unless the comparison is <em>paired</em> on the same orderings, which every
+      comparison above is.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>What still has to happen</h2>
+  <ol>
+    <li><strong>Finish the close-location entry test.</strong> Filtered
+    close-confirm against plain stop entry at 5bp and 10bp. If it does not clear
+    plain stop entry, the largest effect in the programme is real and unusable, and
+    that is the finding.</li>
+    <li><strong>Per-year consistency on the moving-average rule.</strong> The
+    standing contract requires seven years in ten and only the aggregate has been
+    measured.</li>
+    <li><strong>Out-of-sample validation with parameters frozen first.</strong> This
+    is T1.1, it has never been run on anything, and every result here is scored
+    against a configuration that has not passed it.</li>
+    <li><strong>Correlation-grouped capacity.</strong> With 72% of breakouts refused,
+    the tie-break governs most trading decisions. Grouping needs no forecast to
+    justify itself, unlike ranking — and any deterministic rule cuts the Sharpe band
+    roughly fourfold whether or not it raises the median.</li>
+  </ol>
+</section>
+
+<footer>
+  118 US-listed equities and ordinary ETFs from the Binance trad-FI universe;
+  13 levered and inverse wrappers excluded. Alpha Vantage consolidated 5-minute
+  bars resampled to 30 minutes, 2015-01-02 to 2026-07-31, 2,911 sessions. Long-only
+  55-bar Donchian entry, Wilder ATR(20), 2N stop, half-N pyramid to four units,
+  3N chandelier exit, six concurrent positions. Costs are Binance round trips:
+  5bp making, 10bp taking. Quintile nulls are 500 label shuffles. Exposure
+  comparisons are matched to an 18% median drawdown and paired on identical
+  capacity orderings. Drawdowns are marked to market daily, not at exit.
+</footer>
+</div>
+
+<script>
+const LOC=[
+ {q:1,lo:0.00,hi:0.34,n:10351,mean:-1.203,med:-2.139,tail:9.3, stop:86.8},
+ {q:2,lo:0.34,hi:0.62,n:10351,mean:0.226, med:-2.129,tail:16.9,stop:76.3},
+ {q:3,lo:0.62,hi:0.80,n:10351,mean:0.667, med:-2.549,tail:20.5,stop:72.0},
+ {q:4,lo:0.80,hi:0.92,n:10351,mean:1.000, med:-2.916,tail:22.7,stop:69.1},
+ {q:5,lo:0.92,hi:1.00,n:10355,mean:1.140, med:-2.977,tail:23.5,stop:67.5},
+];
+const NS="http://www.w3.org/2000/svg";
+const el=(t,a)=>{const n=document.createElementNS(NS,t);for(const k in a)n.setAttribute(k,a[k]);return n;};
+const shade=q=>["var(--cold)","var(--cold)","var(--mid)","var(--hot)","var(--hot)"][q-1];
+
+function draw(){
+  const svg=document.getElementById("candles");svg.textContent="";
+  const W=1000,H=330,L=90,R=250,T=40,B=48;
+  const iw=W-L-R,ih=H-T-B;
+  const cw=iw/LOC.length;
+  const bodyW=26, wickH=ih*0.62;
+  LOC.forEach((d,i)=>{
+    const cx=L+i*cw+cw/2;
+    const top=T+10, bottom=top+wickH;
+    // the bar: full range as an outline, close marked where it fell
+    svg.appendChild(el("line",{x1:cx,x2:cx,y1:top,y2:bottom,
+      stroke:"var(--ink-3)","stroke-width":1.5}));
+    svg.appendChild(el("rect",{x:cx-bodyW/2,y:top,width:bodyW,height:wickH,
+      fill:"none",stroke:"var(--rule)","stroke-width":1}));
+    const mid=(d.lo+d.hi)/2;
+    const y=bottom-mid*wickH;
+    svg.appendChild(el("rect",{x:cx-bodyW/2-6,y:y-3,width:bodyW+12,height:6,rx:1.5,
+      fill:shade(d.q)}));
+    const qt=el("text",{x:cx,y:bottom+20,class:"axis","text-anchor":"middle",
+      fill:"var(--ink)","font-weight":"700"});
+    qt.textContent="Q"+d.q;svg.appendChild(qt);
+    const rt=el("text",{x:cx,y:bottom+36,class:"axis","text-anchor":"middle"});
+    rt.textContent=(d.lo*100).toFixed(0)+"-"+(d.hi*100).toFixed(0)+"%";
+    svg.appendChild(rt);
+    const mr=el("text",{x:cx,y:top-12,class:"axis","text-anchor":"middle",
+      fill:shade(d.q),"font-weight":"700","font-size":"13"});
+    mr.textContent=(d.mean>0?"+":"")+d.mean.toFixed(2)+"R";svg.appendChild(mr);
+  });
+  const lab=el("text",{x:L-16,y:T+10+wickH/2,class:"axis","text-anchor":"end",
+    fill:"var(--ink-2)"});
+  lab.textContent="bar range";svg.appendChild(lab);
+  // stop-out rate panel on the right
+  const px=W-R+40, pw=R-90;
+  const head=el("text",{x:px,y:T+2,class:"axis",fill:"var(--ink-2)","font-weight":"700"});
+  head.textContent="stopped out";svg.appendChild(head);
+  LOC.forEach((d,i)=>{
+    const y=T+22+i*26;
+    svg.appendChild(el("rect",{x:px,y:y-9,width:pw*(d.stop/100),height:13,rx:2,
+      fill:shade(d.q),opacity:.85}));
+    const t=el("text",{x:px+pw*(d.stop/100)+8,y:y+2,class:"axis",fill:shade(d.q),
+      "font-weight":"700"});
+    t.textContent=d.stop.toFixed(1)+"%";svg.appendChild(t);
+    const q=el("text",{x:px-10,y:y+2,class:"axis","text-anchor":"end"});
+    q.textContent="Q"+d.q;svg.appendChild(q);
+  });
+}
+
+document.getElementById("loc").innerHTML=LOC.map(d=>
+  '<tr'+(d.q===1||d.q===5?' class="hi"':'')+'><td>Q'+d.q+'</td><td class="dim">'+
+  (d.lo*100).toFixed(0)+'–'+(d.hi*100).toFixed(0)+'% of range</td><td class="dim">'+
+  d.n.toLocaleString("en-US")+'</td><td class="'+(d.mean<0?'cold':'hot')+'">'+
+  (d.mean>0?"+":"−")+Math.abs(d.mean).toFixed(3)+'</td><td class="dim">'+
+  d.med.toFixed(3)+'</td><td>'+d.tail.toFixed(1)+'%</td><td class="'+
+  (d.stop>80?'cold':'')+'">'+d.stop.toFixed(1)+'%</td></tr>').join("");
+
+draw();
+let t;addEventListener("resize",()=>{clearTimeout(t);t=setTimeout(draw,150);});
+</script>
