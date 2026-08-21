@@ -1,0 +1,435 @@
+<title>The Filing and the Slot</title>
+<style>
+  :root{
+    color-scheme:light;
+    --ground:#F2F2F6; --surface:#FFFFFF; --sunken:#E8E8EF; --rule:#D6D6E0;
+    --rule-soft:#E6E6EE;
+    --ink:#14141C; --ink-2:#474759; --ink-3:#78788C;
+    --accent:#3A3A8C; --accent-soft:#E4E4F4;
+    --pass:#1F6B4F; --pass-soft:#E0EFE8;
+    --warn:#8A6212; --warn-soft:#F5ECD8;
+    --fail:#96323C; --fail-soft:#F5E2E4;
+    --display:Charter,"Bitstream Charter","Sitka Text",Cambria,Georgia,ui-serif,serif;
+    --body:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0F0F16; --surface:#17171F; --sunken:#1E1E28; --rule:#2C2C3A;
+    --rule-soft:#242430;
+    --ink:#E7E7F0; --ink-2:#B0B0C2; --ink-3:#80809A;
+    --accent:#9A9AE8; --accent-soft:#1C1C34;
+    --pass:#5FC099; --pass-soft:#132A22;
+    --warn:#D2A73F; --warn-soft:#2C2413;
+    --fail:#DE8892; --fail-soft:#2E181B;
+  }}
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --ground:#0F0F16; --surface:#17171F; --sunken:#1E1E28; --rule:#2C2C3A;
+    --rule-soft:#242430;
+    --ink:#E7E7F0; --ink-2:#B0B0C2; --ink-3:#80809A;
+    --accent:#9A9AE8; --accent-soft:#1C1C34;
+    --pass:#5FC099; --pass-soft:#132A22;
+    --warn:#D2A73F; --warn-soft:#2C2413;
+    --fail:#DE8892; --fail-soft:#2E181B;
+  }
+  :root[data-theme="light"]{
+    color-scheme:light;
+    --ground:#F2F2F6; --surface:#FFFFFF; --sunken:#E8E8EF; --rule:#D6D6E0;
+    --rule-soft:#E6E6EE;
+    --ink:#14141C; --ink-2:#474759; --ink-3:#78788C;
+    --accent:#3A3A8C; --accent-soft:#E4E4F4;
+    --pass:#1F6B4F; --pass-soft:#E0EFE8;
+    --warn:#8A6212; --warn-soft:#F5ECD8;
+    --fail:#96323C; --fail-soft:#F5E2E4;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;padding:0 20px 90px;background:var(--ground);color:var(--ink);
+       font-family:var(--body);font-size:16px;line-height:1.62;
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:920px;margin:0 auto}
+
+  header{padding:58px 0 30px;border-bottom:2px solid var(--ink);
+         display:flex;flex-direction:column;gap:15px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.15em;
+           text-transform:uppercase;color:var(--ink-3);margin:0}
+  h1{font-family:var(--display);font-weight:600;font-size:clamp(2.2rem,6vw,3.4rem);
+     line-height:1.06;letter-spacing:-.02em;margin:0;text-wrap:balance}
+  .standfirst{font-family:var(--display);font-size:1.15rem;line-height:1.55;
+              color:var(--ink-2);max-width:60ch;margin:0}
+
+  .tallies{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+           gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:20px}
+  .tally{background:var(--surface);padding:15px 17px;display:flex;
+         flex-direction:column;gap:3px}
+  .tally b{font-family:var(--mono);font-size:1.65rem;font-weight:600;
+           letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1}
+  .tally span{font-size:12px;color:var(--ink-3);line-height:1.36}
+  .c-pass{color:var(--pass)} .c-warn{color:var(--warn)} .c-fail{color:var(--fail)}
+
+  section{padding-top:48px;display:flex;flex-direction:column;gap:15px}
+  h2{font-family:var(--display);font-size:1.58rem;font-weight:600;margin:0;
+     letter-spacing:-.012em;text-wrap:balance}
+  h3{font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+     text-transform:uppercase;color:var(--ink-3);margin:0 0 7px;font-weight:600}
+  p{margin:0;max-width:68ch}
+  .lede{color:var(--ink-2)}
+
+  .card{background:var(--surface);border:1px solid var(--rule);padding:21px 23px;
+        display:flex;flex-direction:column;gap:11px}
+  .k-pass{border-left:3px solid var(--pass)}
+  .k-warn{border-left:3px solid var(--warn)}
+  .k-fail{border-left:3px solid var(--fail)}
+  .split{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px}
+
+  .grade{display:inline-block;font-family:var(--mono);font-size:10px;
+         letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;
+         font-weight:700;white-space:nowrap;border-radius:2px}
+  .g-pass{background:var(--pass-soft);color:var(--pass)}
+  .g-warn{background:var(--warn-soft);color:var(--warn)}
+  .g-fail{background:var(--fail-soft);color:var(--fail)}
+
+  .scroll{overflow-x:auto;border:1px solid var(--rule);background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;
+        font-variant-numeric:tabular-nums}
+  caption{text-align:left;padding:14px 17px 2px;font-size:12.5px;color:var(--ink-3)}
+  th{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+     color:var(--ink-3);font-weight:600;text-align:right;padding:10px 13px;
+     border-bottom:1px solid var(--rule);white-space:nowrap}
+  td{padding:9px 13px;text-align:right;border-bottom:1px solid var(--rule-soft);
+     white-space:nowrap;font-family:var(--mono);font-size:12.5px}
+  th:first-child,td:first-child{text-align:left;font-family:var(--body);
+     font-size:13.5px;white-space:normal;min-width:190px}
+  tbody tr:last-child td{border-bottom:0}
+  tr.hi td{background:var(--sunken);font-weight:600}
+  tr.group td{background:var(--sunken);font-family:var(--body);font-weight:650;
+              font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;
+              color:var(--ink-2);text-align:left}
+  td.up{color:var(--pass)} td.down{color:var(--fail)} td.dim{color:var(--ink-3)}
+
+  figure{margin:0;display:flex;flex-direction:column;gap:11px}
+  figcaption{font-size:13px;color:var(--ink-3);max-width:74ch}
+  .plate{background:var(--surface);border:1px solid var(--rule);padding:20px}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .axis{font-family:var(--mono);font-size:10.5px;fill:var(--ink-3);
+        font-variant-numeric:tabular-nums}
+  .gridline{stroke:var(--rule);stroke-width:1}
+
+  ul,ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:9px;
+        max-width:70ch}
+  li::marker{color:var(--ink-3)}
+  code{font-family:var(--mono);font-size:.87em;background:var(--sunken);
+       padding:1px 5px;border-radius:2px}
+  .note{font-size:14px;color:var(--ink-2);border-top:1px solid var(--rule);
+        padding-top:16px;max-width:76ch}
+  footer{margin-top:54px;padding-top:20px;border-top:1px solid var(--rule);
+         font-size:12.5px;color:var(--ink-3);max-width:76ch;line-height:1.6}
+  a{color:var(--accent)}
+  a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Chapters six &amp; seven &middot; consolidated &middot; review of 21 Aug 2026</p>
+  <h1>The Filing and the Slot</h1>
+  <p class="standfirst">A 13F cannot tell you when to buy — that is measured, not asserted.
+  What it can do is name companies somebody researched, and change the shape of what
+  happens after those companies break out. Two chapters, three claims, and three very
+  different grades of evidence behind them.</p>
+
+  <div class="tallies">
+    <div class="tally"><b class="c-fail">&minus;3.39%</b>
+      <span>copying new positions, four quarters, follower entry</span></div>
+    <div class="tally"><b class="c-pass">15.2%</b>
+      <span>accumulated breakouts beating +50%, against 10.4% ordinary</span></div>
+    <div class="tally"><b class="c-pass">0.015</b>
+      <span>month-matched null <em>p</em>-value on the tail gap</span></div>
+    <div class="tally"><b class="c-warn">0</b>
+      <span>null controls run on the chapter-seven result</span></div>
+  </div>
+</header>
+
+<section>
+  <h2>Three claims, graded by what they survived</h2>
+  <p class="lede">The two chapters are one argument in sequence, and its links are not
+  equally strong. Grading them separately is the whole point of reading them together.</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Claim</th><th>Where</th><th>Effect</th><th>Control it faced</th>
+      <th>Grade</th></tr></thead>
+      <tbody>
+        <tr><td>Copying a manager into a newly disclosed position is not a trade</td>
+          <td class="dim">Ch 6</td><td class="down">&minus;3.39%</td>
+          <td class="dim">Manager-entry vs follower-entry gap, <em>t</em> = &minus;2.31</td>
+          <td><span class="grade g-pass">Established</span></td></tr>
+        <tr class="hi"><td>Breakouts in recently accumulated names have a fatter right tail</td>
+          <td class="dim">Ch 6</td><td class="up">+4.8pp</td>
+          <td class="dim">2,000 month-matched draws, <em>p</em> = 0.015</td>
+          <td><span class="grade g-pass">Survived a null</span></td></tr>
+        <tr><td>Conviction should decide who gets a contested slot</td>
+          <td class="dim">Ch 7</td><td class="up">+0.13 Calmar</td>
+          <td class="dim">Random tie-break only &mdash; <b>no null, no per-year test</b></td>
+          <td><span class="grade g-warn">Unverified</span></td></tr>
+        <tr><td>Conviction should raise position size</td>
+          <td class="dim">Ch 7</td><td class="up">+0.08 Calmar</td>
+          <td class="dim">Not exposure-matched; drawdown rose 38.9% &rarr; 41.3%</td>
+          <td><span class="grade g-fail">Confounded</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card k-warn">
+    <h3>The load-bearing caveat</h3>
+    <p>Chapter six earned its result with a properly constructed null: hold the calendar and
+    the counts fixed, redraw which tickers were accumulated, 2,000 times. The observed tail
+    gap sat above the ninety-eighth percentile. <strong>It is the first thing in the
+    programme to clear a real null with room to spare.</strong></p>
+    <p>Chapter seven runs no null at all. Its headline — capacity priority lifting full-period
+    Calmar from 0.583 to 0.712 — comes from substituting roughly fourteen net trades out of
+    694 and gaining 147R. A large return change from a handful of substitutions is precisely
+    the high-variance situation a null exists to test. The result may well be real; as it
+    stands it is untested, and it should not be graded alongside chapter six's.</p>
+  </div>
+</section>
+
+<section>
+  <h2>What the filing cannot buy</h2>
+  <p class="lede">The disclosure lag is not a friction on the edge. It is larger than the edge.</p>
+  <div class="split">
+    <div class="card k-fail">
+      <h3>Measured, not argued</h3>
+      <p>New positions entered at the quarter-end the filing describes — which no outsider can
+      trade — return <strong>+1.58%</strong> over one quarter. The same positions entered the
+      month after the filing became public return <strong>&minus;3.39%</strong> over four
+      quarters and <strong>&minus;5.67%</strong> over eight.</p>
+      <p>The gap between the two runs 2.4 to 4.1 percentage points, and it is the whole of the
+      effect. Forty-five days is the difference between a manager's return and a follower's.</p>
+    </div>
+    <div class="card">
+      <h3>Two self-corrections worth keeping</h3>
+      <p>Sorting new positions by market capitalisation <em>today</em> produced a beautiful
+      monotone ladder: under $300m returned &minus;22.6% with <em>t</em> = &minus;4.14, rising
+      cleanly to +6.9% above $50bn. It is an artefact. Today's market cap is a post-outcome
+      variable, so the small buckets fill with losers by construction. Reconstructed as at the
+      filing, the ladder <strong>disappears entirely</strong>.</p>
+      <p>And one filer, Baron, supplies 757 of 1,252 new positions. Removing it moves the
+      headline from significantly negative to indistinguishable from zero. A 400-name book and
+      an 11-name book should never have been pooled.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>What it can buy: the shape, not the centre</h2>
+  <p class="lede">A trend follower cuts one tail and keeps the other, so the mean is the wrong
+  statistic. Here the mean says nothing and the tail says everything.</p>
+  <figure>
+    <div class="plate">
+      <svg id="tail" viewBox="0 0 1000 300" role="img"
+           aria-label="Share of breakouts returning more than 50 percent and more than 25 percent, by whether a manager had recently accumulated the name"></svg>
+    </div>
+    <figcaption>Forward twelve months after a monthly close at a twelve-month high, 2013&ndash;2025.
+    The centre barely moves; the right tail does.</figcaption>
+  </figure>
+  <div class="card k-pass">
+    <h3>Why the mean misses it</h3>
+    <p>Measured as excess over the average breakout that month, the difference in means carries
+    a <em>t</em>-statistic of <strong>&minus;0.57</strong> — nothing, and negative at that,
+    because a few catastrophic left-tail outcomes dominate the average. An analyst reading only
+    mean excess return would report no effect and move on.</p>
+    <p>The effect is entirely in the shape, and shape is exactly what a stop-loss-and-pyramid
+    system converts into money. This is the one place in either chapter where the finding and
+    the machinery genuinely fit each other.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Chapter seven, and where it stops being evidence</h2>
+  <p class="lede">Chapter six ends by naming its own limit: the breakout there is a monthly
+  twelve-month high, and whether the tail effect survives at daily 55/20 is untested. Chapter
+  seven is that test — but it changes the question along the way.</p>
+  <figure>
+    <div class="plate">
+      <svg id="calmar" viewBox="0 0 1000 320" role="img"
+           aria-label="Calmar ratio by variant across the full period and the 2023 plus validation slice"></svg>
+    </div>
+    <figcaption>Calmar computed on exit-marked drawdowns, which understate risk because a
+    position's adverse excursion never reaches the equity curve until it closes. Every ratio
+    here is therefore optimistic by an unmeasured amount.</figcaption>
+  </figure>
+  <div class="scroll">
+    <table>
+      <caption>143-name panel, long-only daily 55/20, six-position cap, 2bp round trip,
+      200 randomised same-day capacity orderings.</caption>
+      <thead><tr><th>Variant</th><th>Trades</th><th>Total R</th><th>CAGR</th>
+      <th>Exit-marked DD</th><th>Calmar</th></tr></thead>
+      <tbody id="ch7"></tbody>
+    </table>
+  </div>
+  <div class="split">
+    <div class="card k-warn">
+      <h3>The hard gate is a different strategy</h3>
+      <p>Taking only active high-conviction names cut full-period CAGR from 22.70% to
+      <strong>9.15%</strong>, and Calmar from 0.583 to 0.238. It looks strong in the 2023+
+      slice — Calmar 1.864 against 1.151 — but that is one favourable sub-period against a
+      halved full-period result. The chapter is right to reject it as a quality filter.</p>
+    </div>
+    <div class="card k-fail">
+      <h3>The risk tilt is not exposure-matched</h3>
+      <p>The multiplier is bounded below at 1.0 and rises to the cap, so a tilted book always
+      carries <em>more</em> risk than the baseline. Mean multiplier was 1.087&times; and the
+      drawdown duly rose from &minus;38.92% to &minus;41.26%.</p>
+      <p>The programme's own first standing control is matched drawdown. Comparing a 1.087&times;
+      book against a 1.000&times; book at fixed risk-per-R is the exact comparison that rule
+      exists to forbid. The honest test is to scale the baseline up by 1.087 and re-run; that
+      was not done.</p>
+    </div>
+  </div>
+  <p class="note"><strong>What would settle chapter seven.</strong> Three things, none
+  expensive. A null that shuffles conviction weights across tickers while holding the calendar
+  and counts fixed, exactly as chapter six did — if random labels reproduce a +0.13 Calmar gain
+  often, the result is noise. A per-year table, because the standing contract requires seven
+  years in ten and the chapter reports only two aggregate windows. And a matched-exposure
+  re-run of the tilt. Until then the priority rule is a candidate, not a finding.</p>
+</section>
+
+<section>
+  <h2>What is licensed today</h2>
+  <ol>
+    <li><strong>Do not copy the filings.</strong> Established, with a measured mechanism: the
+    forty-five-day lag exceeds the edge.</li>
+    <li><strong>Use disclosed conviction as a watchlist.</strong> Admit newly disclosed
+    positions at or above 5% of a concentrated manager's book, keep them eligible for one year,
+    and let the existing price rules decide entry, size and exit. This rests on the tail result,
+    which survived a real null.</li>
+    <li><strong>Treat slot priority as untested.</strong> It is cheap and it is plausible, but
+    it has faced no null and no per-year test. Running the chapter-six null against it is the
+    single highest-value hour available on this thread.</li>
+    <li><strong>Freeze the risk multiplier.</strong> Chapter seven says this itself, and the
+    exposure-matching flaw makes it firmer: the 2&times; cap is evidence to test forward, never
+    permission to change live risk.</li>
+  </ol>
+</section>
+
+<footer>
+  Chapter six: 14 concentrated managers, 617 quarterly filings, 26,794 disclosed holdings,
+  2013-06 to 2026-06, 94.4% of reported value matched by issuer name. Breakout defined as a
+  monthly close at a twelve-month high. Chapter seven: 143 high-conviction names with daily
+  Alpha Vantage history, 661,577 bars, 4,752 independent Turtle positions offered to six slots
+  and 4,058 refused. Both universes contain only securities still listed today, which flatters
+  absolute levels in both populations and leaves the between-population comparisons as the
+  defensible part. Market capitalisation at the filing is reconstructed from adjusted price
+  and assumes constant share count. Chapter seven's source data is gitignored and no longer
+  present on the machine, so its figures are reproduced here from the rendered chapter rather
+  than re-measured.
+</footer>
+</div>
+
+<script>
+const TAIL=[
+ {k:"Ordinary breakouts",           over50:10.4, over25:23.3, med:4.6},
+ {k:"Recently accumulated",         over50:15.2, over25:33.0, med:9.5},
+ {k:"Accumulated at 5%+ conviction",over50:17.4, over25:33.6, med:11.1},
+];
+const CH7=[
+ {g:"Full period 2017+"},
+ {k:"Baseline",            s:"Random same-day tie breaks",              n:694, r:1182.96, c:22.70, d:-38.92, cal:0.583},
+ {k:"Hard 13F gate",       s:"Only active high-conviction windows",     n:434, r:523.62,  c:9.15,  d:-38.52, cal:0.238},
+ {k:"Conviction priority", s:"All breakouts; conviction gets slots",    n:680, r:1329.62, c:26.35, d:-37.03, cal:0.712},
+ {k:"2× risk cap",    s:"All breakouts; max tilt at 10%",          n:694, r:1436.30, c:27.13, d:-41.26, cal:0.658},
+ {g:"2023+ validation"},
+ {k:"Baseline",            s:"Random same-day tie breaks",              n:272, r:616.89,  c:32.15, d:-27.93, cal:1.151},
+ {k:"Hard 13F gate",       s:"Only active high-conviction windows",     n:177, r:501.86,  c:26.91, d:-14.44, cal:1.864},
+ {k:"Conviction priority", s:"All breakouts; conviction gets slots",    n:266, r:654.97,  c:35.36, d:-23.25, cal:1.521},
+ {k:"2× risk cap",    s:"All breakouts; max tilt at 10%",          n:272, r:754.86,  c:38.56, d:-25.13, cal:1.534},
+];
+
+const NS="http://www.w3.org/2000/svg";
+const el=(t,a)=>{const n=document.createElementNS(NS,t);for(const k in a)n.setAttribute(k,a[k]);return n;};
+
+function drawTail(){
+  const svg=document.getElementById("tail");svg.textContent="";
+  const W=1000,H=300,L=220,R=90,T=44,B=42;
+  const iw=W-L-R,ih=H-T-B;
+  const rows=TAIL, rh=ih/rows.length, max=40;
+  const x=v=>L+(v/max)*iw;
+  [0,10,20,30,40].forEach(v=>{
+    svg.appendChild(el("line",{x1:x(v),x2:x(v),y1:T,y2:T+ih,class:"gridline"}));
+    const t=el("text",{x:x(v),y:H-16,class:"axis","text-anchor":"middle"});
+    t.textContent=v+"%";svg.appendChild(t);
+  });
+  rows.forEach((d,i)=>{
+    const cy=T+i*rh+rh/2;
+    const pale=i===0?"var(--ink-3)":"var(--accent)";
+    svg.appendChild(el("rect",{x:L,y:cy-rh*0.30,width:Math.max(x(d.over25)-L,1),
+      height:rh*0.26,rx:2,fill:pale,opacity:.34}));
+    svg.appendChild(el("rect",{x:L,y:cy+rh*0.02,width:Math.max(x(d.over50)-L,1),
+      height:rh*0.26,rx:2,fill:i===0?"var(--ink-3)":"var(--pass)"}));
+    const lab=el("text",{x:L-14,y:cy+4,class:"axis","text-anchor":"end",
+      fill:"var(--ink)","font-size":"12.5"});
+    lab.textContent=d.k;svg.appendChild(lab);
+    const v1=el("text",{x:x(d.over25)+7,y:cy-rh*0.30+rh*0.20,class:"axis",fill:"var(--ink-3)"});
+    v1.textContent=d.over25.toFixed(1)+"%";svg.appendChild(v1);
+    const v2=el("text",{x:x(d.over50)+7,y:cy+rh*0.02+rh*0.20,class:"axis",
+      fill:i===0?"var(--ink-3)":"var(--pass)","font-weight":"700"});
+    v2.textContent=d.over50.toFixed(1)+"%  (median "+d.med.toFixed(1)+"%)";
+    svg.appendChild(v2);
+  });
+  const a=el("text",{x:L,y:20,class:"axis",fill:"var(--ink-3)","font-size":"11.5"});
+  a.textContent="pale bar: share returning more than +25%";svg.appendChild(a);
+  const b=el("text",{x:L,y:35,class:"axis",fill:"var(--pass)","font-size":"11.5",
+    "font-weight":"700"});
+  b.textContent="solid bar: share returning more than +50%";svg.appendChild(b);
+}
+
+function drawCalmar(){
+  const svg=document.getElementById("calmar");svg.textContent="";
+  const W=1000,H=320,L=196,R=64,T=46,B=44;
+  const iw=W-L-R,ih=H-T-B;
+  const items=CH7.filter(d=>!d.g);
+  const full=items.slice(0,4), val=items.slice(4);
+  const names=full.map(d=>d.k);
+  const rh=ih/names.length, max=2.0;
+  const x=v=>L+(v/max)*iw;
+  [0,0.5,1.0,1.5,2.0].forEach(v=>{
+    svg.appendChild(el("line",{x1:x(v),x2:x(v),y1:T,y2:T+ih,class:"gridline"}));
+    const t=el("text",{x:x(v),y:H-16,class:"axis","text-anchor":"middle"});
+    t.textContent=v.toFixed(1);svg.appendChild(t);
+  });
+  names.forEach((name,i)=>{
+    const cy=T+i*rh+rh/2;
+    [[full[i].cal,"var(--accent)",-1],[val[i].cal,"var(--ink-3)",1]].forEach(spec=>{
+      const [v,fill,side]=spec;
+      svg.appendChild(el("rect",{x:L,y:cy+(side<0?-rh*0.30:rh*0.02),
+        width:Math.max(x(v)-L,1),height:rh*0.26,rx:2,fill,
+        opacity:side<0?1:.45}));
+      const t=el("text",{x:x(v)+7,y:cy+(side<0?-rh*0.30:rh*0.02)+rh*0.20,class:"axis",
+        fill:side<0?"var(--accent)":"var(--ink-3)","font-weight":side<0?"700":"400"});
+      t.textContent=v.toFixed(3);svg.appendChild(t);
+    });
+    const lab=el("text",{x:L-14,y:cy+4,class:"axis","text-anchor":"end",
+      fill:"var(--ink)","font-size":"12.5"});
+    lab.textContent=name;svg.appendChild(lab);
+  });
+  const a=el("text",{x:L,y:20,class:"axis",fill:"var(--accent)","font-size":"11.5",
+    "font-weight":"700"});
+  a.textContent="solid: full period 2017+";svg.appendChild(a);
+  const b=el("text",{x:L,y:35,class:"axis",fill:"var(--ink-3)","font-size":"11.5"});
+  b.textContent="pale: 2023+ validation slice";svg.appendChild(b);
+}
+
+document.getElementById("ch7").innerHTML=CH7.map(d=>{
+  if(d.g) return '<tr class="group"><td colspan="6">'+d.g+'</td></tr>';
+  const hi=d.k==="Conviction priority"?' class="hi"':'';
+  return '<tr'+hi+'><td>'+d.k+' <span style="color:var(--ink-3);font-size:12px">'+d.s+
+    '</span></td><td>'+d.n+'</td><td>'+d.r.toFixed(2)+'</td><td class="up">'+
+    d.c.toFixed(2)+'%</td><td class="down">'+d.d.toFixed(2)+'%</td><td>'+
+    d.cal.toFixed(3)+'</td></tr>';
+}).join("");
+
+function drawAll(){drawTail();drawCalmar();}
+drawAll();
+let t;addEventListener("resize",()=>{clearTimeout(t);t=setTimeout(drawAll,150);});
+</script>
