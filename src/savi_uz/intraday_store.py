@@ -100,6 +100,11 @@ class IntradayStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.connection = sqlite3.connect(self.path)
         self.connection.execute("PRAGMA journal_mode=WAL")
+        # WAL admits one writer at a time. Without a busy timeout a second
+        # writer -- a metadata refresh alongside a long download -- fails the
+        # first call outright rather than waiting the moment out, which killed
+        # a multi-hour run.
+        self.connection.execute("PRAGMA busy_timeout=60000")
         self.connection.executescript(SCHEMA)
         self.connection.commit()
 
