@@ -106,7 +106,11 @@ def confirmed_entries(bars: list[Bar], minimum: float):
     prices: dict[int, float] = {}
     for index in range(len(bars) - 1):
         bar, level = bars[index], highs[index]
-        if math.isnan(level) or bar.high <= level:
+        # Confirmation means the bar *closed* beyond the channel, matching the
+        # engine's own close-confirm rule. Requiring only that the high breached
+        # it admits every failed breakout that poked through and closed back
+        # inside, which is a different and much worse strategy.
+        if math.isnan(level) or bar.close <= level:
             continue
         span = bar.high - bar.low
         location = (bar.close - bar.low) / span if span > 0 else 0.5

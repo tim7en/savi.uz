@@ -30,6 +30,7 @@ import json
 import pathlib
 import sqlite3
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -116,11 +117,38 @@ def trading_days(bars_path: pathlib.Path, symbol: str, start: str, end: str):
     return closes
 
 
+class _Pacer:
+    """Even spacing between request starts, shared across worker threads.
+
+    Backing off only *after* the vendor complains is too late: a burst above the
+    account's per-minute allowance gets the whole run throttled, and throughput
+    then collapses to a fraction of the nominal rate for hours. Spacing the
+    starts keeps the run inside the allowance instead of recovering from it.
+    """
+
+    def __init__(self, requests_per_minute: float):
+        self.interval = 60.0 / max(requests_per_minute, 1e-9)
+        self.lock = threading.Lock()
+        self.next_at = 0.0
+
+    def wait(self) -> None:
+        with self.lock:
+            now = time.monotonic()
+            delay = max(0.0, self.next_at - now)
+            self.next_at = max(now, self.next_at) + self.interval
+        if delay:
+            time.sleep(delay)
+
+
+PACER = _Pacer(70.0)
+
+
 def fetch(symbol: str, day: str, key: str, attempts: int = 4):
     params = {"function": "HISTORICAL_OPTIONS", "symbol": symbol,
               "date": day, "apikey": key}
     url = f"{ENDPOINT}?{urllib.parse.urlencode(params)}"
     for attempt in range(attempts):
+        PACER.wait()
         try:
             with urllib.request.urlopen(url, timeout=60) as response:
                 payload = json.loads(response.read().decode())

@@ -128,7 +128,7 @@
   <p class="standfirst">A breakout that spikes through the channel and closes near
   the low of its own bar is not a weak signal. It is a losing one — it stops out
   86.8% of the time. This is the largest conditional effect measured anywhere in
-  the programme, and it may still be untradeable.</p>
+  the programme. It is also untradeable — acting on it costs more than it pays.</p>
 
   <div class="tallies">
     <div class="tally"><b class="t-cold">&minus;1.203R</b>
@@ -137,8 +137,8 @@
       <span>mean, bars closing in the top 8%</span></div>
     <div class="tally"><b>+14.2pp</b>
       <span>right-tail gap, top quintile minus bottom</span></div>
-    <div class="tally"><b class="t-mid">72%</b>
-      <span>of breakouts refused — the book is full</span></div>
+    <div class="tally"><b class="t-cold">0.19</b>
+      <span>Sharpe at the 10bp taker cost this strategy actually pays</span></div>
   </div>
 </header>
 
@@ -198,10 +198,54 @@
     against close-confirm's <strong>0.22</strong> — about <strong>0.37 Sharpe</strong>
     given up to make the bar observable. So the question is whether a +2.343R
     selection effect is worth more than the entry it costs.</p>
-    <p>Volume already answered this shape of question with a no: filtered
-    close-confirm recovered roughly what the entry change cost and netted to a wash
-    against plain stop entry. Close location is a far larger effect, so it gets its
-    own answer rather than an inherited one. <span class="verdict v-open">test running</span></p>
+    <p>Volume already answered this shape of question with a no. Close location is
+    a far larger effect, so it got its own answer.
+    <span class="verdict v-fail">Answered &mdash; it fails</span></p>
+  </div>
+  <div class="scroll">
+    <table>
+      <caption>Filtered close-confirm against plain stop entry. Both legs of this
+      strategy are stop orders, so 10bp taker is the cost that actually applies.</caption>
+      <thead><tr><th>Arm</th><th>Sharpe @ 5bp</th><th>vs stop</th>
+      <th>Sharpe @ 10bp</th><th>vs stop</th></tr></thead>
+      <tbody>
+        <tr class="hi"><td>Stop entry, every breakout</td><td class="hot">0.79</td>
+          <td class="dim">&mdash;</td><td>0.19</td><td class="dim">&mdash;</td></tr>
+        <tr><td>Close confirm, no filter</td><td class="cold">&minus;0.10</td>
+          <td class="cold">&minus;0.89</td><td class="cold">&minus;0.72</td>
+          <td class="cold">&minus;0.91</td></tr>
+        <tr><td>Close confirm, close &ge; 0.34</td><td class="cold">&minus;0.09</td>
+          <td class="cold">&minus;0.88</td><td class="cold">&minus;0.65</td>
+          <td class="cold">&minus;0.84</td></tr>
+        <tr><td>Close confirm, close &ge; 0.62 <span class="dim">(best)</span></td>
+          <td>0.06</td><td class="cold">&minus;0.73</td>
+          <td class="cold">&minus;0.65</td><td class="cold">&minus;0.84</td></tr>
+        <tr><td>Close confirm, close &ge; 0.80</td><td class="cold">&minus;0.03</td>
+          <td class="cold">&minus;0.82</td><td class="cold">&minus;0.57</td>
+          <td class="cold">&minus;0.76</td></tr>
+        <tr><td>Close confirm, close &ge; 0.92</td><td class="cold">&minus;0.03</td>
+          <td class="cold">&minus;0.82</td><td class="cold">&minus;0.67</td>
+          <td class="cold">&minus;0.86</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note"><strong>The threshold response is non-monotonic</strong> &mdash;
+  &minus;0.09, +0.06, &minus;0.03, &minus;0.03 &mdash; peaking at 0.62 and falling
+  away at tighter cutoffs. That is the same inverted-U that condemned theme trend
+  strength, so even the +0.06 is the best cell of a small sweep rather than a
+  signal. And the entry costs more than flat slippage: close-confirm produced
+  70,261 trades against stop entry's 51,759, because paying up at the next open
+  puts the fixed 2N stop proportionally tighter and you stop out more often.</p>
+  <div class="card k-cold">
+    <h3>The number the whole programme turns on</h3>
+    <p>A stop order is a taker: when a buy-stop triggers it becomes a market order.
+    The chandelier exit is also a stop. <strong>This strategy is taker on both legs,
+    so 10bp is its real cost, not 5bp.</strong></p>
+    <p>At 10bp, plain stop entry scores <strong>0.19</strong>, with a
+    5&ndash;95% band of <strong>[&minus;0.02 to 0.32]</strong> across capacity
+    orderings. The band includes zero. Every other figure on this page &mdash;
+    including the moving-average rule's 0.84 &mdash; is quoted at 5bp maker, which
+    this entry mechanism cannot obtain.</p>
   </div>
 </section>
 
@@ -279,10 +323,10 @@
 <section>
   <h2>What still has to happen</h2>
   <ol>
-    <li><strong>Finish the close-location entry test.</strong> Filtered
-    close-confirm against plain stop entry at 5bp and 10bp. If it does not clear
-    plain stop entry, the largest effect in the programme is real and unusable, and
-    that is the finding.</li>
+    <li><strong>Re-price everything at 10bp.</strong> Both legs are stop orders and
+    therefore taker fills. Plain stop entry scores 0.19 there with a band spanning
+    zero, so every 5bp figure in the programme &mdash; including the moving-average
+    rule &mdash; needs restating before any of it is bankable.</li>
     <li><strong>Per-year consistency on the moving-average rule.</strong> The
     standing contract requires seven years in ten and only the aggregate has been
     measured.</li>
