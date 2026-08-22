@@ -35,6 +35,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 
@@ -84,6 +85,9 @@ def parse_args(argv=None):
                              "per-contract table -- the daily features are what "
                              "the strategy consumes, and the contract rows cost "
                              "roughly a gigabyte per symbol-pair")
+    parser.add_argument("--targets", type=pathlib.Path, default=None,
+                        help="JSON list of [symbol, date] pairs to fetch, instead "
+                             "of every session in a date range")
     parser.add_argument("--limit", type=int, default=0, help="stop after N fetches")
     return parser.parse_args(argv)
 
@@ -226,17 +230,33 @@ def main(argv=None):
     store.commit()
 
     todo = []
-    for symbol in args.symbols:
-        closes = trading_days(args.bars, symbol, args.start, args.end)
-        have = {d for (d,) in store.execute(
-            "SELECT observation_date FROM av_daily WHERE symbol=?", (symbol,))}
-        for day, spot in sorted(closes.items()):
-            if day not in have:
-                todo.append((symbol, day, spot))
+    if args.targets:
+        # An explicit (symbol, date) list: fetch only the sessions an event study
+        # actually needs, rather than every session in a range. Spot still comes
+        # from the bar store, so a pair with no bar is skipped rather than guessed.
+        wanted = defaultdict(set)
+        for symbol, day in json.loads(args.targets.read_text(encoding="utf-8")):
+            wanted[symbol].add(day)
+        for symbol in sorted(wanted):
+            closes = trading_days(args.bars, symbol, "2000-01-01", "2100-01-01")
+            have = {d for (d,) in store.execute(
+                "SELECT observation_date FROM av_daily WHERE symbol=?", (symbol,))}
+            for day in sorted(wanted[symbol]):
+                if day not in have and day in closes:
+                    todo.append((symbol, day, closes[day]))
+    else:
+        for symbol in args.symbols:
+            closes = trading_days(args.bars, symbol, args.start, args.end)
+            have = {d for (d,) in store.execute(
+                "SELECT observation_date FROM av_daily WHERE symbol=?", (symbol,))}
+            for day, spot in sorted(closes.items()):
+                if day not in have:
+                    todo.append((symbol, day, spot))
     if args.limit:
         todo = todo[:args.limit]
-    print(f"{len(todo):,} (symbol, session) pairs to fetch "
-          f"across {args.symbols}", flush=True)
+    scope = (f"from {args.targets}" if args.targets
+             else f"across {len(args.symbols)} symbols")
+    print(f"{len(todo):,} (symbol, session) pairs to fetch {scope}", flush=True)
     if not todo:
         return 0
 
