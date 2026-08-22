@@ -535,7 +535,7 @@
 </section>
 
 <section>
-  <h2>The one that survived</h2>
+  <h2>The volatility surprise, and how it came apart</h2>
   <p>The proposition: a session closing outside what the options priced is
   information, not noise, and should therefore <em>continue</em> rather than
   revert. Testing it required fixing a mistake in the earlier study &mdash;
@@ -846,7 +846,7 @@
 </section>
 
 <section>
-  <h2>What 20x does to the surviving candidate</h2>
+  <h2>What 20x does to it</h2>
   <p>The strategy was then sized properly &mdash; a risk budget divided by the
   stop, capped at the venue's twenty times. The result is the clearest answer to
   the leverage question anywhere in this ledger.</p>
@@ -1107,7 +1107,7 @@
 </section>
 
 <section>
-  <h2>What running it would actually look like, on $10,000</h2>
+  <h2>Running it on $10,000: the rule, the fees, and adding money</h2>
   <p class="lede">Everything above is measured in Sharpe and deviations, which
   is the right language for deciding whether an effect is real and the wrong one
   for deciding whether to get out of bed. This is the same rule written as a
@@ -1218,6 +1218,104 @@
     identical exits scored better &mdash; 2.13 against 1.93. The same book scored
     0.14 in 1999&ndash;2012 and 1.06 in 2013&ndash;2026.</p>
   </div>
+
+  <h3>What the fees take, and why they barely bite here</h3>
+  <p>Those returns are after cost: <b>10bp round trip, taker on both legs</b>.
+  That is the correct charge and it cannot be lowered. The entry is a market
+  order at the next open, a taker by construction; the exit is a time exit or a
+  stop, both market orders. Neither leg can rest as a limit, so there is no
+  cheaper version of this trade &mdash; the same structural fact that decided the
+  bracket study.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>The same book at four fee levels, 1% risk per position.</caption>
+      <thead>
+        <tr><th>Round trip</th><th>Cost per trade</th><th>Mean R</th>
+          <th>Return a year</th><th>&times; money</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0bp &mdash; free</td><td>0.0000R</td><td>+0.264</td>
+          <td>+22.7%</td><td>15.6&times;</td></tr>
+        <tr><td>5bp</td><td>0.0108R</td><td>+0.253</td><td>+21.5%</td>
+          <td>13.7&times;</td></tr>
+        <tr class="hi"><td>10bp &mdash; what is charged</td><td>0.0217R</td>
+          <td>+0.241</td><td>+20.3%</td><td>12.0&times;</td></tr>
+        <tr><td>20bp</td><td>0.0434R</td><td>+0.218</td><td>+17.9%</td>
+          <td>9.2&times;</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Trading for free would earn 22.7% instead of 20.3% &mdash; a drag of 2.4
+  points. This is the one strategy in this ledger where execution cost is not the
+  binding constraint, and the cost curve above says exactly why. The stop sits
+  <b>4.61% of price</b> away, so <code>0.10% &divide; 4.61% = 0.0217R</code>. The
+  scalp's stop sat at 0.23%, so the identical fee cost it <code>0.43R</code>
+  &mdash; <b>twenty times the damage from the same fee</b>, purely because the
+  stop was twenty times tighter.</p>
+
+  <p class="note">It does not rescue anything. At <em>zero</em> fees the book
+  still returns 22.7% against a drift null of 2.13 versus its own 1.93 on a
+  risk-adjusted basis. The problem was never the fees.</p>
+
+  <h3>Adding $1,000 when the account is down</h3>
+  <p>A natural instinct, and separable from the reserve-deployment idea that
+  failed earlier: that one redeployed capital already in the pot, which is a
+  martingale. This adds outside money, which raises terminal wealth whenever the
+  strategy recovers. That is arithmetic, not edge &mdash; so the arms are scored
+  by return <em>per dollar contributed</em>, which cannot be gamed by
+  contributing more.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>Depositing $1,000 on the way down, 2013&ndash;2026. A 20%
+      drawdown arrived six times in 13.4 years &mdash; once every 2.2 years;
+      a 30% drawdown twice; a 40% drawdown once.</caption>
+      <thead>
+        <tr><th>Rule</th><th>Deposits</th><th>Paid in</th><th>Ending value</th>
+          <th>Per dollar</th><th>Worst drop</th></tr>
+      </thead>
+      <tbody>
+        <tr class="hi"><td>no deposits</td><td>0</td><td>$10,000</td>
+          <td>$119,717</td><td class="up">20.3%</td><td>&minus;45.3%</td></tr>
+        <tr><td>deposit at 20% down</td><td>6</td><td>$16,000</td>
+          <td>$139,578</td><td>20.1%</td><td>&minus;44.6%</td></tr>
+        <tr><td>deposit at 30% down</td><td>2</td><td>$12,000</td>
+          <td>$129,467</td><td>20.3%</td><td>&minus;44.5%</td></tr>
+        <tr><td>tiered at 20 / 30 / 40%</td><td>10</td><td>$20,000</td>
+          <td>$159,393</td><td>20.3%</td><td>&minus;43.2%</td></tr>
+        <tr><td class="indent">same six, evenly spaced (control)</td><td>6</td>
+          <td>$16,000</td><td>$138,834</td><td class="dim">19.9%</td>
+          <td>&minus;44.6%</td></tr>
+        <tr><td class="indent">same count, at new highs (reversal)</td><td>3</td>
+          <td>$13,000</td><td>$136,585</td><td class="dim">19.8%</td>
+          <td>&minus;45.3%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="split">
+    <div class="card k-lo">
+      <h3>The timing earns nothing</h3>
+      <p>Depositing into drawdowns, depositing on a calendar, and depositing at
+      the <em>highs</em> all land within 0.3 points of each other &mdash; and
+      none of them beats putting nothing extra in. Ending value climbs from
+      $119,717 to $159,393 only because twice as much money went in.</p>
+    </div>
+    <div class="card k-mid">
+      <h3>The multiple actually falls</h3>
+      <p>$10,000 alone became $119,717, a <b>12.0&times;</b> multiple. $20,000
+      with the deposits became $159,393, a <b>8.0&times;</b> multiple. The later
+      dollars had less time to compound. Paying in grows the account; choosing
+      <em>when</em> to pay in does not.</p>
+    </div>
+  </div>
+
+  <p class="note">Two practical notes the table hides. It barely reduces risk
+  &mdash; &minus;45.3% becomes &minus;44.6%. And every one of those six dates
+  &mdash; October 2015, March and December 2018, March 2020, February 2022,
+  March 2025 &mdash; was a week when adding money looked like the wrong idea.</p>
 </section>
 
 <section>
@@ -1250,9 +1348,9 @@
   42 US-listed names on split-adjusted five-minute bars, 2017&ndash;2026, resampled
   session-anchored; 143 names on split-adjusted daily bars, 1999&ndash;2026, for the
   model's wide cut. Option features are end-of-day chain snapshots read one session
-  in arrears. Long only except where a short arm is named. Costs are per leg &mdash;
-  5bp taker, 2.5bp maker &mdash; charged by the order type that actually fills each
-  leg. Every arm is matched to an 18% median drawdown before its return is read, and
+  in arrears. Long only except where a short arm is named. Costs are per leg &mdash; 5bp taker, 2.5bp maker &mdash; charged by the order
+  type that actually fills each leg, so a strategy whose entry can only be a
+  market order pays taker twice and there is no cheaper version of it. Every arm is matched to an 18% median drawdown before its return is read, and
   Sharpe bands are the 5th to 95th percentile over twenty capacity orderings, so an
   unpaired difference inside a band settles nothing. Where both stop and target are
   touched inside one bar the order is unknowable and the stop is charged. The 42-name
