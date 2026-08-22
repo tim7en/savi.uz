@@ -1,4 +1,4 @@
-<title>Six Proposals, One Survivor</title>
+<title>Six Proposals, No Survivor</title>
 <style>
   :root{
     color-scheme:light;
@@ -116,16 +116,17 @@
 
 <header>
   <p class="eyebrow">Session ledger &middot; 42 US names intraday, 143 daily &middot; 2017&ndash;2026 &middot; per-leg execution costs</p>
-  <h1>Six Proposals, One Survivor</h1>
+  <h1>Six Proposals, No Survivor</h1>
   <p class="standfirst">Six ways to improve the book were tested in one sitting:
   a machine-learned trade filter, a leveraged 3:1 scalp, support and resistance
   zones, 20x leverage, a volatility-surprise trade, and option activity as a
-  trend signal. Five died on their controls. The two things that turned out to
-  matter were never about picking the trade at all.</p>
+  trend signal. Five died on their controls. The sixth looked like it had
+  survived until its null was drawn enough times to see how wide it was. The two
+  things that did change the result were never about picking the trade at all.</p>
 
   <div class="tallies">
-    <div class="tally"><b class="t-hi">2.59</b>
-      <span>3&times; vol surprise, long, against a 0.83 drift null</span></div>
+    <div class="tally"><b class="t-lo">[&minus;3.3, 4.1]</b>
+      <span>drift null on the surprise book &mdash; it contains the book</span></div>
     <div class="tally"><b class="t-mid">1.08</b>
       <span>Sharpe lost to the entry order type alone</span></div>
     <div class="tally"><b class="t-lo">0.20x</b>
@@ -166,9 +167,9 @@
           <td class="down">&minus;99.7%, supports 0.20x</td>
           <td><span class="verdict v-fail">failed</span></td></tr>
         <tr class="hi"><td>Follow a move beyond 3&times; implied vol</td>
-          <td class="dim">a matched drift null</td>
-          <td class="up">2.59 against a null of 0.83</td>
-          <td><span class="verdict v-pass">survived</span></td></tr>
+          <td class="dim">a drift null, drawn 25 times, out of sample</td>
+          <td class="down">2.74 inside a null band of [&minus;3.3, 4.1]</td>
+          <td><span class="verdict v-open">unresolved</span></td></tr>
         <tr><td>Option activity as a trend-strength signal</td>
           <td class="dim">within-name, over time</td>
           <td class="down">negative on every measure</td>
@@ -462,13 +463,6 @@
   </div>
 
   <div class="split">
-    <div class="card k-hi">
-      <h3>It clears its null</h3>
-      <p>The drift null captures 0.83 of 2.59 &mdash; 32% of the Sharpe, 25% of
-      the mean R. For comparison, random entries captured 63&ndash;75% of the
-      breakout book's result. This is the best-controlled positive finding of
-      the session.</p>
-    </div>
     <div class="card k-mid">
       <h3>Both ways, one side tradeable</h3>
       <p>The short arm beats its own null (&minus;0.09 against &minus;0.79), and
@@ -476,13 +470,73 @@
       It still lands at zero. The information is there and is bigger on the down
       side; drift and cost consume all of it.</p>
     </div>
+    <div class="card k-lo">
+      <h3>Then the split was run</h3>
+      <p>Parameters chosen on 2017&ndash;2021, frozen, evaluated on
+      2022&ndash;2026. The book scored <b>2.74</b> out of sample on 230 trades.
+      Its drift null, drawn twenty-five times instead of five, came back at
+      <b>1.09 with a band of [&minus;3.33, 4.07]</b>. The band contains the book.</p>
+    </div>
   </div>
 
-  <p class="note">This is very likely post-earnings-announcement drift. A 3&times;
-  implied move is nearly always an earnings surprise or a major announcement, and
-  PEAD is among the most replicated anomalies there is. That makes the result more
-  plausible, not less &mdash; but the honest next test is whether it survives
-  outside earnings windows.</p>
+  <p>The earlier reading &mdash; 2.59 against a null of 0.83 &mdash; rested on a
+  five-draw null band. Drawing it properly showed the estimator's true dispersion
+  on a 230-trade sample, and it is enormous. Nothing about the signal was
+  disproved; the test simply cannot resolve it at this sample size, which is a
+  different and more honest statement than either "it works" or "it fails".</p>
+
+  <p class="note">Two things still stand. The effect is very likely
+  post-earnings-announcement drift &mdash; a 3&times; implied move is nearly
+  always an earnings surprise, and PEAD is among the most replicated anomalies
+  there is. And the signal is <em>structurally taker-only</em>: a patient limit
+  resting half an implied move below the next open filled just 48 of 230 times,
+  because a momentum signal runs away from a limit underneath it. There is no
+  maker version of this trade to be had.</p>
+</section>
+
+<section>
+  <h2>What 20x does to the surviving candidate</h2>
+  <p>The strategy was then sized properly &mdash; a risk budget divided by the
+  stop, capped at the venue's twenty times. The result is the clearest answer to
+  the leverage question anywhere in this ledger.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>The out-of-sample book, 226 trades taken, sized fixed-fractional
+      with a 20x per-position cap.</caption>
+      <thead>
+        <tr><th>Risk per trade</th><th>Max drawdown</th><th>CAGR</th><th>Sharpe</th>
+          <th>Median leverage</th><th>Max used</th><th>Times capped</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0.5%</td><td>&minus;4.6%</td><td>4.7%</td><td>2.65</td>
+          <td>0.12x</td><td>2.73x</td><td class="dim">0.0%</td></tr>
+        <tr><td>1.0%</td><td>&minus;9.1%</td><td>9.3%</td><td>2.65</td>
+          <td>0.23x</td><td>5.47x</td><td class="dim">0.0%</td></tr>
+        <tr><td>2.0%</td><td>&minus;17.5%</td><td>18.7%</td><td>2.65</td>
+          <td>0.46x</td><td>10.94x</td><td class="dim">0.0%</td></tr>
+        <tr class="hi"><td>3.0%</td><td>&minus;25.2%</td><td>27.9%</td><td>2.65</td>
+          <td>0.69x</td><td>16.40x</td><td class="dim">0.0%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Sharpe is <b>2.65 at every rung</b> &mdash; the cleanest possible
+  demonstration that leverage scales mean and volatility together and leaves the
+  ratio alone. And the 20x cap is never reached: not once, at any risk budget.
+  The median stop is 4.33% of price, so putting 20x on a median trade would mean
+  risking <b>86.6% of the account</b> on it.</p>
+
+  <div class="card k-lo">
+    <h3>Why 20x is unreachable here, and where it would live</h3>
+    <p>Leverage is a risk budget divided by a stop distance. To use 20x you need
+    stops of a few basis points, and cost in R is the round trip divided by that
+    same stop &mdash; so a stop tight enough for 20x makes a 10bp round trip cost
+    most of the risk unit. The scalp study measured this directly: at a 0.5N stop
+    the round trip costs 0.43R. Tight stops need maker fills to survive, and a
+    momentum entry cannot be a maker fill. The chain closes: <b>this signal
+    forbids 20x</b>, and no sizing rule can be clever enough to get around it.</p>
+  </div>
 </section>
 
 <section>
@@ -536,14 +590,16 @@
     trend breakouts, trend lines and "safety lines" &mdash; blocked on definitions
     of <em>tori trades</em> and <em>safety lines</em> before it can be specified.
     <span class="verdict v-open">blocked</span></li>
-    <li><b>Cut the vol surprise by earnings dates.</b> Decides whether the 2.59
-    is post-earnings drift or something else. <code>data/equity/equity.db</code>
-    carries an <code>analyst_earnings</code> table.
+    <li><b>Take the surprise book to the 143-name universe.</b> This is now the
+    first priority rather than the third: the out-of-sample null is uninformative
+    because 230 trades over four years cannot resolve it, and more names is the
+    only honest way to narrow the band. The signal runs on realized vol, so no
+    option chain is needed. That universe also contains the names that did not
+    recover &mdash; BHC, CHGG, RIG, TDOC. The cost is daily-resolution fills.
     <span class="verdict v-open">next</span></li>
-    <li><b>Take the surprise and the fade to the 143-name universe.</b> Both work
-    on realized vol, so neither needs an option chain. That universe contains the
-    names that did not recover &mdash; BHC, CHGG, RIG, TDOC &mdash; and it is
-    where every result here is most exposed. The cost is daily-resolution fills.
+    <li><b>Cut the vol surprise by earnings dates.</b> Decides whether it is
+    post-earnings drift or something else. <code>data/equity/equity.db</code>
+    carries an <code>analyst_earnings</code> table.
     <span class="verdict v-open">next</span></li>
     <li><b>The 120-instrument intraday universe is missing.</b>
     <code>bars_av.db</code> is neither on disk nor inside <code>data.rar</code>;
