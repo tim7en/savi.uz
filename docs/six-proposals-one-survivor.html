@@ -1,4 +1,4 @@
-<title>Six Proposals, No Survivor</title>
+<title>Six Proposals, One Survivor</title>
 <style>
   :root{
     color-scheme:light;
@@ -110,27 +110,68 @@
   a{color:var(--accent)}
   a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+  figure{margin:0;display:flex;flex-direction:column;gap:11px}
+  figcaption{font-size:13px;color:var(--ink-3);max-width:74ch}
+  .plate{background:var(--surface);border:1px solid var(--rule);padding:22px;
+         overflow-x:auto}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .axis{font-family:var(--mono);font-size:10.5px;fill:var(--ink-3);
+        font-variant-numeric:tabular-nums}
+  .gridline{stroke:var(--rule);stroke-width:1}
+  .zero{stroke:var(--ink-3);stroke-width:1.4}
+
+  /* Chart palette. Validated with the dataviz six checks against both surfaces
+     (#FFFFFF and #151A1F). The worst adjacent CVD pair sits in the 6-8 band, so
+     every series carries a direct label as well as a hue. */
+  :root{--c1:#1A6FA8;--c2:#C0503A;--c3:#0E8A66}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --c1:#3D93DB;--c2:#E06E52;--c3:#10A87F}}
+  :root[data-theme="dark"]{--c1:#3D93DB;--c2:#E06E52;--c3:#10A87F}
+  :root[data-theme="light"]{--c1:#1A6FA8;--c2:#C0503A;--c3:#0E8A66}
+
+  .axis.dim{fill:var(--ink-3)}
+  .axis.strong{fill:var(--ink);font-weight:700}
+  .val{fill:var(--ink-2);font-family:var(--mono);font-size:11px;
+       font-variant-numeric:tabular-nums}
+  .dot-null{fill:var(--ink-3);opacity:.55}
+  .dot-over{fill:var(--c2)}
+  .mark-book{stroke:var(--c1);stroke-width:2.5}
+  .lab-book{fill:var(--c1);font-family:var(--mono);font-size:12.5px;font-weight:700}
+  .lab-null{fill:var(--ink-3);font-family:var(--mono);font-size:11px}
+  .bar-up{fill:var(--c1)}
+  .bar-dn{fill:var(--c2)}
+  .mark-drift{stroke:var(--c3);stroke-width:2;stroke-dasharray:5 4}
+  .lab-drift{fill:var(--c3);font-family:var(--mono);font-size:11px;font-weight:600}
+  .line-taker{fill:none;stroke:var(--c2);stroke-width:2}
+  .line-maker{fill:none;stroke:var(--c1);stroke-width:2}
+  .lab-taker{fill:var(--c2);font-family:var(--mono);font-size:12.5px;font-weight:700}
+  .lab-maker{fill:var(--c1);font-family:var(--mono);font-size:12.5px;font-weight:700}
+  .pin{fill:var(--surface);stroke:var(--ink);stroke-width:2}
+  .pin-lab{fill:var(--ink-2);font-family:var(--mono);font-size:10.5px}
+  .bar-hold{fill:var(--c1)}
+  .bar-ruin{fill:var(--c2)}
 </style>
 
 <div class="wrap">
 
 <header>
   <p class="eyebrow">Session ledger &middot; 42 US names intraday, 143 daily &middot; 2017&ndash;2026 &middot; per-leg execution costs</p>
-  <h1>Six Proposals, No Survivor</h1>
+  <h1>Six Proposals, One Survivor</h1>
   <p class="standfirst">Six ways to improve the book were tested in one sitting:
   a machine-learned trade filter, a leveraged 3:1 scalp, support and resistance
   zones, 20x leverage, a volatility-surprise trade, and option activity as a
-  trend signal. Five died on their controls. The sixth looked like it had
-  survived until its null was drawn enough times to see how wide it was. The two
-  things that did change the result were never about picking the trade at all.</p>
+  trend signal. Five died on their controls. The sixth survived, narrowly, and
+  only once the control was drawn enough times to be trusted. The two things
+  that moved the result most were never about picking the trade at all.</p>
 
   <div class="tallies">
-    <div class="tally"><b class="t-lo">[&minus;3.3, 4.1]</b>
-      <span>drift null on the surprise book &mdash; it contains the book</span></div>
+    <div class="tally"><b class="t-hi">46 / 50</b>
+      <span>drift-null draws the surprise book beat, out of sample</span></div>
     <div class="tally"><b class="t-mid">1.08</b>
       <span>Sharpe lost to the entry order type alone</span></div>
-    <div class="tally"><b class="t-lo">0.20x</b>
-      <span>leverage the fade supports, against 20x proposed</span></div>
+    <div class="tally"><b class="t-lo">0.0%</b>
+      <span>of trades that ever reach the 20x cap, at any risk budget</span></div>
     <div class="tally"><b class="t-lo">&minus;0.015</b>
       <span>out-of-sample IC of the trade-selection model</span></div>
   </div>
@@ -167,9 +208,9 @@
           <td class="down">&minus;99.7%, supports 0.20x</td>
           <td><span class="verdict v-fail">failed</span></td></tr>
         <tr class="hi"><td>Follow a move beyond 3&times; implied vol</td>
-          <td class="dim">a drift null, drawn 25 times, out of sample</td>
-          <td class="down">2.74 inside a null band of [&minus;3.3, 4.1]</td>
-          <td><span class="verdict v-open">unresolved</span></td></tr>
+          <td class="dim">a 50-draw drift null, out of sample</td>
+          <td class="up">2.74 against a null median of 1.01, p = 0.08</td>
+          <td><span class="verdict v-pass">survived</span></td></tr>
         <tr><td>Option activity as a trend-strength signal</td>
           <td class="dim">within-name, over time</td>
           <td class="down">negative on every measure</td>
@@ -270,6 +311,48 @@
     pay a third of your risk unit in fees.</p>
   </div>
 
+  <figure>
+    <div class="plate">
+<svg viewBox="0 0 1000 330" role="img" aria-label="Round-trip cost in units of risk against stop distance">
+<line class="gridline" x1="66" y1="260.0" x2="970" y2="260.0"/>
+<text class="axis" x="56" y="264.0" text-anchor="end">0.0R</text>
+<line class="gridline" x1="66" y1="207.7" x2="970" y2="207.7"/>
+<text class="axis" x="56" y="211.7" text-anchor="end">0.5R</text>
+<line class="gridline" x1="66" y1="155.5" x2="970" y2="155.5"/>
+<text class="axis" x="56" y="159.5" text-anchor="end">1.0R</text>
+<line class="gridline" x1="66" y1="103.2" x2="970" y2="103.2"/>
+<text class="axis" x="56" y="107.2" text-anchor="end">1.5R</text>
+<line class="gridline" x1="66" y1="50.9" x2="970" y2="50.9"/>
+<text class="axis" x="56" y="54.9" text-anchor="end">2.0R</text>
+<text class="axis" x="106.3" y="284" text-anchor="middle">0.05%</text>
+<text class="axis" x="231.3" y="284" text-anchor="middle">0.1%</text>
+<text class="axis" x="381.6" y="284" text-anchor="middle">0.23%</text>
+<text class="axis" x="521.7" y="284" text-anchor="middle">0.5%</text>
+<text class="axis" x="629.7" y="284" text-anchor="middle">0.91%</text>
+<text class="axis" x="771.8" y="284" text-anchor="middle">2%</text>
+<text class="axis" x="911.1" y="284" text-anchor="middle">4.33%</text>
+<polyline class="line-taker" points="92.7,34.5 98.0,41.1 103.3,47.5 108.7,53.7 114.0,59.7 119.3,65.5 124.7,71.2 130.0,76.7 135.3,82.0 140.7,87.2 146.0,92.2 151.3,97.1 156.7,101.9 162.0,106.5 167.3,110.9 172.7,115.3 178.0,119.5 183.3,123.6 188.7,127.6 194.0,131.4 199.3,135.2 204.7,138.8 210.0,142.3 215.3,145.8 220.7,149.1 226.0,152.3 231.3,155.5 236.7,158.5 242.0,161.5 247.3,164.3 252.7,167.1 258.0,169.8 263.3,172.4 268.6,175.0 274.0,177.5 279.3,179.9 284.6,182.2 290.0,184.5 295.3,186.7 300.6,188.8 306.0,190.9 311.3,192.9 316.6,194.9 322.0,196.8 327.3,198.6 332.6,200.4 338.0,202.1 343.3,203.8 348.6,205.4 354.0,207.0 359.3,208.6 364.6,210.1 370.0,211.5 375.3,212.9 380.6,214.3 386.0,215.6 391.3,216.9 396.6,218.2 402.0,219.4 407.3,220.6 412.6,221.7 418.0,222.8 423.3,223.9 428.6,225.0 434.0,226.0 439.3,227.0 444.6,228.0 450.0,228.9 455.3,229.8 460.6,230.7 466.0,231.5 471.3,232.4 476.6,233.2 482.0,233.9 487.3,234.7 492.6,235.4 498.0,236.2 503.3,236.8 508.6,237.5 514.0,238.2 519.3,238.8 524.6,239.4 530.0,240.0 535.3,240.6 540.6,241.2 546.0,241.7 551.3,242.3 556.6,242.8 562.0,243.3 567.3,243.8 572.6,244.2 578.0,244.7 583.3,245.1 588.6,245.6 594.0,246.0 599.3,246.4 604.6,246.8 610.0,247.2 615.3,247.6 620.6,247.9 626.0,248.3 631.3,248.6 636.6,248.9 642.0,249.3 647.3,249.6 652.6,249.9 658.0,250.2 663.3,250.5 668.6,250.7 673.9,251.0 679.3,251.3 684.6,251.5 689.9,251.8 695.3,252.0 700.6,252.2 705.9,252.5 711.3,252.7 716.6,252.9 721.9,253.1 727.3,253.3 732.6,253.5 737.9,253.7 743.3,253.9 748.6,254.1 753.9,254.2 759.3,254.4 764.6,254.6 769.9,254.7 775.3,254.9 780.6,255.0 785.9,255.2 791.3,255.3 796.6,255.4 801.9,255.6 807.3,255.7 812.6,255.8 817.9,256.0 823.3,256.1 828.6,256.2 833.9,256.3 839.3,256.4 844.6,256.5 849.9,256.6 855.3,256.7 860.6,256.8 865.9,256.9 871.3,257.0 876.6,257.1 881.9,257.2 887.3,257.2 892.6,257.3 897.9,257.4 903.3,257.5 908.6,257.6 913.9,257.6 919.3,257.7 924.6,257.8 929.9,257.8 935.3,257.9 940.6,257.9 945.9,258.0 951.3,258.1 956.6,258.1 961.9,258.2 967.3,258.2"/>
+<polyline class="line-maker" points="66.0,129.3 71.3,133.1 76.7,136.8 82.0,140.4 87.3,143.9 92.7,147.3 98.0,150.6 103.3,153.7 108.7,156.8 114.0,159.8 119.3,162.8 124.7,165.6 130.0,168.3 135.3,171.0 140.7,173.6 146.0,176.1 151.3,178.6 156.7,180.9 162.0,183.2 167.3,185.5 172.7,187.6 178.0,189.8 183.3,191.8 188.7,193.8 194.0,195.7 199.3,197.6 204.7,199.4 210.0,201.2 215.3,202.9 220.7,204.5 226.0,206.2 231.3,207.7 236.7,209.3 242.0,210.7 247.3,212.2 252.7,213.6 258.0,214.9 263.3,216.2 268.6,217.5 274.0,218.7 279.3,219.9 284.6,221.1 290.0,222.2 295.3,223.3 300.6,224.4 306.0,225.4 311.3,226.4 316.6,227.4 322.0,228.4 327.3,229.3 332.6,230.2 338.0,231.1 343.3,231.9 348.6,232.7 354.0,233.5 359.3,234.3 364.6,235.0 370.0,235.8 375.3,236.5 380.6,237.2 386.0,237.8 391.3,238.5 396.6,239.1 402.0,239.7 407.3,240.3 412.6,240.9 418.0,241.4 423.3,242.0 428.6,242.5 434.0,243.0 439.3,243.5 444.6,244.0 450.0,244.4 455.3,244.9 460.6,245.3 466.0,245.8 471.3,246.2 476.6,246.6 482.0,247.0 487.3,247.4 492.6,247.7 498.0,248.1 503.3,248.4 508.6,248.8 514.0,249.1 519.3,249.4 524.6,249.7 530.0,250.0 535.3,250.3 540.6,250.6 546.0,250.9 551.3,251.1 556.6,251.4 562.0,251.6 567.3,251.9 572.6,252.1 578.0,252.3 583.3,252.6 588.6,252.8 594.0,253.0 599.3,253.2 604.6,253.4 610.0,253.6 615.3,253.8 620.6,254.0 626.0,254.1 631.3,254.3 636.6,254.5 642.0,254.6 647.3,254.8 652.6,254.9 658.0,255.1 663.3,255.2 668.6,255.4 673.9,255.5 679.3,255.6 684.6,255.8 689.9,255.9 695.3,256.0 700.6,256.1 705.9,256.2 711.3,256.3 716.6,256.5 721.9,256.6 727.3,256.7 732.6,256.8 737.9,256.8 743.3,256.9 748.6,257.0 753.9,257.1 759.3,257.2 764.6,257.3 769.9,257.4 775.3,257.4 780.6,257.5 785.9,257.6 791.3,257.7 796.6,257.7 801.9,257.8 807.3,257.9 812.6,257.9 817.9,258.0 823.3,258.0 828.6,258.1 833.9,258.1 839.3,258.2 844.6,258.3 849.9,258.3 855.3,258.4 860.6,258.4 865.9,258.4 871.3,258.5 876.6,258.5 881.9,258.6 887.3,258.6 892.6,258.7 897.9,258.7 903.3,258.7 908.6,258.8 913.9,258.8 919.3,258.8 924.6,258.9 929.9,258.9 935.3,258.9 940.6,259.0 945.9,259.0 951.3,259.0 956.6,259.1 961.9,259.1 967.3,259.1"/>
+<text class="lab-taker" x="316.1" y="184.7">10bp taker</text>
+<text class="lab-maker" x="452.1" y="239.1">5bp maker</text>
+<circle class="pin" cx="106.3" cy="50.9" r="6"><title>20x needs this stop: stop 0.05% of price, so a 10bp round trip costs 2.00R</title></circle>
+<text class="pin-lab" x="116.3" y="36.9" text-anchor="start">20x needs this stop &#183; 2.00R</text>
+<circle class="pin" cx="381.6" cy="214.5" r="6"><title>0.5N scalp stop: stop 0.23% of price, so a 10bp round trip costs 0.43R</title></circle>
+<text class="pin-lab" x="391.6" y="200.5" text-anchor="start">0.5N scalp stop &#183; 0.43R</text>
+<circle class="pin" cx="629.7" cy="248.5" r="6"><title>2N scalp stop: stop 0.91% of price, so a 10bp round trip costs 0.11R</title></circle>
+<text class="pin-lab" x="619.7" y="270.5" text-anchor="end">2N scalp stop &#183; 0.11R</text>
+<circle class="pin" cx="911.1" cy="257.6" r="6"><title>surprise book stop: stop 4.33% of price, so a 10bp round trip costs 0.02R</title></circle>
+<text class="pin-lab" x="901.1" y="279.6" text-anchor="end">surprise book stop &#183; 0.02R</text>
+<text class="axis" x="66" y="322" text-anchor="start">stop distance, as a share of price (log scale)</text>
+</svg>
+    </div>
+    <figcaption>Cost in units of risk is the round trip divided by the stop
+    distance, so it explodes as the stop tightens. The four pins are the stops
+    this session actually used. The leftmost is the stop a 1%-risk budget would
+    need to reach 20x &mdash; where a 10bp round trip costs two full units of
+    risk before the trade has done anything.</figcaption>
+  </figure>
+
   <p class="note">The option features behaved exactly as the earlier feature-power
   study predicted, and it did not help. High implied vol against its own norm cut
   the bracket's time-out rate from 22.8% to 13.3%; gamma balance and net GEX did
@@ -362,6 +445,46 @@
     </table>
   </div>
 
+  <figure>
+    <div class="plate">
+<svg viewBox="0 0 1000 300" role="img" aria-label="Maximum drawdown by fixed leverage rung, with the return each bought">
+<line class="gridline" x1="66.0" y1="20" x2="66.0" y2="252"/>
+<text class="axis" x="66.0" y="272" text-anchor="middle">&#8722;0%</text>
+<line class="gridline" x1="249.5" y1="20" x2="249.5" y2="252"/>
+<text class="axis" x="249.5" y="272" text-anchor="middle">&#8722;25%</text>
+<line class="gridline" x1="433.0" y1="20" x2="433.0" y2="252"/>
+<text class="axis" x="433.0" y="272" text-anchor="middle">&#8722;50%</text>
+<line class="gridline" x1="616.5" y1="20" x2="616.5" y2="252"/>
+<text class="axis" x="616.5" y="272" text-anchor="middle">&#8722;75%</text>
+<line class="gridline" x1="800.0" y1="20" x2="800.0" y2="252"/>
+<text class="axis" x="800.0" y="272" text-anchor="middle">&#8722;100%</text>
+<rect class="bar-hold" x="66" y="31.0" width="106.4" height="25.0" rx="4"><title>1x gross: max drawdown -14.5%, CAGR 11.1%</title></rect>
+<text class="axis strong" x="56" y="47.5" text-anchor="end">1x</text>
+<text class="val" x="181.4" y="47.5">-14.5% drawdown &#183; 11% CAGR</text>
+<rect class="bar-hold" x="66" y="68.0" width="201.9" height="25.0" rx="4"><title>2x gross: max drawdown -27.5%, CAGR 22.5%</title></rect>
+<text class="axis strong" x="56" y="84.5" text-anchor="end">2x</text>
+<text class="val" x="276.9" y="84.5">-27.5% drawdown &#183; 22% CAGR</text>
+<rect class="bar-hold" x="66" y="105.0" width="286.3" height="25.0" rx="4"><title>3x gross: max drawdown -39.0%, CAGR 34.1%</title></rect>
+<text class="axis strong" x="56" y="121.5" text-anchor="end">3x</text>
+<text class="val" x="361.3" y="121.5">-39.0% drawdown &#183; 34% CAGR</text>
+<rect class="bar-hold" x="66" y="142.0" width="428.7" height="25.0" rx="4"><title>5x gross: max drawdown -58.4%, CAGR 57.3%</title></rect>
+<text class="axis strong" x="56" y="158.5" text-anchor="end">5x</text>
+<text class="val" x="503.7" y="158.5">-58.4% drawdown &#183; 57% CAGR</text>
+<rect class="bar-ruin" x="66" y="179.0" width="643.7" height="25.0" rx="4"><title>10x gross: max drawdown -87.7%, CAGR 108.3%</title></rect>
+<text class="axis strong" x="56" y="195.5" text-anchor="end">10x</text>
+<text class="val" x="718.7" y="195.5">-87.7% drawdown &#183; 108% CAGR</text>
+<rect class="bar-ruin" x="66" y="216.0" width="731.8" height="25.0" rx="4"><title>20x gross: max drawdown -99.7%, CAGR 118.7%</title></rect>
+<text class="axis strong" x="56" y="232.5" text-anchor="end">20x</text>
+<text class="val" x="806.8" y="232.5">-99.7% drawdown &#183; 119% CAGR</text>
+<text class="axis" x="66" y="292" text-anchor="start">deepest drawdown at each fixed leverage &#183; red is unholdable</text>
+</svg>
+    </div>
+    <figcaption>The same book at six fixed leverage rungs. Return rises the
+    whole way &mdash; a search that maximises CAGR walks to 20x and off the edge
+    without ever seeing a warning in its own objective. The drawdown is the only
+    column that says stop.</figcaption>
+  </figure>
+
   <div class="scroll">
     <table>
       <caption>Fixed fractional: the same <em>risk</em> on every trade, size
@@ -430,6 +553,59 @@
     </table>
   </div>
 
+  <figure>
+    <div class="plate">
+<svg viewBox="0 0 1000 320" role="img" aria-label="Forward move five sessions on, by surprise size, against the unconditional drift">
+<line class="gridline" x1="66" y1="241.4" x2="974" y2="241.4"/>
+<text class="axis" x="56" y="245.4" text-anchor="end">-0.4</text>
+<line class="gridline" x1="66" y1="195.3" x2="974" y2="195.3"/>
+<text class="axis" x="56" y="199.3" text-anchor="end">-0.2</text>
+<line class="gridline" x1="66" y1="149.2" x2="974" y2="149.2"/>
+<text class="axis" x="56" y="153.2" text-anchor="end">+0.0</text>
+<line class="gridline" x1="66" y1="103.1" x2="974" y2="103.1"/>
+<text class="axis" x="56" y="107.1" text-anchor="end">+0.2</text>
+<line class="gridline" x1="66" y1="57.0" x2="974" y2="57.0"/>
+<text class="axis" x="56" y="61.0" text-anchor="end">+0.4</text>
+<line class="zero" x1="66" y1="149.2" x2="974" y2="149.2"/>
+<line class="mark-drift" x1="66" y1="111.2" x2="974" y2="111.2"/>
+<text class="lab-drift" x="970" y="102.2" text-anchor="end">unconditional drift +0.165</text>
+<rect class="bar-up" x="128.5" y="103.4" width="46" height="45.9" rx="4"><title>up moves, 1–1.5×: +0.199 implied moves at +5 sessions, n=6,614</title></rect>
+<text class="val" x="151.5" y="95.4" text-anchor="middle">+0.199</text>
+<rect class="bar-dn" x="184.5" y="122.3" width="46" height="27.0" rx="4"><title>down moves, 1–1.5×: +0.117 implied moves at +5 sessions, n=5,434</title></rect>
+<text class="val" x="207.5" y="114.3" text-anchor="middle">+0.117</text>
+<text class="axis" x="179.5" y="272.0" text-anchor="middle">1–1.5×</text>
+<text class="axis dim" x="179.5" y="288.0" text-anchor="middle">n 6,614 / 5,434</text>
+<rect class="bar-up" x="355.5" y="128.9" width="46" height="20.3" rx="4"><title>up moves, 1.5–2×: +0.088 implied moves at +5 sessions, n=2,684</title></rect>
+<text class="val" x="378.5" y="120.9" text-anchor="middle">+0.088</text>
+<rect class="bar-dn" x="411.5" y="119.0" width="46" height="30.2" rx="4"><title>down moves, 1.5–2×: +0.131 implied moves at +5 sessions, n=2,354</title></rect>
+<text class="val" x="434.5" y="111.0" text-anchor="middle">+0.131</text>
+<text class="axis" x="406.5" y="272.0" text-anchor="middle">1.5–2×</text>
+<text class="axis dim" x="406.5" y="288.0" text-anchor="middle">n 2,684 / 2,354</text>
+<rect class="bar-up" x="582.5" y="106.6" width="46" height="42.6" rx="4"><title>up moves, 2–3×: +0.185 implied moves at +5 sessions, n=1,537</title></rect>
+<text class="val" x="605.5" y="98.6" text-anchor="middle">+0.185</text>
+<rect class="bar-dn" x="638.5" y="116.7" width="46" height="32.5" rx="4"><title>down moves, 2–3×: +0.141 implied moves at +5 sessions, n=1,407</title></rect>
+<text class="val" x="661.5" y="108.7" text-anchor="middle">+0.141</text>
+<text class="axis" x="633.5" y="272.0" text-anchor="middle">2–3×</text>
+<text class="axis dim" x="633.5" y="288.0" text-anchor="middle">n 1,537 / 1,407</text>
+<rect class="bar-up" x="809.5" y="47.6" width="46" height="101.6" rx="4"><title>up moves, 3× and beyond: +0.441 implied moves at +5 sessions, n=398</title></rect>
+<text class="val" x="832.5" y="39.6" text-anchor="middle">+0.441</text>
+<rect class="bar-dn" x="865.5" y="149.2" width="46" height="78.6" rx="4"><title>down moves, 3× and beyond: -0.341 implied moves at +5 sessions, n=371</title></rect>
+<text class="val" x="888.5" y="244.8" text-anchor="middle">-0.341</text>
+<text class="axis" x="860.5" y="272.0" text-anchor="middle">3× and beyond</text>
+<text class="axis dim" x="860.5" y="288.0" text-anchor="middle">n 398 / 371</text>
+<rect class="bar-up" x="66" y="300" width="13" height="13" rx="3"/>
+<text class="axis" x="85" y="311">up moves</text>
+<rect class="bar-dn" x="174" y="300" width="13" height="13" rx="3"/>
+<text class="axis" x="193" y="311">down moves</text>
+</svg>
+    </div>
+    <figcaption>Every bar is the raw forward move five sessions on, not signed by
+    the trigger, so up and down sit on one axis and the drift is visible instead
+    of absorbed. The dashed line is what an ordinary session returns. Only the
+    right-hand pair separates from it &mdash; and it separates in both
+    directions.</figcaption>
+  </figure>
+
   <p>Below three implied moves there is nothing &mdash; +0.020 and &minus;0.024
   against drift is noise, which is why an earlier run at a 2&times; threshold was
   so muddy. Beyond three, the effect is real in both directions.</p>
@@ -462,30 +638,116 @@
     </table>
   </div>
 
+  <figure>
+    <div class="plate">
+<svg viewBox="0 0 1000 250" role="img" aria-label="Fifty drift-null Sharpe draws against the book's 2.74">
+<line class="gridline" x1="161.9" y1="40" x2="161.9" y2="194"/>
+<text class="axis" x="161.9" y="212" text-anchor="middle">-1</text>
+<line class="gridline" x1="338.5" y1="40" x2="338.5" y2="194"/>
+<text class="axis" x="338.5" y="212" text-anchor="middle">0</text>
+<line class="gridline" x1="515.0" y1="40" x2="515.0" y2="194"/>
+<text class="axis" x="515.0" y="212" text-anchor="middle">1</text>
+<line class="gridline" x1="691.5" y1="40" x2="691.5" y2="194"/>
+<text class="axis" x="691.5" y="212" text-anchor="middle">2</text>
+<line class="gridline" x1="868.1" y1="40" x2="868.1" y2="194"/>
+<text class="axis" x="868.1" y="212" text-anchor="middle">3</text>
+<line class="zero" x1="338.5" y1="40" x2="338.5" y2="194"/>
+<circle class="dot-null" cx="139.0" cy="180.0" r="5"><title>drift null draw: Sharpe -1.13</title></circle>
+<circle class="dot-null" cx="154.4" cy="180.0" r="5"><title>drift null draw: Sharpe -1.04</title></circle>
+<circle class="dot-null" cx="182.0" cy="180.0" r="5"><title>drift null draw: Sharpe -0.89</title></circle>
+<circle class="dot-null" cx="189.6" cy="164.0" r="5"><title>drift null draw: Sharpe -0.84</title></circle>
+<circle class="dot-null" cx="190.3" cy="148.0" r="5"><title>drift null draw: Sharpe -0.84</title></circle>
+<circle class="dot-null" cx="242.5" cy="180.0" r="5"><title>drift null draw: Sharpe -0.54</title></circle>
+<circle class="dot-null" cx="257.5" cy="180.0" r="5"><title>drift null draw: Sharpe -0.46</title></circle>
+<circle class="dot-null" cx="264.7" cy="164.0" r="5"><title>drift null draw: Sharpe -0.42</title></circle>
+<circle class="dot-null" cx="268.8" cy="148.0" r="5"><title>drift null draw: Sharpe -0.39</title></circle>
+<circle class="dot-null" cx="271.5" cy="132.0" r="5"><title>drift null draw: Sharpe -0.38</title></circle>
+<circle class="dot-null" cx="286.8" cy="180.0" r="5"><title>drift null draw: Sharpe -0.29</title></circle>
+<circle class="dot-null" cx="309.1" cy="180.0" r="5"><title>drift null draw: Sharpe -0.17</title></circle>
+<circle class="dot-null" cx="356.9" cy="180.0" r="5"><title>drift null draw: Sharpe 0.10</title></circle>
+<circle class="dot-null" cx="361.4" cy="164.0" r="5"><title>drift null draw: Sharpe 0.13</title></circle>
+<circle class="dot-null" cx="381.7" cy="180.0" r="5"><title>drift null draw: Sharpe 0.25</title></circle>
+<circle class="dot-null" cx="387.1" cy="164.0" r="5"><title>drift null draw: Sharpe 0.28</title></circle>
+<circle class="dot-null" cx="394.7" cy="148.0" r="5"><title>drift null draw: Sharpe 0.32</title></circle>
+<circle class="dot-null" cx="399.8" cy="180.0" r="5"><title>drift null draw: Sharpe 0.35</title></circle>
+<circle class="dot-null" cx="408.5" cy="164.0" r="5"><title>drift null draw: Sharpe 0.40</title></circle>
+<circle class="dot-null" cx="409.1" cy="132.0" r="5"><title>drift null draw: Sharpe 0.40</title></circle>
+<circle class="dot-null" cx="414.3" cy="148.0" r="5"><title>drift null draw: Sharpe 0.43</title></circle>
+<circle class="dot-null" cx="438.7" cy="180.0" r="5"><title>drift null draw: Sharpe 0.57</title></circle>
+<circle class="dot-null" cx="446.8" cy="164.0" r="5"><title>drift null draw: Sharpe 0.61</title></circle>
+<circle class="dot-null" cx="447.9" cy="148.0" r="5"><title>drift null draw: Sharpe 0.62</title></circle>
+<circle class="dot-null" cx="462.7" cy="180.0" r="5"><title>drift null draw: Sharpe 0.70</title></circle>
+<circle class="dot-null" cx="569.5" cy="180.0" r="5"><title>drift null draw: Sharpe 1.31</title></circle>
+<circle class="dot-null" cx="570.1" cy="164.0" r="5"><title>drift null draw: Sharpe 1.31</title></circle>
+<circle class="dot-null" cx="581.9" cy="148.0" r="5"><title>drift null draw: Sharpe 1.38</title></circle>
+<circle class="dot-null" cx="608.6" cy="180.0" r="5"><title>drift null draw: Sharpe 1.53</title></circle>
+<circle class="dot-null" cx="610.6" cy="164.0" r="5"><title>drift null draw: Sharpe 1.54</title></circle>
+<circle class="dot-null" cx="659.3" cy="180.0" r="5"><title>drift null draw: Sharpe 1.82</title></circle>
+<circle class="dot-null" cx="663.2" cy="164.0" r="5"><title>drift null draw: Sharpe 1.84</title></circle>
+<circle class="dot-null" cx="668.0" cy="148.0" r="5"><title>drift null draw: Sharpe 1.87</title></circle>
+<circle class="dot-null" cx="679.7" cy="180.0" r="5"><title>drift null draw: Sharpe 1.93</title></circle>
+<circle class="dot-null" cx="689.7" cy="164.0" r="5"><title>drift null draw: Sharpe 1.99</title></circle>
+<circle class="dot-null" cx="697.9" cy="180.0" r="5"><title>drift null draw: Sharpe 2.04</title></circle>
+<circle class="dot-null" cx="700.4" cy="148.0" r="5"><title>drift null draw: Sharpe 2.05</title></circle>
+<circle class="dot-null" cx="702.3" cy="132.0" r="5"><title>drift null draw: Sharpe 2.06</title></circle>
+<circle class="dot-null" cx="706.0" cy="164.0" r="5"><title>drift null draw: Sharpe 2.08</title></circle>
+<circle class="dot-null" cx="718.3" cy="180.0" r="5"><title>drift null draw: Sharpe 2.15</title></circle>
+<circle class="dot-null" cx="730.7" cy="164.0" r="5"><title>drift null draw: Sharpe 2.22</title></circle>
+<circle class="dot-null" cx="741.9" cy="180.0" r="5"><title>drift null draw: Sharpe 2.29</title></circle>
+<circle class="dot-null" cx="748.1" cy="164.0" r="5"><title>drift null draw: Sharpe 2.32</title></circle>
+<circle class="dot-null" cx="762.8" cy="180.0" r="5"><title>drift null draw: Sharpe 2.40</title></circle>
+<circle class="dot-null" cx="795.0" cy="180.0" r="5"><title>drift null draw: Sharpe 2.59</title></circle>
+<circle class="dot-null" cx="804.6" cy="164.0" r="5"><title>drift null draw: Sharpe 2.64</title></circle>
+<circle class="dot-over" cx="833.9" cy="180.0" r="5"><title>drift null draw: Sharpe 2.81</title></circle>
+<circle class="dot-over" cx="849.2" cy="180.0" r="5"><title>drift null draw: Sharpe 2.89</title></circle>
+<circle class="dot-over" cx="851.3" cy="164.0" r="5"><title>drift null draw: Sharpe 2.91</title></circle>
+<circle class="dot-over" cx="905.9" cy="180.0" r="5"><title>drift null draw: Sharpe 3.21</title></circle>
+<line class="mark-book" x1="822.1" y1="36" x2="822.1" y2="194"/>
+<text class="lab-book" x="822.1" y="28" text-anchor="middle">the book &#183; 2.74</text>
+<text class="lab-null" x="569.5" y="230" text-anchor="middle">null median 1.31</text>
+<text class="axis" x="56" y="244" text-anchor="start">Sharpe, out of sample 2022&#8211;2026</text>
+</svg>
+    </div>
+    <figcaption>Fifty drift nulls, each one the same book run on ordinary
+    sessions instead of surprises &mdash; same names, same count, same exits.
+    Four of the fifty reach the book's 2.74, so the book beats its own control
+    in 46 draws out of 50. That is an empirical p of 0.08: suggestive, not
+    settled.</figcaption>
+  </figure>
+
   <div class="split">
+    <div class="card k-hi">
+      <h3>It survives, narrowly</h3>
+      <p>Parameters chosen on 2017&ndash;2021, frozen, evaluated on
+      2022&ndash;2026: <b>2.74</b> on 230 trades against a null median of
+      <b>1.01</b>. The null is wide &mdash; it runs from &minus;1.13 to 3.21
+      &mdash; because 230 trades over four years is a thin sample. The book
+      clears it 92% of the time and no more than that.</p>
+    </div>
     <div class="card k-mid">
       <h3>Both ways, one side tradeable</h3>
       <p>The short arm beats its own null (&minus;0.09 against &minus;0.79), and
-      the down-move continuation is the <em>larger</em> effect in the event study.
-      It still lands at zero. The information is there and is bigger on the down
-      side; drift and cost consume all of it.</p>
-    </div>
-    <div class="card k-lo">
-      <h3>Then the split was run</h3>
-      <p>Parameters chosen on 2017&ndash;2021, frozen, evaluated on
-      2022&ndash;2026. The book scored <b>2.74</b> out of sample on 230 trades.
-      Its drift null, drawn twenty-five times instead of five, came back at
-      <b>1.09 with a band of [&minus;3.33, 4.07]</b>. The band contains the book.</p>
+      the down-move continuation is the <em>larger</em> effect in the event
+      study. It still lands at zero. The information is there and is bigger on
+      the down side; drift and cost consume all of it.</p>
     </div>
   </div>
 
-  <p>The earlier reading &mdash; 2.59 against a null of 0.83 &mdash; rested on a
-  five-draw null band. Drawing it properly showed the estimator's true dispersion
-  on a 230-trade sample, and it is enormous. Nothing about the signal was
-  disproved; the test simply cannot resolve it at this sample size, which is a
-  different and more honest statement than either "it works" or "it fails".</p>
+  <div class="card k-lo">
+    <h3>Two readings this went through, and why the second is the one to trust</h3>
+    <p>A five-draw null put the band at [&minus;0.05, 1.30] and made the signal
+    look decisive. A twenty-five-draw null put it at [&minus;3.33, 4.07] and made
+    it look like noise. Neither was right: the draws were seeded from Python's
+    <code>hash()</code> on the ticker, which is salted per process, so the
+    control produced a different answer every time it was run. Seeded from a
+    stable checksum instead and drawn fifty times, it lands at p = 0.08 and stays
+    there.</p>
+    <p>A control that moves when you re-run it cannot settle anything, and the
+    failure was invisible in the output &mdash; both bands looked like ordinary
+    numbers.</p>
+  </div>
 
-  <p class="note">Two things still stand. The effect is very likely
+  <p class="note">Two things stand regardless. The effect is very likely
   post-earnings-announcement drift &mdash; a 3&times; implied move is nearly
   always an earnings surprise, and PEAD is among the most replicated anomalies
   there is. And the signal is <em>structurally taker-only</em>: a patient limit
