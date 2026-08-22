@@ -15,6 +15,10 @@ output; losing it to a clean checkout would be losing work.
 | [`chapter-02-the-quarter-century.html`](chapter-02-the-quarter-century.html) | Chapter two: sector, commodity, valuation and macro history 2000–2026, measured. | [artifact](https://claude.ai/code/artifact/b27258dc-9d86-4094-a59b-94c68e405447) |
 | [`chapter-06-the-research-department.html`](chapter-06-the-research-department.html) | Chapter six: delayed 13F filings fail as entries, but concentrated-manager conviction changes the right tail after breakouts. | Local draft |
 | [`chapter-07-when-six-slots-are-scarce.html`](chapter-07-when-six-slots-are-scarce.html) | Chapter seven: 13F conviction as a six-slot Turtle allocation priority and a candidate risk tilt. | Local draft |
+| [`13f-the-filing-and-the-slot.html`](13f-the-filing-and-the-slot.html) | 13F conviction tested as an entry gate and as a slot priority. | [artifact](https://claude.ai/code/artifact/3f6dccbe-cded-4b6c-8e32-dc6163ccce77) |
+| [`where-the-bar-closes.html`](where-the-bar-closes.html) | Close location within the breakout bar as an entry filter. | [artifact](https://claude.ai/code/artifact/be73089e-ed78-47b8-b920-6f4f9b83f4f9) |
+| [`the-interval-was-the-parameter.html`](the-interval-was-the-parameter.html) | Seven bar sizes at true cost: the banked 30-minute interval is a trough, and dip buying beats the breakout. | [artifact](https://claude.ai/code/artifact/607cd415-38c6-4bf6-a0dc-edbdf751958d) |
+| [`six-proposals-one-survivor.html`](six-proposals-one-survivor.html) | Trade-selection ML, a leveraged 3:1 scalp, support and resistance zones, 20x leverage, the volatility surprise, and option activity — five die on their controls. | [artifact](https://claude.ai/code/artifact/4e10691c-e699-41ad-8ee6-fe934f1675db) |
 
 ## Regenerating the chapter
 

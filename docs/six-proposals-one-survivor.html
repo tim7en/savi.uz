@@ -1,0 +1,569 @@
+<title>Six Proposals, One Survivor</title>
+<style>
+  :root{
+    color-scheme:light;
+    --ground:#EFF1F3; --surface:#FFFFFF; --sunken:#E3E7EB; --rule:#CFD6DD;
+    --rule-soft:#E1E6EB;
+    --ink:#101519; --ink-2:#414B55; --ink-3:#76818C;
+    --lo:#A24A38; --mid:#B5883A; --hi:#1C7A62;
+    --accent:#1D4E6B; --accent-soft:#E0EAF0;
+    --display:"Helvetica Neue",Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --body:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0C1013; --surface:#151A1F; --sunken:#1C2229; --rule:#293139;
+    --rule-soft:#222831;
+    --ink:#E5EAEF; --ink-2:#ADB7C1; --ink-3:#7B8691;
+    --lo:#DB8571; --mid:#D7B466; --hi:#4CBF9C;
+    --accent:#7EB2D0; --accent-soft:#14242E;
+  }}
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --ground:#0C1013; --surface:#151A1F; --sunken:#1C2229; --rule:#293139;
+    --rule-soft:#222831;
+    --ink:#E5EAEF; --ink-2:#ADB7C1; --ink-3:#7B8691;
+    --lo:#DB8571; --mid:#D7B466; --hi:#4CBF9C;
+    --accent:#7EB2D0; --accent-soft:#14242E;
+  }
+  :root[data-theme="light"]{
+    color-scheme:light;
+    --ground:#EFF1F3; --surface:#FFFFFF; --sunken:#E3E7EB; --rule:#CFD6DD;
+    --rule-soft:#E1E6EB;
+    --ink:#101519; --ink-2:#414B55; --ink-3:#76818C;
+    --lo:#A24A38; --mid:#B5883A; --hi:#1C7A62;
+    --accent:#1D4E6B; --accent-soft:#E0EAF0;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;padding:0 20px 88px;background:var(--ground);color:var(--ink);
+       font-family:var(--body);font-size:16px;line-height:1.62;
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:940px;margin:0 auto}
+
+  header{padding:58px 0 30px;border-bottom:3px solid var(--ink);
+         display:flex;flex-direction:column;gap:14px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+           text-transform:uppercase;color:var(--ink-3);margin:0}
+  h1{font-family:var(--display);font-weight:800;font-size:clamp(2.3rem,6.6vw,3.9rem);
+     line-height:.99;letter-spacing:-.035em;margin:0;text-wrap:balance}
+  .standfirst{font-size:1.14rem;line-height:1.55;color:var(--ink-2);
+              max-width:62ch;margin:0}
+
+  .tallies{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));
+           gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:20px}
+  .tally{background:var(--surface);padding:15px 17px;display:flex;
+         flex-direction:column;gap:3px}
+  .tally b{font-family:var(--mono);font-size:1.6rem;font-weight:700;
+           letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1}
+  .tally span{font-size:12px;color:var(--ink-3);line-height:1.36}
+  .t-hi{color:var(--hi)} .t-lo{color:var(--lo)} .t-mid{color:var(--mid)}
+
+  section{padding-top:48px;display:flex;flex-direction:column;gap:15px}
+  h2{font-family:var(--display);font-size:1.72rem;font-weight:750;margin:0;
+     letter-spacing:-.025em;text-wrap:balance}
+  h3{font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+     text-transform:uppercase;color:var(--ink-3);margin:0 0 7px;font-weight:600}
+  p{margin:0;max-width:68ch}
+  .lede{color:var(--ink-2)}
+
+  .card{background:var(--surface);border:1px solid var(--rule);padding:21px 23px;
+        display:flex;flex-direction:column;gap:11px}
+  .k-hi{border-left:3px solid var(--hi)}
+  .k-lo{border-left:3px solid var(--lo)}
+  .k-mid{border-left:3px solid var(--mid)}
+  .split{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px}
+
+  .scroll{overflow-x:auto;border:1px solid var(--rule);background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;
+        font-variant-numeric:tabular-nums}
+  caption{text-align:left;padding:14px 17px 2px;font-size:12.5px;color:var(--ink-3)}
+  th{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+     color:var(--ink-3);font-weight:600;text-align:right;padding:10px 13px;
+     border-bottom:1px solid var(--rule);white-space:nowrap}
+  td{padding:9px 13px;text-align:right;border-bottom:1px solid var(--rule-soft);
+     white-space:nowrap;font-family:var(--mono);font-size:12.5px}
+  th:first-child,td:first-child{text-align:left;font-family:var(--body);
+     font-size:13.5px;white-space:normal;min-width:180px}
+  tbody tr:last-child td{border-bottom:0}
+  tr.hi td{background:var(--sunken);font-weight:600}
+  td.up{color:var(--hi)} td.down{color:var(--lo)} td.dim{color:var(--ink-3)}
+  td.indent:first-child{padding-left:30px;color:var(--ink-3);font-style:italic}
+
+  .verdict{display:inline-block;font-family:var(--mono);font-size:10px;
+           letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;
+           font-weight:700;border-radius:2px}
+  .v-pass{background:color-mix(in srgb,var(--hi) 16%,transparent);color:var(--hi)}
+  .v-fail{background:color-mix(in srgb,var(--lo) 16%,transparent);color:var(--lo)}
+  .v-open{background:var(--accent-soft);color:var(--accent)}
+
+  ul,ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:9px;
+        max-width:70ch}
+  li::marker{color:var(--ink-3)}
+  code{font-family:var(--mono);font-size:.87em;background:var(--sunken);
+       padding:1px 5px;border-radius:2px}
+  .note{font-size:14px;color:var(--ink-2);border-top:1px solid var(--rule);
+        padding-top:16px;max-width:76ch}
+  footer{margin-top:54px;padding-top:20px;border-top:1px solid var(--rule);
+         font-size:12.5px;color:var(--ink-3);max-width:78ch;line-height:1.6}
+  a{color:var(--accent)}
+  a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Session ledger &middot; 42 US names intraday, 143 daily &middot; 2017&ndash;2026 &middot; per-leg execution costs</p>
+  <h1>Six Proposals, One Survivor</h1>
+  <p class="standfirst">Six ways to improve the book were tested in one sitting:
+  a machine-learned trade filter, a leveraged 3:1 scalp, support and resistance
+  zones, 20x leverage, a volatility-surprise trade, and option activity as a
+  trend signal. Five died on their controls. The two things that turned out to
+  matter were never about picking the trade at all.</p>
+
+  <div class="tallies">
+    <div class="tally"><b class="t-hi">2.59</b>
+      <span>3&times; vol surprise, long, against a 0.83 drift null</span></div>
+    <div class="tally"><b class="t-mid">1.08</b>
+      <span>Sharpe lost to the entry order type alone</span></div>
+    <div class="tally"><b class="t-lo">0.20x</b>
+      <span>leverage the fade supports, against 20x proposed</span></div>
+    <div class="tally"><b class="t-lo">&minus;0.015</b>
+      <span>out-of-sample IC of the trade-selection model</span></div>
+  </div>
+</header>
+
+<section>
+  <h2>The ledger</h2>
+  <p class="lede">Each row is a proposal, the control that decided it, and what
+  the control said. The pattern in the right-hand column is the finding: every
+  proposal about <em>which trade to take</em> failed, and the two that changed
+  the result were about <em>how the trade is executed and sized</em>.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>Six proposals, in the order tested.</caption>
+      <thead>
+        <tr><th>Proposal</th><th>Decided by</th><th>Result</th><th>Verdict</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>LightGBM filter on breakout trades</td>
+          <td class="dim">its own reversal</td>
+          <td class="down">bottom half beat top half at 4h</td>
+          <td><span class="verdict v-fail">failed</span></td></tr>
+        <tr><td>3:1 bracket scalp, 1&ndash;3 sessions</td>
+          <td class="dim">per-leg execution cost</td>
+          <td class="down">0.11 once the entry pays taker</td>
+          <td><span class="verdict v-fail">failed</span></td></tr>
+        <tr><td>Support and resistance zones as targets</td>
+          <td class="dim">a fixed target at the same distance</td>
+          <td class="down">fixed target did better, twice</td>
+          <td><span class="verdict v-fail">failed</span></td></tr>
+        <tr><td>20x leverage on a positive-expectancy fade</td>
+          <td class="dim">the equity path</td>
+          <td class="down">&minus;99.7%, supports 0.20x</td>
+          <td><span class="verdict v-fail">failed</span></td></tr>
+        <tr class="hi"><td>Follow a move beyond 3&times; implied vol</td>
+          <td class="dim">a matched drift null</td>
+          <td class="up">2.59 against a null of 0.83</td>
+          <td><span class="verdict v-pass">survived</span></td></tr>
+        <tr><td>Option activity as a trend-strength signal</td>
+          <td class="dim">within-name, over time</td>
+          <td class="down">negative on every measure</td>
+          <td><span class="verdict v-fail">failed</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Nothing picks the trade</h2>
+  <p>A gradient-boosted model was fitted walk-forward on eighteen conditions
+  known at entry &mdash; trend, momentum, volatility regime, channel extension,
+  relative strength, market state &mdash; trained only on trades that had already
+  closed, then used to decline trades before the six-slot cap saw them.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>Same features, same code, three books. The verdict flips with the
+      bar size, which is what noise looks like.</caption>
+      <thead>
+        <tr><th>Book</th><th>Trades</th><th>OOS IC</th><th>Top half</th>
+          <th>Bottom half</th><th>Unfiltered</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>42 names, 4-hour</td><td>3,352</td><td class="down">&minus;0.015</td>
+          <td class="down">0.49</td><td class="up">0.90</td><td>0.81</td></tr>
+        <tr><td>42 names, 60-minute</td><td>8,186</td><td>+0.020</td>
+          <td class="up">0.87</td><td class="down">0.47</td><td>0.56</td></tr>
+        <tr><td>143 names, daily</td><td>10,766</td><td>+0.020</td>
+          <td class="down">0.36</td><td class="down">0.22</td><td class="up">0.50</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="split">
+    <div class="card k-lo">
+      <h3>What the reversal said</h3>
+      <p>At four hours the trades the model ranked <em>worst</em> outperformed
+      the ones it ranked best. At sixty minutes the opposite. On the daily book
+      the model beat its reversal and still lost to taking every trade. Three
+      runs, three answers.</p>
+    </div>
+    <div class="card k-mid">
+      <h3>Capacity, not selection</h3>
+      <p>The daily book offered 8,214 signals and the cap took 1,554. Filtering
+      is nearly inert &mdash; the top-half filter still took 1,450 of the same
+      slots. Rescored as a slot <em>priority</em> it reached 0.62 against 0.50,
+      but the 4-hour replication came back at 0.77 against an incumbent of 0.81.</p>
+    </div>
+  </div>
+
+  <p class="note">One condition survived everything: <code>rs_rank</code>, the
+  name's trailing return against its peers. +0.064, +0.060 and +0.043 across the
+  three books, and +0.087 in the bracket study &mdash; the same sign in all five
+  sub-periods every time. It is also below 0.10, which is this programme's own
+  bar for calling a feature proven.</p>
+</section>
+
+<section>
+  <h2>The order type was worth more than everything else combined</h2>
+  <p>A fixed 3:1 bracket held one to three sessions, swept across four stop
+  distances and three holding windows on 42,808 fresh breakouts. Every cell lost
+  money at taker cost, and the best cell was the widest stop with the longest
+  window &mdash; the gradient runs back toward the book it was meant to replace.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>The same 2N stop, 3-session cell, priced three ways.</caption>
+      <thead>
+        <tr><th>Execution assumed</th><th>What it means</th><th>Mean R</th>
+          <th>Sharpe</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Flat 10bp</td><td class="dim">taker both legs</td>
+          <td>+0.013</td><td class="down">&minus;0.03</td></tr>
+        <tr class="hi"><td>Per-leg, realistic</td>
+          <td class="dim">taker in always; maker only on the 21.5% that hit target</td>
+          <td>+0.023</td><td class="down">0.11</td></tr>
+        <tr><td>Flat 5bp</td><td class="dim">maker both legs &mdash; unobtainable here</td>
+          <td>+0.093</td><td class="up">1.19</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>A breakout entry is a buy-stop, which is marketable by construction. You
+  cannot rest a limit above the market to buy strength, so the 5bp row is not a
+  cheaper version of this strategy &mdash; it is a different strategy. The gap
+  between 0.11 and 1.19 is not the bracket, the conditions, the interval or the
+  leverage. It is the order type on one leg.</p>
+
+  <div class="card k-mid">
+    <h3>Why tight stops are the expensive ones</h3>
+    <p>Cost in R is the round trip divided by the stop distance, and that ratio
+    is leverage-invariant. At a 0.5N stop the distance is 0.230% of price, so a
+    10bp round trip costs <b>0.43R every trade</b>. At 2N it is 0.911% and the
+    same round trip costs 0.11R. Scalping does not make you nimble; it makes you
+    pay a third of your risk unit in fees.</p>
+  </div>
+
+  <p class="note">The option features behaved exactly as the earlier feature-power
+  study predicted, and it did not help. High implied vol against its own norm cut
+  the bracket's time-out rate from 22.8% to 13.3%; gamma balance and net GEX did
+  the same. Mean R barely moved. A magnitude forecast makes the target and the
+  stop more reachable in equal measure, so it converts unresolved trades into
+  resolved ones that split in the same ratio. Magnitude without direction cannot
+  create expectancy in a symmetric bracket.</p>
+</section>
+
+<section>
+  <h2>Support and resistance did nothing, under both constructions</h2>
+  <p>After a session closed two implied moves down, a limit rested below the
+  market and targeted the nearest zone above it &mdash; the point of control or
+  value-area high of a trailing volume profile. Confirmed pivot highs ran as an
+  independent second definition of "zone", and a plain multiple of risk at the
+  same median distance ran as the control.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>Sharpe, matched to 18% median drawdown, under two vol normalisers.</caption>
+      <thead>
+        <tr><th>Arm</th><th>Implied vol</th><th>Realized vol</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Volume zones (incumbent)</td><td>1.11</td><td>1.68</td></tr>
+        <tr class="hi"><td>Fixed R target, no zone</td>
+          <td class="up">1.16</td><td class="up">1.81</td></tr>
+        <tr><td>Pivot zones (second construction)</td>
+          <td class="down">0.68</td><td class="down">1.07</td></tr>
+        <tr><td>Quiet days, same limit (null)</td>
+          <td class="dim">0.22</td><td class="dim">0.50</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="split">
+    <div class="card k-lo">
+      <h3>The zone is decoration</h3>
+      <p>Replacing it with a plain multiple of risk at the same distance did
+      <em>better</em>, in both runs. And the two constructions disagree wildly
+      &mdash; 1.11/1.68 for volume levels against 0.68/1.07 for pivots, with a
+      completely different trade shape. A level that changes its answer when you
+      change how you draw it is a level in the code, not in the market.</p>
+    </div>
+    <div class="card k-hi">
+      <h3>The stretch trigger is real</h3>
+      <p>1.11 against a quiet-day null of 0.22, and 1.68 against 0.50. Resting
+      the same limit on a random day earns a fraction of it. And realized vol
+      did the job at least as well as the chain, which means the setup needs no
+      option data and can be taken to the wider universe.</p>
+    </div>
+  </div>
+
+  <p class="note">The literal "10% below" entry produced the most exciting number
+  of the day and it was noise: +3.68 under implied vol on 116 trades,
+  &minus;0.12 under realized vol on 203. Same rule, different normaliser,
+  opposite verdict. Every extreme Sharpe in these tables sits on a small-n cell.</p>
+</section>
+
+<section>
+  <h2>Leverage is an output, and the denominator is the stop</h2>
+  <p>A strategy scoring 1.68 still destroyed the account at 20x. That is not a
+  contradiction. Position risk is size times stop distance, so fixing the size
+  floats the risk &mdash; and across these names the stop spans a factor of 25,
+  from 0.95% of price at the 5th percentile to 23.83% at the worst.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>Fixed leverage: the same notional multiple on every trade. Note
+      that CAGR never turns down &mdash; a return-maximising search walks off the
+      cliff without a warning.</caption>
+      <thead>
+        <tr><th>Gross</th><th>Risk, median</th><th>Risk, worst</th>
+          <th>Max drawdown</th><th>CAGR</th><th>Holdable</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1x</td><td>0.44%</td><td>3.97%</td><td>&minus;14.5%</td>
+          <td>11.1%</td><td class="up">yes</td></tr>
+        <tr><td>2x</td><td>0.89%</td><td>7.94%</td><td>&minus;27.5%</td>
+          <td>22.5%</td><td class="up">yes</td></tr>
+        <tr><td>3x</td><td>1.33%</td><td>11.91%</td><td>&minus;39.0%</td>
+          <td>34.1%</td><td class="dim">marginal</td></tr>
+        <tr><td>5x</td><td>2.21%</td><td>19.85%</td><td>&minus;58.4%</td>
+          <td>57.3%</td><td class="dim">marginal</td></tr>
+        <tr><td>10x</td><td>4.43%</td><td>39.71%</td><td>&minus;87.7%</td>
+          <td>108.3%</td><td class="down">no</td></tr>
+        <tr class="hi"><td>20x</td><td>8.85%</td><td>79.42%</td>
+          <td class="down">&minus;99.7%</td><td>118.7%</td><td class="down">no</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <caption>Fixed fractional: the same <em>risk</em> on every trade, size
+      floating. At matched drawdown this earns roughly 28% more.</caption>
+      <thead>
+        <tr><th>Risk per trade</th><th>Max drawdown</th><th>CAGR</th>
+          <th>Median gross</th><th>95th</th><th>Worst</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0.50%</td><td>&minus;9.8%</td><td>9.7%</td><td>0.19x</td>
+          <td>0.52x</td><td>12.40x</td></tr>
+        <tr class="hi"><td>1.00%</td><td>&minus;18.7%</td><td class="up">19.2%</td>
+          <td>0.38x</td><td>1.05x</td><td>24.80x</td></tr>
+        <tr><td>2.00%</td><td>&minus;34.6%</td><td>37.5%</td><td>0.75x</td>
+          <td>2.10x</td><td>49.60x</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card k-lo">
+    <h3>The trades that did it</h3>
+    <p>RIVN on 2 March 2022: stop 15.24% of price, so at 3.33x per slot the
+    position risked <b>50.8% of the account</b> and lost 51.1% of it. Then COIN
+    (&minus;49.4%), MSTR (&minus;46.4%), MSTR again (&minus;35.0%), TSLA
+    (&minus;31.8%). Trough 3 January 2023.</p>
+    <p>Every one of those trades did exactly what it was designed to do: lose one
+    unit of risk, &minus;1.00R, stop hit as specified. The strategy never
+    malfunctioned. The sizing had defined one unit of risk as half the account.</p>
+  </div>
+
+  <p>The answer to "can I use 20x" is therefore yes, sometimes, on the right
+  trade. Fixed-fractional sizing at 1% risk <em>does</em> put on 24.8x gross
+  &mdash; on trades where the stop is a fraction of a percent. It simply refuses
+  to do it on RIVN. Leverage is what falls out of a risk budget divided by a stop
+  distance. It is never a setting.</p>
+</section>
+
+<section>
+  <h2>The one that survived</h2>
+  <p>The proposition: a session closing outside what the options priced is
+  information, not noise, and should therefore <em>continue</em> rather than
+  revert. Testing it required fixing a mistake in the earlier study &mdash;
+  signing forward returns by the trigger direction makes up moves look like they
+  continue and down moves look like they continue down, when both are the same
+  fact: everything drifts up.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>Forward move at +5 sessions, in implied-move units, measured from
+      the next open. The unconditional drift is +0.165.</caption>
+      <thead>
+        <tr><th>Move size</th><th>Up moves</th><th>vs drift</th>
+          <th>Down moves</th><th>vs drift</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1&ndash;1.5&times; implied</td><td>+0.199</td><td class="dim">+0.034</td>
+          <td>+0.117</td><td class="dim">&minus;0.048</td></tr>
+        <tr><td>1.5&ndash;2&times;</td><td>+0.088</td><td class="dim">&minus;0.077</td>
+          <td>+0.131</td><td class="dim">&minus;0.034</td></tr>
+        <tr><td>2&ndash;3&times;</td><td>+0.185</td><td class="dim">+0.020</td>
+          <td>+0.141</td><td class="dim">&minus;0.024</td></tr>
+        <tr class="hi"><td>3&times; and beyond</td><td>+0.441</td>
+          <td class="up">+0.276</td><td>&minus;0.341</td>
+          <td class="down">&minus;0.506</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Below three implied moves there is nothing &mdash; +0.020 and &minus;0.024
+  against drift is noise, which is why an earlier run at a 2&times; threshold was
+  so muddy. Beyond three, the effect is real in both directions.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>The four tradeable arms at the 3&times; threshold, each against a
+      matched drift null on ordinary sessions.</caption>
+      <thead>
+        <tr><th>Arm</th><th>Trades</th><th>Mean R</th><th>Sharpe</th>
+          <th>5&ndash;95%</th></tr>
+      </thead>
+      <tbody>
+        <tr class="hi"><td>Follow an up move &mdash; long</td><td>392</td>
+          <td class="up">+0.185</td><td class="up">2.59</td><td>[2.50&ndash;2.67]</td></tr>
+        <tr><td class="indent">ordinary sessions (null)</td><td class="dim">&mdash;</td>
+          <td class="dim">+0.046</td><td class="dim">0.83</td>
+          <td class="dim">[&minus;0.05&ndash;1.30]</td></tr>
+        <tr><td>Follow a down move &mdash; short</td><td>367</td>
+          <td>&minus;0.013</td><td>&minus;0.09</td><td>[&minus;0.27&ndash;0.17]</td></tr>
+        <tr><td class="indent">ordinary sessions (null)</td><td class="dim">&mdash;</td>
+          <td class="dim">&minus;0.045</td><td class="dim">&minus;0.79</td>
+          <td class="dim">[&minus;2.46&ndash;&minus;0.32]</td></tr>
+        <tr><td>Fade an up move &mdash; short</td><td>180</td>
+          <td class="down">&minus;0.135</td><td class="down">&minus;1.84</td>
+          <td class="dim">&mdash;</td></tr>
+        <tr><td>Fade a down move &mdash; long</td><td>152</td>
+          <td>+0.130</td><td>1.33</td><td class="dim">&mdash;</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="split">
+    <div class="card k-hi">
+      <h3>It clears its null</h3>
+      <p>The drift null captures 0.83 of 2.59 &mdash; 32% of the Sharpe, 25% of
+      the mean R. For comparison, random entries captured 63&ndash;75% of the
+      breakout book's result. This is the best-controlled positive finding of
+      the session.</p>
+    </div>
+    <div class="card k-mid">
+      <h3>Both ways, one side tradeable</h3>
+      <p>The short arm beats its own null (&minus;0.09 against &minus;0.79), and
+      the down-move continuation is the <em>larger</em> effect in the event study.
+      It still lands at zero. The information is there and is bigger on the down
+      side; drift and cost consume all of it.</p>
+    </div>
+  </div>
+
+  <p class="note">This is very likely post-earnings-announcement drift. A 3&times;
+  implied move is nearly always an earnings surprise or a major announcement, and
+  PEAD is among the most replicated anomalies there is. That makes the result more
+  plausible, not less &mdash; but the honest next test is whether it survives
+  outside earnings windows.</p>
+</section>
+
+<section>
+  <h2>Busier option books do not trend harder</h2>
+  <p>Two claims hide in the question, so both were measured: <em>moving</em> further
+  (absolute forward move, volatility-scaled) and <em>trending</em> more cleanly
+  (efficiency ratio &mdash; net change over the sum of the absolute daily changes).</p>
+
+  <div class="scroll">
+    <table>
+      <caption>Within a name, over time: median rank correlation across the 42
+      names, and the share of names agreeing on the sign. Horizon 20 sessions.</caption>
+      <thead>
+        <tr><th>Activity measure</th><th>vs trend quality</th><th>Names agreeing</th>
+          <th>vs move size</th><th>Names agreeing</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Contract volume vs its own norm</td><td class="down">&minus;0.014</td>
+          <td class="dim">33%</td><td class="down">&minus;0.019</td><td class="dim">43%</td></tr>
+        <tr><td>Contracts per share of volume</td><td class="down">&minus;0.010</td>
+          <td class="dim">38%</td><td class="down">&minus;0.015</td><td class="dim">40%</td></tr>
+        <tr><td>Volume against open interest</td><td class="down">&minus;0.032</td>
+          <td class="dim">29%</td><td class="down">&minus;0.051</td><td class="dim">24%</td></tr>
+        <tr><td>Share volume vs its own norm</td><td class="down">&minus;0.023</td>
+          <td class="dim">29%</td><td class="down">&minus;0.016</td><td class="dim">36%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Every measure is negative, and the sign is consistent &mdash; between 57%
+  and 76% of names agree. When a name's option book runs hot against its own
+  norm, what follows trends slightly <em>worse</em> and moves slightly
+  <em>less</em>. That is consistent with the earlier finding that net GEX and
+  gamma balance are negatively related to absolute return: dealers long gamma
+  suppress movement.</p>
+
+  <div class="card k-lo">
+    <h3>The between-name number is a trap</h3>
+    <p>Across the 42 names, volume-against-open-interest correlates +0.379 with
+    trend quality, which looks like a discovery. The five most option-driven names
+    are UVXY, SPY, QQQ, GLD and IWM &mdash; index products. The correlation is
+    measuring instrument type, not option activity, and the underlying efficiency
+    ratios barely differ at all: 0.257 at the top against 0.229 at the bottom.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Open threads</h2>
+  <ol>
+    <li><b>The trend-line system is not built.</b> Long-term against short-term
+    trend breakouts, trend lines and "safety lines" &mdash; blocked on definitions
+    of <em>tori trades</em> and <em>safety lines</em> before it can be specified.
+    <span class="verdict v-open">blocked</span></li>
+    <li><b>Cut the vol surprise by earnings dates.</b> Decides whether the 2.59
+    is post-earnings drift or something else. <code>data/equity/equity.db</code>
+    carries an <code>analyst_earnings</code> table.
+    <span class="verdict v-open">next</span></li>
+    <li><b>Take the surprise and the fade to the 143-name universe.</b> Both work
+    on realized vol, so neither needs an option chain. That universe contains the
+    names that did not recover &mdash; BHC, CHGG, RIG, TDOC &mdash; and it is
+    where every result here is most exposed. The cost is daily-resolution fills.
+    <span class="verdict v-open">next</span></li>
+    <li><b>The 120-instrument intraday universe is missing.</b>
+    <code>bars_av.db</code> is neither on disk nor inside <code>data.rar</code>;
+    it would have to be rebuilt.
+    <span class="verdict v-open">blocked</span></li>
+  </ol>
+</section>
+
+<footer>
+  42 US-listed names on split-adjusted five-minute bars, 2017&ndash;2026, resampled
+  session-anchored; 143 names on split-adjusted daily bars, 1999&ndash;2026, for the
+  model's wide cut. Option features are end-of-day chain snapshots read one session
+  in arrears. Long only except where a short arm is named. Costs are per leg &mdash;
+  5bp taker, 2.5bp maker &mdash; charged by the order type that actually fills each
+  leg. Every arm is matched to an 18% median drawdown before its return is read, and
+  Sharpe bands are the 5th to 95th percentile over twenty capacity orderings, so an
+  unpaired difference inside a band settles nothing. Where both stop and target are
+  touched inside one bar the order is unknowable and the stop is charged. The 42-name
+  universe was selected with hindsight and inflates mean R by roughly four times
+  against the 143-name set; no result here has an out-of-sample split.
+</footer>
+
+</div>
