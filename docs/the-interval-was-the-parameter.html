@@ -1,0 +1,398 @@
+<title>The Interval Was the Parameter</title>
+<style>
+  :root{
+    color-scheme:light;
+    --ground:#EFF1F3; --surface:#FFFFFF; --sunken:#E3E7EB; --rule:#CFD6DD;
+    --rule-soft:#E1E6EB;
+    --ink:#101519; --ink-2:#414B55; --ink-3:#76818C;
+    --lo:#A24A38; --mid:#B5883A; --hi:#1C7A62;
+    --accent:#1D4E6B; --accent-soft:#E0EAF0;
+    --display:"Helvetica Neue",Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --body:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0C1013; --surface:#151A1F; --sunken:#1C2229; --rule:#293139;
+    --rule-soft:#222831;
+    --ink:#E5EAEF; --ink-2:#ADB7C1; --ink-3:#7B8691;
+    --lo:#DB8571; --mid:#D7B466; --hi:#4CBF9C;
+    --accent:#7EB2D0; --accent-soft:#14242E;
+  }}
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --ground:#0C1013; --surface:#151A1F; --sunken:#1C2229; --rule:#293139;
+    --rule-soft:#222831;
+    --ink:#E5EAEF; --ink-2:#ADB7C1; --ink-3:#7B8691;
+    --lo:#DB8571; --mid:#D7B466; --hi:#4CBF9C;
+    --accent:#7EB2D0; --accent-soft:#14242E;
+  }
+  :root[data-theme="light"]{
+    color-scheme:light;
+    --ground:#EFF1F3; --surface:#FFFFFF; --sunken:#E3E7EB; --rule:#CFD6DD;
+    --rule-soft:#E1E6EB;
+    --ink:#101519; --ink-2:#414B55; --ink-3:#76818C;
+    --lo:#A24A38; --mid:#B5883A; --hi:#1C7A62;
+    --accent:#1D4E6B; --accent-soft:#E0EAF0;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;padding:0 20px 88px;background:var(--ground);color:var(--ink);
+       font-family:var(--body);font-size:16px;line-height:1.62;
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:940px;margin:0 auto}
+
+  header{padding:58px 0 30px;border-bottom:3px solid var(--ink);
+         display:flex;flex-direction:column;gap:14px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+           text-transform:uppercase;color:var(--ink-3);margin:0}
+  h1{font-family:var(--display);font-weight:800;font-size:clamp(2.3rem,6.6vw,3.9rem);
+     line-height:.99;letter-spacing:-.035em;margin:0;text-wrap:balance}
+  .standfirst{font-size:1.14rem;line-height:1.55;color:var(--ink-2);
+              max-width:62ch;margin:0}
+
+  .tallies{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));
+           gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:20px}
+  .tally{background:var(--surface);padding:15px 17px;display:flex;
+         flex-direction:column;gap:3px}
+  .tally b{font-family:var(--mono);font-size:1.6rem;font-weight:700;
+           letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1}
+  .tally span{font-size:12px;color:var(--ink-3);line-height:1.36}
+  .t-hi{color:var(--hi)} .t-lo{color:var(--lo)} .t-mid{color:var(--mid)}
+
+  section{padding-top:48px;display:flex;flex-direction:column;gap:15px}
+  h2{font-family:var(--display);font-size:1.72rem;font-weight:750;margin:0;
+     letter-spacing:-.025em;text-wrap:balance}
+  h3{font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+     text-transform:uppercase;color:var(--ink-3);margin:0 0 7px;font-weight:600}
+  p{margin:0;max-width:68ch}
+  .lede{color:var(--ink-2)}
+
+  .card{background:var(--surface);border:1px solid var(--rule);padding:21px 23px;
+        display:flex;flex-direction:column;gap:11px}
+  .k-hi{border-left:3px solid var(--hi)}
+  .k-lo{border-left:3px solid var(--lo)}
+  .k-mid{border-left:3px solid var(--mid)}
+  .split{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px}
+
+  .scroll{overflow-x:auto;border:1px solid var(--rule);background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;
+        font-variant-numeric:tabular-nums}
+  caption{text-align:left;padding:14px 17px 2px;font-size:12.5px;color:var(--ink-3)}
+  th{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+     color:var(--ink-3);font-weight:600;text-align:right;padding:10px 13px;
+     border-bottom:1px solid var(--rule);white-space:nowrap}
+  td{padding:9px 13px;text-align:right;border-bottom:1px solid var(--rule-soft);
+     white-space:nowrap;font-family:var(--mono);font-size:12.5px}
+  th:first-child,td:first-child{text-align:left;font-family:var(--body);
+     font-size:13.5px;white-space:normal;min-width:180px}
+  tbody tr:last-child td{border-bottom:0}
+  tr.hi td{background:var(--sunken);font-weight:600}
+  td.up{color:var(--hi)} td.down{color:var(--lo)} td.dim{color:var(--ink-3)}
+
+  .verdict{display:inline-block;font-family:var(--mono);font-size:10px;
+           letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;
+           font-weight:700;border-radius:2px}
+  .v-pass{background:color-mix(in srgb,var(--hi) 16%,transparent);color:var(--hi)}
+  .v-fail{background:color-mix(in srgb,var(--lo) 16%,transparent);color:var(--lo)}
+  .v-open{background:var(--accent-soft);color:var(--accent)}
+
+  figure{margin:0;display:flex;flex-direction:column;gap:11px}
+  figcaption{font-size:13px;color:var(--ink-3);max-width:74ch}
+  .plate{background:var(--surface);border:1px solid var(--rule);padding:22px}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .axis{font-family:var(--mono);font-size:10.5px;fill:var(--ink-3);
+        font-variant-numeric:tabular-nums}
+  .gridline{stroke:var(--rule);stroke-width:1}
+  .zero{stroke:var(--ink-3);stroke-width:1.4}
+
+  ul,ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:9px;
+        max-width:70ch}
+  li::marker{color:var(--ink-3)}
+  code{font-family:var(--mono);font-size:.87em;background:var(--sunken);
+       padding:1px 5px;border-radius:2px}
+  .note{font-size:14px;color:var(--ink-2);border-top:1px solid var(--rule);
+        padding-top:16px;max-width:76ch}
+  footer{margin-top:54px;padding-top:20px;border-top:1px solid var(--rule);
+         font-size:12.5px;color:var(--ink-3);max-width:78ch;line-height:1.6}
+  a{color:var(--accent)}
+  a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Interval study &middot; 101&ndash;120 US equities &middot; 2015&ndash;2026 &middot; Binance execution costs</p>
+  <h1>The Interval Was the Parameter</h1>
+  <p class="standfirst">The programme banked a 30-minute breakout book and spent
+  eleven overlays trying to improve it. Swept across seven bar sizes at the cost
+  this strategy actually pays, 30 minutes turns out to be close to the worst
+  choice available &mdash; and a strategy nobody had tested beats all of them.</p>
+
+  <div class="tallies">
+    <div class="tally"><b class="t-lo">0.20</b>
+      <span>30-minute book at 10bp taker, the banked interval</span></div>
+    <div class="tally"><b class="t-hi">0.95</b>
+      <span>4-hour book, same rules, same cost</span></div>
+    <div class="tally"><b class="t-hi">1.28</b>
+      <span>dip buying at 4 hours, 7.5bp blended</span></div>
+    <div class="tally"><b class="t-mid">0.79</b>
+      <span>random entries in the same regime &mdash; the bar it had to clear</span></div>
+  </div>
+</header>
+
+<section>
+  <h2>Seven intervals, and the banked one is a trough</h2>
+  <p class="lede">Identical rules throughout &mdash; 55-bar Donchian entry, Wilder
+  ATR(20), 2N stop, half-N pyramid to four units, 3N chandelier, six concurrent
+  positions. Only the bar size changes. Both legs are stop orders, so 10bp taker is
+  the cost that applies; 5bp is shown because every prior figure in the programme
+  assumed something near it.</p>
+  <figure>
+    <div class="plate">
+      <svg id="ladder" viewBox="0 0 1000 320" role="img"
+           aria-label="Sharpe ratio by breakout interval at 10bp taker and 5bp maker costs"></svg>
+    </div>
+    <figcaption>Sharpe against bar size. The 30-minute cell sits in a trough at
+    taker cost &mdash; worse than 15 minutes on one side and 60 minutes on the
+    other.</figcaption>
+  </figure>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Breakout interval</th><th>Trades</th><th>10bp taker</th>
+      <th>5bp maker</th></tr></thead>
+      <tbody id="ladder-table"></tbody>
+    </table>
+  </div>
+  <div class="card k-lo">
+    <h3>Why the trough is not noise</h3>
+    <p>Cost is charged per trade regardless of how much a trade can earn, so slow
+    channels keep more of what they make: 44,857 trades at five minutes against
+    9,563 at four hours. That accounts for the overall slope.</p>
+    <p>It does not account for 30 minutes sitting <em>below</em> both its
+    neighbours. The 5&ndash;95% band there is <strong>[&minus;0.02 to 0.32]</strong>,
+    which includes zero, so the honest reading is that the banked interval is
+    indistinguishable from no edge at the cost it actually pays &mdash; while four
+    hours reaches 0.95 with a band of [0.75&ndash;1.10].</p>
+  </div>
+</section>
+
+<section>
+  <h2>The confirmation penalty is a fast-bar phenomenon</h2>
+  <p class="lede">Waiting for a bar to close before entering costs a fixed
+  <strong>0.4N median</strong> of give-up per trade &mdash; scale-invariant, because N
+  shrinks with the interval too. What changes is how often you pay it.</p>
+  <div class="scroll">
+    <table>
+      <caption>Close-confirmed entry against a stop resting at the channel edge.</caption>
+      <thead><tr><th>Interval</th><th>&Delta; at 10bp</th><th>&Delta; at 5bp</th>
+      <th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>5 minutes</td><td class="down">&minus;2.06</td><td class="down">&minus;2.56</td>
+          <td class="dim">ruinous</td></tr>
+        <tr><td>15 minutes</td><td class="down">&minus;1.39</td><td class="down">&minus;1.65</td>
+          <td class="dim">ruinous</td></tr>
+        <tr><td>2 hours</td><td class="down">&minus;0.20</td><td class="down">&minus;0.17</td>
+          <td class="dim">costly</td></tr>
+        <tr><td>4 hours</td><td class="down">&minus;0.10</td><td class="up">+0.06</td>
+          <td class="dim">roughly free</td></tr>
+        <tr class="hi"><td>Daily</td><td class="up">+0.05</td><td class="up">+0.01</td>
+          <td class="dim">free or slightly positive</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">This overturns an earlier conclusion drawn from fast bars alone.
+  Eight consecutive confirmation arms losing to a stop looked like a structural
+  fact about confirmation; it was a fact about trade frequency. At daily bars the
+  selection benefit of waiting for the close finally exceeds the price paid for it.</p>
+</section>
+
+<section>
+  <h2>Buying the dip beats buying the breakout</h2>
+  <p class="lede">A resting limit at trailing VWAP, taken only while price is above
+  its long average. Filled at <code>min(VWAP, open)</code> when the bar actually
+  trades down to it &mdash; a maker fill at 5bp, where the breakout's stop order is a
+  taker at 10bp. Exits unchanged.</p>
+  <div class="scroll">
+    <table>
+      <caption>114 instruments, 4-hour bars. Blended 7.5bp reflects a maker entry
+      and a taker exit.</caption>
+      <thead><tr><th>Arm</th><th>Trades</th><th>5bp</th><th>7.5bp blended</th></tr></thead>
+      <tbody>
+        <tr><td>Breakout, stop entry <span class="dim">(incumbent)</span></td>
+          <td class="dim">9,705</td><td>1.11</td><td>0.99</td></tr>
+        <tr class="hi"><td><b>Dip: VWAP limit above the MA</b></td>
+          <td class="dim">49,526</td><td class="up">1.30</td><td class="up">1.28</td></tr>
+        <tr><td>Dip: no regime filter</td><td class="dim">97,592</td>
+          <td class="down">0.85</td><td class="down">0.72</td></tr>
+        <tr><td>Dip: accelerated by depth</td><td class="dim">49,526</td>
+          <td>1.32</td><td>1.24</td></tr>
+        <tr><td><b>Random entries, same regime</b> <span class="dim">(null)</span></td>
+          <td class="dim">matched</td><td class="down">0.79</td><td class="dim">&mdash;</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="split">
+    <div class="card k-hi">
+      <h3>It clears the control that matters</h3>
+      <p>Equities drift upward, so any long taken above a rising average earns money
+      for free. The null draws the <em>same number</em> of entries from the
+      <em>same</em> eligible bars with the <em>same</em> exits. The dip rule beat it
+      in <strong>15 of 15 draws</strong>, 1.30 against 0.79.</p>
+      <p>The null still captures 61% of the result &mdash; in line with the 63&ndash;75%
+      that random entries captured from the breakout book. Most of what both
+      strategies earn is drift. The dip rule simply keeps more of it.</p>
+    </div>
+    <div class="card k-mid">
+      <h3>Two details that decide it</h3>
+      <p><b>The regime filter is load-bearing.</b> 1.30 with it, 0.85 without.
+      Dip-buying with no trend condition really does catch falling knives, and the
+      difference is 0.45 Sharpe.</p>
+      <p><b>Accelerating on depth adds nothing.</b> 1.32 at 5bp and 1.24 at 7.5bp,
+      against 1.30 and 1.28 flat. Sizing up into deeper dips feels right and
+      measures as noise.</p>
+    </div>
+  </div>
+  <p class="note"><strong>Not yet bankable.</strong> No out-of-sample split, no
+  per-year table, and the 10bp arm is still computing &mdash; and the dip book takes
+  five times as many trades as the breakout book, which is exactly the exposure that
+  cost has punished everywhere else in this study.
+  <span class="verdict v-open">interval sweep running</span></p>
+</section>
+
+<section>
+  <h2>What failed, with the control that killed it</h2>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Proposal</th><th>Result</th><th>Killed by</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>MA crossover 5:15 as a sizing tilt</td><td>0.14</td>
+          <td class="dim">its reversal scored 0.29</td>
+          <td><span class="verdict v-fail">Failed</span></td></tr>
+        <tr><td>MA crossover 15:30</td><td>0.19</td>
+          <td class="dim">its reversal scored 0.24</td>
+          <td><span class="verdict v-fail">Failed</span></td></tr>
+        <tr><td>MA crossover 50:200</td><td>0.11</td>
+          <td class="dim">its reversal scored 0.30</td>
+          <td><span class="verdict v-fail">Failed</span></td></tr>
+        <tr><td>VIX sizing tilt</td><td>0.23</td>
+          <td class="dim">beats its reversal (0.16) but adds +0.02 over the MA tilt</td>
+          <td><span class="verdict v-fail">Redundant</span></td></tr>
+        <tr><td>Adding the short side</td><td class="down">&minus;0.44</td>
+          <td class="dim">long-only scores 0.20; the regime tilt lifts shorts to &minus;0.25 and no further</td>
+          <td><span class="verdict v-fail">Failed</span></td></tr>
+        <tr class="hi"><td>Price versus its own MA, as a sizing tilt</td><td>0.23</td>
+          <td class="dim">beats its reversal at 50, 100 and 200 sessions</td>
+          <td><span class="verdict v-pass">Survives</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note"><strong>Crossovers and price-versus-average are not the same test.</strong>
+  Price-versus-average asks where price <em>is</em>; a crossover asks whether the fast
+  mean is <em>rising through</em> the slow one. The first survives its reversal at every
+  window tried. All three crossovers lose to theirs, and 50:200 loses worst &mdash;
+  halving size when the fast average is <em>below</em> the slow one actively helps,
+  which is the opposite of the proposal.</p>
+</section>
+
+<section>
+  <h2>What follows</h2>
+  <ol>
+    <li><strong>Re-base the programme on 4-hour bars.</strong> The banked 30-minute
+    configuration scores 0.20 at its true cost with a band including zero. Every
+    overlay in the ledger was tested against that configuration.</li>
+    <li><strong>Run T1.1 out-of-sample on the 4-hour book</strong>, parameters frozen
+    first. It has never been run on anything, and nothing above is bankable without it.</li>
+    <li><strong>Finish the dip study.</strong> The 10bp arm and the interval sweep
+    decide whether it is a general effect or a slow-bar, maker-only one.</li>
+    <li><strong>Quote costs by execution type, not by preference.</strong> A stop
+    order is a taker. A resting limit is a maker. The dip strategy's advantage is
+    partly that its entry is structurally cheaper, and that is a real edge rather
+    than an accounting choice.</li>
+  </ol>
+</section>
+
+<footer>
+  US-listed equities and ordinary ETFs from the Binance trad-FI universe, 13 levered
+  and inverse wrappers excluded; instrument counts vary from 120 at five minutes to
+  101 at daily as longer bars fail the minimum-history test. Alpha Vantage
+  consolidated 5-minute bars resampled upward, 2015-01-02 to 2026-07-31. Long-only
+  except where stated. Costs are Binance round trips: 5bp making, 10bp taking, 7.5bp
+  blended for a maker entry with a taker exit. Every arm is matched to an 18% median
+  drawdown before its return is read, and comparisons are paired on identical
+  capacity orderings &mdash; the random tie-break alone spans a [0.57&ndash;0.96]
+  Sharpe band, so unpaired differences below 0.4 are meaningless. Drawdowns are
+  marked to market daily, not at exit.
+</footer>
+</div>
+
+<script>
+const LADDER=[
+ {k:"5 min",   n:44857, ten:-0.39, five:0.02},
+ {k:"15 min",  n:40534, ten:0.50,  five:0.58},
+ {k:"30 min",  n:35113, ten:0.20,  five:0.82},
+ {k:"1 hour",  n:26237, ten:0.43,  five:0.81},
+ {k:"2 hours", n:17848, ten:0.47,  five:0.78},
+ {k:"4 hours", n:9563,  ten:0.95,  five:1.02},
+ {k:"Daily",   n:4846,  ten:0.93,  five:1.01},
+];
+const NS="http://www.w3.org/2000/svg";
+const el=(t,a)=>{const n=document.createElementNS(NS,t);for(const k in a)n.setAttribute(k,a[k]);return n;};
+
+function draw(){
+  const svg=document.getElementById("ladder");svg.textContent="";
+  const W=1000,H=320,L=68,R=132,T=30,B=52;
+  const iw=W-L-R, ih=H-T-B;
+  const cw=iw/LADDER.length;
+  const lo=-0.6, hi=1.2;
+  const y=v=>T+ih-((v-lo)/(hi-lo))*ih;
+  [-0.5,0,0.5,1.0].forEach(v=>{
+    svg.appendChild(el("line",{x1:L,x2:L+iw,y1:y(v),y2:y(v),
+      class:v===0?"zero":"gridline"}));
+    const t=el("text",{x:L-10,y:y(v)+3.5,class:"axis","text-anchor":"end"});
+    t.textContent=v.toFixed(1);svg.appendChild(t);
+  });
+  const line=(key,colour,dash)=>{
+    const d=LADDER.map((r,i)=>(i?"L":"M")+(L+i*cw+cw/2)+" "+y(r[key])).join(" ");
+    svg.appendChild(el("path",{d,fill:"none",stroke:colour,"stroke-width":2.6,
+      "stroke-linejoin":"round","stroke-dasharray":dash||"none"}));
+    LADDER.forEach((r,i)=>{
+      const cx=L+i*cw+cw/2;
+      svg.appendChild(el("circle",{cx,cy:y(r[key]),r:4.6,fill:colour,
+        stroke:"var(--surface)","stroke-width":2}));
+      const t=el("text",{x:cx,y:y(r[key])-11,class:"axis","text-anchor":"middle",
+        fill:colour,"font-weight":"700"});
+      t.textContent=r[key].toFixed(2);svg.appendChild(t);
+    });
+  };
+  line("five","var(--ink-3)","5 3");
+  line("ten","var(--accent)");
+  LADDER.forEach((r,i)=>{
+    const cx=L+i*cw+cw/2;
+    const t=el("text",{x:cx,y:H-30,class:"axis","text-anchor":"middle",
+      fill:"var(--ink)","font-weight":"650"});
+    t.textContent=r.k;svg.appendChild(t);
+    const n=el("text",{x:cx,y:H-16,class:"axis","text-anchor":"middle"});
+    n.textContent=(r.n/1000).toFixed(0)+"k";svg.appendChild(n);
+  });
+  const a=el("text",{x:L+iw+16,y:y(LADDER[6].ten)+4,class:"axis",
+    fill:"var(--accent)","font-weight":"700"});
+  a.textContent="10bp taker";svg.appendChild(a);
+  const b=el("text",{x:L+iw+16,y:y(LADDER[6].five)-10,class:"axis",fill:"var(--ink-3)"});
+  b.textContent="5bp maker";svg.appendChild(b);
+  const c=el("text",{x:L,y:T-12,class:"axis"});
+  c.textContent="Sharpe, matched to 18% median drawdown  ·  trade count below each interval";
+  svg.appendChild(c);
+}
+
+document.getElementById("ladder-table").innerHTML=LADDER.map(r=>{
+  const best=r.k==="4 hours";
+  return '<tr'+(best?' class="hi"':'')+'><td>'+r.k+'</td><td class="dim">'+
+    r.n.toLocaleString("en-US")+'</td><td class="'+(r.ten<0.3?'down':'up')+'">'+
+    r.ten.toFixed(2)+'</td><td>'+r.five.toFixed(2)+'</td></tr>';
+}).join("");
+
+draw();
+let t;addEventListener("resize",()=>{clearTimeout(t);t=setTimeout(draw,150);});
+</script>
