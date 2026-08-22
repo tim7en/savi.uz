@@ -263,12 +263,38 @@ def fade_trade(five, spans, day_at, day, side, close, implied, args):
     return fill, five[end].close, "time", five[end].timestamp, risk
 
 
-def arm(book, rows, args, action, move_direction):
-    """One of the four combinations, priced by the order type it really uses."""
+def arm(book, rows, args, action, move_direction, null_seed=None):
+    """One of the four combinations, priced by the order type it really uses.
+
+    ``null_seed`` replaces the trigger with an ordinary session -- same name,
+    same count, same side, same exits.  Equities drift up, so any long arm earns
+    something for free and the dip study measured random entries capturing
+    63-75% of a real signal's result.  A long arm that does not clear its own
+    drift null has not been shown to contain a signal at all.
+    """
     by_ticker = defaultdict(list)
-    for row in rows:
-        if row["direction"] == move_direction and row["z_implied"] >= args.stretch:
-            by_ticker[row["ticker"]].append(row)
+    if null_seed is None:
+        for row in rows:
+            if (row["direction"] == move_direction
+                    and row["z_implied"] >= args.stretch):
+                by_ticker[row["ticker"]].append(row)
+    else:
+        wanted = defaultdict(int)
+        for row in rows:
+            if (row["direction"] == move_direction
+                    and row["z_implied"] >= args.stretch):
+                wanted[row["ticker"]] += 1
+        quiet = defaultdict(list)
+        for row in rows:
+            if row["z_implied"] < 1.0:
+                quiet[row["ticker"]].append(row)
+        for ticker, count in wanted.items():
+            pool = quiet.get(ticker, [])
+            if not pool:
+                continue
+            rng = random.Random(null_seed + (hash(ticker) % 10_000))
+            picked = rng.sample(pool, min(count, len(pool)))
+            by_ticker[ticker] = sorted(picked, key=lambda r: r["day"])
     side = move_direction if action == "follow" else -move_direction
     trades = []
     for ticker, events_here in by_ticker.items():
@@ -384,6 +410,25 @@ def main(argv=None) -> int:
                   f"{stats['time_rate']:>6.1%} {stats['mean_r']:>+8.3f} "
                   f"{(result['sharpe'] if result else float('nan')):>7.2f} "
                   f"{band:>15s}", flush=True)
+
+            spread = []
+            for draw in range(5):
+                drawn = arm(book, rows, args, action, move_direction,
+                            null_seed=5000 + 137 * draw)
+                if len(drawn) < 100:
+                    continue
+                outcome = data.assess(drawn, args)
+                if outcome:
+                    spread.append((outcome["sharpe"], describe(drawn)["mean_r"]))
+            if spread:
+                spread.sort()
+                middle = spread[len(spread) // 2]
+                report["arms"][label]["null_sharpe"] = middle[0]
+                report["arms"][label]["null_mean_r"] = middle[1]
+                print(f"  {'  ordinary sessions (null)':28s} {'':>7s} {'':>7s} "
+                      f"{'':>7s} {'':>6s} {middle[1]:>+8.3f} {middle[0]:>7.2f} "
+                      f"{('[%.2f-%.2f]' % (spread[0][0], spread[-1][0])):>15s}",
+                      flush=True)
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=1, default=str), encoding="utf-8")
