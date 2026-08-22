@@ -1,4 +1,4 @@
-<title>Six Proposals, One Survivor</title>
+<title>Six Proposals, No Survivor</title>
 <style>
   :root{
     color-scheme:light;
@@ -157,17 +157,17 @@
 
 <header>
   <p class="eyebrow">Session ledger &middot; 42 US names intraday, 143 daily &middot; 2017&ndash;2026 &middot; per-leg execution costs</p>
-  <h1>Six Proposals, One Survivor</h1>
+  <h1>Six Proposals, No Survivor</h1>
   <p class="standfirst">Six ways to improve the book were tested in one sitting:
   a machine-learned trade filter, a leveraged 3:1 scalp, support and resistance
   zones, 20x leverage, a volatility-surprise trade, and option activity as a
-  trend signal. Five died on their controls. The sixth survived, narrowly, and
-  only once the control was drawn enough times to be trusted. The two things
-  that moved the result most were never about picking the trade at all.</p>
+  trend signal. Five died on their controls. The sixth looked like it had
+  survived on 230 trades, and then lost to its own control on eighteen thousand.
+  The two things that did move the result were never about picking the trade.</p>
 
   <div class="tallies">
-    <div class="tally"><b class="t-hi">46 / 50</b>
-      <span>drift-null draws the surprise book beat, out of sample</span></div>
+    <div class="tally"><b class="t-lo">47 / 50</b>
+      <span>drift-null draws that beat the surprise book on 142 names</span></div>
     <div class="tally"><b class="t-mid">1.08</b>
       <span>Sharpe lost to the entry order type alone</span></div>
     <div class="tally"><b class="t-lo">0.0%</b>
@@ -208,9 +208,9 @@
           <td class="down">&minus;99.7%, supports 0.20x</td>
           <td><span class="verdict v-fail">failed</span></td></tr>
         <tr class="hi"><td>Follow a move beyond 3&times; implied vol</td>
-          <td class="dim">a 50-draw drift null, out of sample</td>
-          <td class="up">2.74 against a null median of 1.01, p = 0.08</td>
-          <td><span class="verdict v-pass">survived</span></td></tr>
+          <td class="dim">the same null on 142 names and 27 years</td>
+          <td class="down">1.09 against a null median of 1.55, p = 0.94</td>
+          <td><span class="verdict v-fail">failed</span></td></tr>
         <tr><td>Option activity as a trend-strength signal</td>
           <td class="dim">within-name, over time</td>
           <td class="down">negative on every measure</td>
@@ -612,8 +612,10 @@
 
   <div class="scroll">
     <table>
-      <caption>The four tradeable arms at the 3&times; threshold, each against a
-      matched drift null on ordinary sessions.</caption>
+      <caption>The four tradeable arms at the 3&times; threshold on the 42-name
+      universe, full sample, each against a matched drift null. This is the table
+      that looked like a result; the two sections below are why it is not
+      one.</caption>
       <thead>
         <tr><th>Arm</th><th>Trades</th><th>Mean R</th><th>Sharpe</th>
           <th>5&ndash;95%</th></tr>
@@ -640,120 +642,177 @@
 
   <figure>
     <div class="plate">
-<svg viewBox="0 0 1000 250" role="img" aria-label="Fifty drift-null Sharpe draws against the book's 2.74">
-<line class="gridline" x1="161.9" y1="40" x2="161.9" y2="194"/>
-<text class="axis" x="161.9" y="212" text-anchor="middle">-1</text>
-<line class="gridline" x1="338.5" y1="40" x2="338.5" y2="194"/>
-<text class="axis" x="338.5" y="212" text-anchor="middle">0</text>
-<line class="gridline" x1="515.0" y1="40" x2="515.0" y2="194"/>
-<text class="axis" x="515.0" y="212" text-anchor="middle">1</text>
-<line class="gridline" x1="691.5" y1="40" x2="691.5" y2="194"/>
-<text class="axis" x="691.5" y="212" text-anchor="middle">2</text>
-<line class="gridline" x1="868.1" y1="40" x2="868.1" y2="194"/>
-<text class="axis" x="868.1" y="212" text-anchor="middle">3</text>
-<line class="zero" x1="338.5" y1="40" x2="338.5" y2="194"/>
-<circle class="dot-null" cx="139.0" cy="180.0" r="5"><title>drift null draw: Sharpe -1.13</title></circle>
-<circle class="dot-null" cx="154.4" cy="180.0" r="5"><title>drift null draw: Sharpe -1.04</title></circle>
-<circle class="dot-null" cx="182.0" cy="180.0" r="5"><title>drift null draw: Sharpe -0.89</title></circle>
-<circle class="dot-null" cx="189.6" cy="164.0" r="5"><title>drift null draw: Sharpe -0.84</title></circle>
-<circle class="dot-null" cx="190.3" cy="148.0" r="5"><title>drift null draw: Sharpe -0.84</title></circle>
-<circle class="dot-null" cx="242.5" cy="180.0" r="5"><title>drift null draw: Sharpe -0.54</title></circle>
-<circle class="dot-null" cx="257.5" cy="180.0" r="5"><title>drift null draw: Sharpe -0.46</title></circle>
-<circle class="dot-null" cx="264.7" cy="164.0" r="5"><title>drift null draw: Sharpe -0.42</title></circle>
-<circle class="dot-null" cx="268.8" cy="148.0" r="5"><title>drift null draw: Sharpe -0.39</title></circle>
-<circle class="dot-null" cx="271.5" cy="132.0" r="5"><title>drift null draw: Sharpe -0.38</title></circle>
-<circle class="dot-null" cx="286.8" cy="180.0" r="5"><title>drift null draw: Sharpe -0.29</title></circle>
-<circle class="dot-null" cx="309.1" cy="180.0" r="5"><title>drift null draw: Sharpe -0.17</title></circle>
-<circle class="dot-null" cx="356.9" cy="180.0" r="5"><title>drift null draw: Sharpe 0.10</title></circle>
-<circle class="dot-null" cx="361.4" cy="164.0" r="5"><title>drift null draw: Sharpe 0.13</title></circle>
-<circle class="dot-null" cx="381.7" cy="180.0" r="5"><title>drift null draw: Sharpe 0.25</title></circle>
-<circle class="dot-null" cx="387.1" cy="164.0" r="5"><title>drift null draw: Sharpe 0.28</title></circle>
-<circle class="dot-null" cx="394.7" cy="148.0" r="5"><title>drift null draw: Sharpe 0.32</title></circle>
-<circle class="dot-null" cx="399.8" cy="180.0" r="5"><title>drift null draw: Sharpe 0.35</title></circle>
-<circle class="dot-null" cx="408.5" cy="164.0" r="5"><title>drift null draw: Sharpe 0.40</title></circle>
-<circle class="dot-null" cx="409.1" cy="132.0" r="5"><title>drift null draw: Sharpe 0.40</title></circle>
-<circle class="dot-null" cx="414.3" cy="148.0" r="5"><title>drift null draw: Sharpe 0.43</title></circle>
-<circle class="dot-null" cx="438.7" cy="180.0" r="5"><title>drift null draw: Sharpe 0.57</title></circle>
-<circle class="dot-null" cx="446.8" cy="164.0" r="5"><title>drift null draw: Sharpe 0.61</title></circle>
-<circle class="dot-null" cx="447.9" cy="148.0" r="5"><title>drift null draw: Sharpe 0.62</title></circle>
-<circle class="dot-null" cx="462.7" cy="180.0" r="5"><title>drift null draw: Sharpe 0.70</title></circle>
-<circle class="dot-null" cx="569.5" cy="180.0" r="5"><title>drift null draw: Sharpe 1.31</title></circle>
-<circle class="dot-null" cx="570.1" cy="164.0" r="5"><title>drift null draw: Sharpe 1.31</title></circle>
-<circle class="dot-null" cx="581.9" cy="148.0" r="5"><title>drift null draw: Sharpe 1.38</title></circle>
-<circle class="dot-null" cx="608.6" cy="180.0" r="5"><title>drift null draw: Sharpe 1.53</title></circle>
-<circle class="dot-null" cx="610.6" cy="164.0" r="5"><title>drift null draw: Sharpe 1.54</title></circle>
-<circle class="dot-null" cx="659.3" cy="180.0" r="5"><title>drift null draw: Sharpe 1.82</title></circle>
-<circle class="dot-null" cx="663.2" cy="164.0" r="5"><title>drift null draw: Sharpe 1.84</title></circle>
-<circle class="dot-null" cx="668.0" cy="148.0" r="5"><title>drift null draw: Sharpe 1.87</title></circle>
-<circle class="dot-null" cx="679.7" cy="180.0" r="5"><title>drift null draw: Sharpe 1.93</title></circle>
-<circle class="dot-null" cx="689.7" cy="164.0" r="5"><title>drift null draw: Sharpe 1.99</title></circle>
-<circle class="dot-null" cx="697.9" cy="180.0" r="5"><title>drift null draw: Sharpe 2.04</title></circle>
-<circle class="dot-null" cx="700.4" cy="148.0" r="5"><title>drift null draw: Sharpe 2.05</title></circle>
-<circle class="dot-null" cx="702.3" cy="132.0" r="5"><title>drift null draw: Sharpe 2.06</title></circle>
-<circle class="dot-null" cx="706.0" cy="164.0" r="5"><title>drift null draw: Sharpe 2.08</title></circle>
-<circle class="dot-null" cx="718.3" cy="180.0" r="5"><title>drift null draw: Sharpe 2.15</title></circle>
-<circle class="dot-null" cx="730.7" cy="164.0" r="5"><title>drift null draw: Sharpe 2.22</title></circle>
-<circle class="dot-null" cx="741.9" cy="180.0" r="5"><title>drift null draw: Sharpe 2.29</title></circle>
-<circle class="dot-null" cx="748.1" cy="164.0" r="5"><title>drift null draw: Sharpe 2.32</title></circle>
-<circle class="dot-null" cx="762.8" cy="180.0" r="5"><title>drift null draw: Sharpe 2.40</title></circle>
-<circle class="dot-null" cx="795.0" cy="180.0" r="5"><title>drift null draw: Sharpe 2.59</title></circle>
-<circle class="dot-null" cx="804.6" cy="164.0" r="5"><title>drift null draw: Sharpe 2.64</title></circle>
-<circle class="dot-over" cx="833.9" cy="180.0" r="5"><title>drift null draw: Sharpe 2.81</title></circle>
-<circle class="dot-over" cx="849.2" cy="180.0" r="5"><title>drift null draw: Sharpe 2.89</title></circle>
-<circle class="dot-over" cx="851.3" cy="164.0" r="5"><title>drift null draw: Sharpe 2.91</title></circle>
-<circle class="dot-over" cx="905.9" cy="180.0" r="5"><title>drift null draw: Sharpe 3.21</title></circle>
-<line class="mark-book" x1="822.1" y1="36" x2="822.1" y2="194"/>
-<text class="lab-book" x="822.1" y="28" text-anchor="middle">the book &#183; 2.74</text>
-<text class="lab-null" x="569.5" y="230" text-anchor="middle">null median 1.31</text>
-<text class="axis" x="56" y="244" text-anchor="start">Sharpe, out of sample 2022&#8211;2026</text>
+<svg viewBox="0 0 1000 340" role="img" aria-label="Drift-null draws against the book, on the narrow intraday universe and the wide daily one">
+<line class="gridline" x1="280.7" y1="26" x2="280.7" y2="294"/>
+<text class="axis" x="280.7" y="314" text-anchor="middle">-1</text>
+<line class="gridline" x1="427.3" y1="26" x2="427.3" y2="294"/>
+<text class="axis" x="427.3" y="314" text-anchor="middle">0</text>
+<line class="gridline" x1="574.0" y1="26" x2="574.0" y2="294"/>
+<text class="axis" x="574.0" y="314" text-anchor="middle">1</text>
+<line class="gridline" x1="720.7" y1="26" x2="720.7" y2="294"/>
+<text class="axis" x="720.7" y="314" text-anchor="middle">2</text>
+<line class="gridline" x1="867.3" y1="26" x2="867.3" y2="294"/>
+<text class="axis" x="867.3" y="314" text-anchor="middle">3</text>
+<line class="zero" x1="427.3" y1="26" x2="427.3" y2="294"/>
+<text class="axis strong" x="164" y="60" text-anchor="end">42 names, 5-minute, 2022-2026</text>
+<text class="axis dim" x="164" y="77" text-anchor="end">230 trades</text>
+<circle class="dot-null" cx="261.7" cy="104.0" r="4.6"><title>drift null draw: Sharpe -1.13</title></circle>
+<circle class="dot-null" cx="274.4" cy="104.0" r="4.6"><title>drift null draw: Sharpe -1.04</title></circle>
+<circle class="dot-null" cx="297.4" cy="104.0" r="4.6"><title>drift null draw: Sharpe -0.89</title></circle>
+<circle class="dot-null" cx="303.7" cy="91.0" r="4.6"><title>drift null draw: Sharpe -0.84</title></circle>
+<circle class="dot-null" cx="304.2" cy="78.0" r="4.6"><title>drift null draw: Sharpe -0.84</title></circle>
+<circle class="dot-null" cx="347.6" cy="104.0" r="4.6"><title>drift null draw: Sharpe -0.54</title></circle>
+<circle class="dot-null" cx="360.1" cy="104.0" r="4.6"><title>drift null draw: Sharpe -0.46</title></circle>
+<circle class="dot-null" cx="366.1" cy="91.0" r="4.6"><title>drift null draw: Sharpe -0.42</title></circle>
+<circle class="dot-null" cx="369.4" cy="78.0" r="4.6"><title>drift null draw: Sharpe -0.39</title></circle>
+<circle class="dot-null" cx="371.7" cy="104.0" r="4.6"><title>drift null draw: Sharpe -0.38</title></circle>
+<circle class="dot-null" cx="384.4" cy="104.0" r="4.6"><title>drift null draw: Sharpe -0.29</title></circle>
+<circle class="dot-null" cx="402.9" cy="104.0" r="4.6"><title>drift null draw: Sharpe -0.17</title></circle>
+<circle class="dot-null" cx="442.6" cy="104.0" r="4.6"><title>drift null draw: Sharpe 0.10</title></circle>
+<circle class="dot-null" cx="446.4" cy="91.0" r="4.6"><title>drift null draw: Sharpe 0.13</title></circle>
+<circle class="dot-null" cx="463.3" cy="104.0" r="4.6"><title>drift null draw: Sharpe 0.25</title></circle>
+<circle class="dot-null" cx="467.7" cy="91.0" r="4.6"><title>drift null draw: Sharpe 0.28</title></circle>
+<circle class="dot-null" cx="474.0" cy="78.0" r="4.6"><title>drift null draw: Sharpe 0.32</title></circle>
+<circle class="dot-null" cx="478.3" cy="104.0" r="4.6"><title>drift null draw: Sharpe 0.35</title></circle>
+<circle class="dot-null" cx="485.6" cy="91.0" r="4.6"><title>drift null draw: Sharpe 0.40</title></circle>
+<circle class="dot-null" cx="486.0" cy="78.0" r="4.6"><title>drift null draw: Sharpe 0.40</title></circle>
+<circle class="dot-null" cx="490.3" cy="104.0" r="4.6"><title>drift null draw: Sharpe 0.43</title></circle>
+<circle class="dot-null" cx="510.6" cy="104.0" r="4.6"><title>drift null draw: Sharpe 0.57</title></circle>
+<circle class="dot-null" cx="517.3" cy="91.0" r="4.6"><title>drift null draw: Sharpe 0.61</title></circle>
+<circle class="dot-null" cx="518.3" cy="78.0" r="4.6"><title>drift null draw: Sharpe 0.62</title></circle>
+<circle class="dot-null" cx="530.6" cy="104.0" r="4.6"><title>drift null draw: Sharpe 0.70</title></circle>
+<circle class="dot-null" cx="619.3" cy="104.0" r="4.6"><title>drift null draw: Sharpe 1.31</title></circle>
+<circle class="dot-null" cx="619.8" cy="91.0" r="4.6"><title>drift null draw: Sharpe 1.31</title></circle>
+<circle class="dot-null" cx="629.6" cy="78.0" r="4.6"><title>drift null draw: Sharpe 1.38</title></circle>
+<circle class="dot-null" cx="651.7" cy="104.0" r="4.6"><title>drift null draw: Sharpe 1.53</title></circle>
+<circle class="dot-null" cx="653.4" cy="91.0" r="4.6"><title>drift null draw: Sharpe 1.54</title></circle>
+<circle class="dot-null" cx="693.9" cy="104.0" r="4.6"><title>drift null draw: Sharpe 1.82</title></circle>
+<circle class="dot-null" cx="697.1" cy="91.0" r="4.6"><title>drift null draw: Sharpe 1.84</title></circle>
+<circle class="dot-null" cx="701.1" cy="78.0" r="4.6"><title>drift null draw: Sharpe 1.87</title></circle>
+<circle class="dot-null" cx="710.8" cy="104.0" r="4.6"><title>drift null draw: Sharpe 1.93</title></circle>
+<circle class="dot-null" cx="719.1" cy="91.0" r="4.6"><title>drift null draw: Sharpe 1.99</title></circle>
+<circle class="dot-null" cx="726.0" cy="104.0" r="4.6"><title>drift null draw: Sharpe 2.04</title></circle>
+<circle class="dot-null" cx="728.0" cy="78.0" r="4.6"><title>drift null draw: Sharpe 2.05</title></circle>
+<circle class="dot-null" cx="729.6" cy="65.0" r="4.6"><title>drift null draw: Sharpe 2.06</title></circle>
+<circle class="dot-null" cx="732.7" cy="91.0" r="4.6"><title>drift null draw: Sharpe 2.08</title></circle>
+<circle class="dot-null" cx="742.9" cy="104.0" r="4.6"><title>drift null draw: Sharpe 2.15</title></circle>
+<circle class="dot-null" cx="753.2" cy="91.0" r="4.6"><title>drift null draw: Sharpe 2.22</title></circle>
+<circle class="dot-null" cx="762.5" cy="104.0" r="4.6"><title>drift null draw: Sharpe 2.29</title></circle>
+<circle class="dot-null" cx="767.7" cy="91.0" r="4.6"><title>drift null draw: Sharpe 2.32</title></circle>
+<circle class="dot-null" cx="779.8" cy="104.0" r="4.6"><title>drift null draw: Sharpe 2.40</title></circle>
+<circle class="dot-null" cx="806.6" cy="104.0" r="4.6"><title>drift null draw: Sharpe 2.59</title></circle>
+<circle class="dot-null" cx="814.6" cy="91.0" r="4.6"><title>drift null draw: Sharpe 2.64</title></circle>
+<circle class="dot-over" cx="839.0" cy="104.0" r="4.6"><title>drift null draw: Sharpe 2.81</title></circle>
+<circle class="dot-over" cx="851.6" cy="104.0" r="4.6"><title>drift null draw: Sharpe 2.89</title></circle>
+<circle class="dot-over" cx="853.4" cy="91.0" r="4.6"><title>drift null draw: Sharpe 2.91</title></circle>
+<circle class="dot-over" cx="898.8" cy="104.0" r="4.6"><title>drift null draw: Sharpe 3.21</title></circle>
+<line class="mark-book" x1="829.2" y1="38" x2="829.2" y2="116"/>
+<text class="lab-book" x="829.2" y="32" text-anchor="middle">book 2.74</text>
+<text class="pin-lab" x="970" y="116" text-anchor="end">4 of 50 nulls beat it</text>
+<text class="axis strong" x="164" y="198" text-anchor="end">142 names, daily, 2013-2026</text>
+<text class="axis dim" x="164" y="215" text-anchor="end">18,245 trades</text>
+<circle class="dot-null" cx="569.1" cy="242.0" r="4.6"><title>drift null draw: Sharpe 0.97</title></circle>
+<circle class="dot-null" cx="584.3" cy="242.0" r="4.6"><title>drift null draw: Sharpe 1.07</title></circle>
+<circle class="dot-null" cx="585.9" cy="229.0" r="4.6"><title>drift null draw: Sharpe 1.08</title></circle>
+<circle class="dot-over" cx="597.5" cy="242.0" r="4.6"><title>drift null draw: Sharpe 1.16</title></circle>
+<circle class="dot-over" cx="609.5" cy="242.0" r="4.6"><title>drift null draw: Sharpe 1.24</title></circle>
+<circle class="dot-over" cx="614.6" cy="229.0" r="4.6"><title>drift null draw: Sharpe 1.28</title></circle>
+<circle class="dot-over" cx="616.7" cy="216.0" r="4.6"><title>drift null draw: Sharpe 1.29</title></circle>
+<circle class="dot-over" cx="622.1" cy="242.0" r="4.6"><title>drift null draw: Sharpe 1.33</title></circle>
+<circle class="dot-over" cx="623.8" cy="203.0" r="4.6"><title>drift null draw: Sharpe 1.34</title></circle>
+<circle class="dot-over" cx="623.8" cy="190.0" r="4.6"><title>drift null draw: Sharpe 1.34</title></circle>
+<circle class="dot-over" cx="624.5" cy="177.0" r="4.6"><title>drift null draw: Sharpe 1.34</title></circle>
+<circle class="dot-over" cx="625.1" cy="164.0" r="4.6"><title>drift null draw: Sharpe 1.35</title></circle>
+<circle class="dot-over" cx="626.7" cy="229.0" r="4.6"><title>drift null draw: Sharpe 1.36</title></circle>
+<circle class="dot-over" cx="628.8" cy="216.0" r="4.6"><title>drift null draw: Sharpe 1.37</title></circle>
+<circle class="dot-over" cx="632.2" cy="151.0" r="4.6"><title>drift null draw: Sharpe 1.40</title></circle>
+<circle class="dot-over" cx="634.6" cy="242.0" r="4.6"><title>drift null draw: Sharpe 1.41</title></circle>
+<circle class="dot-over" cx="635.4" cy="203.0" r="4.6"><title>drift null draw: Sharpe 1.42</title></circle>
+<circle class="dot-over" cx="636.2" cy="190.0" r="4.6"><title>drift null draw: Sharpe 1.42</title></circle>
+<circle class="dot-over" cx="645.9" cy="242.0" r="4.6"><title>drift null draw: Sharpe 1.49</title></circle>
+<circle class="dot-over" cx="646.5" cy="229.0" r="4.6"><title>drift null draw: Sharpe 1.49</title></circle>
+<circle class="dot-over" cx="646.7" cy="216.0" r="4.6"><title>drift null draw: Sharpe 1.50</title></circle>
+<circle class="dot-over" cx="649.4" cy="203.0" r="4.6"><title>drift null draw: Sharpe 1.51</title></circle>
+<circle class="dot-over" cx="649.8" cy="190.0" r="4.6"><title>drift null draw: Sharpe 1.52</title></circle>
+<circle class="dot-over" cx="651.6" cy="177.0" r="4.6"><title>drift null draw: Sharpe 1.53</title></circle>
+<circle class="dot-over" cx="653.8" cy="164.0" r="4.6"><title>drift null draw: Sharpe 1.54</title></circle>
+<circle class="dot-over" cx="656.1" cy="151.0" r="4.6"><title>drift null draw: Sharpe 1.56</title></circle>
+<circle class="dot-over" cx="657.6" cy="242.0" r="4.6"><title>drift null draw: Sharpe 1.57</title></circle>
+<circle class="dot-over" cx="658.5" cy="229.0" r="4.6"><title>drift null draw: Sharpe 1.58</title></circle>
+<circle class="dot-over" cx="659.1" cy="216.0" r="4.6"><title>drift null draw: Sharpe 1.58</title></circle>
+<circle class="dot-over" cx="659.5" cy="138.0" r="4.6"><title>drift null draw: Sharpe 1.58</title></circle>
+<circle class="dot-over" cx="662.7" cy="203.0" r="4.6"><title>drift null draw: Sharpe 1.61</title></circle>
+<circle class="dot-over" cx="668.0" cy="190.0" r="4.6"><title>drift null draw: Sharpe 1.64</title></circle>
+<circle class="dot-over" cx="669.9" cy="242.0" r="4.6"><title>drift null draw: Sharpe 1.65</title></circle>
+<circle class="dot-over" cx="670.3" cy="229.0" r="4.6"><title>drift null draw: Sharpe 1.66</title></circle>
+<circle class="dot-over" cx="671.8" cy="216.0" r="4.6"><title>drift null draw: Sharpe 1.67</title></circle>
+<circle class="dot-over" cx="673.9" cy="203.0" r="4.6"><title>drift null draw: Sharpe 1.68</title></circle>
+<circle class="dot-over" cx="676.3" cy="177.0" r="4.6"><title>drift null draw: Sharpe 1.70</title></circle>
+<circle class="dot-over" cx="677.2" cy="164.0" r="4.6"><title>drift null draw: Sharpe 1.70</title></circle>
+<circle class="dot-over" cx="677.7" cy="151.0" r="4.6"><title>drift null draw: Sharpe 1.71</title></circle>
+<circle class="dot-over" cx="678.4" cy="138.0" r="4.6"><title>drift null draw: Sharpe 1.71</title></circle>
+<circle class="dot-over" cx="679.7" cy="190.0" r="4.6"><title>drift null draw: Sharpe 1.72</title></circle>
+<circle class="dot-over" cx="680.8" cy="125.0" r="4.6"><title>drift null draw: Sharpe 1.73</title></circle>
+<circle class="dot-over" cx="681.5" cy="242.0" r="4.6"><title>drift null draw: Sharpe 1.73</title></circle>
+<circle class="dot-over" cx="682.8" cy="229.0" r="4.6"><title>drift null draw: Sharpe 1.74</title></circle>
+<circle class="dot-over" cx="683.0" cy="216.0" r="4.6"><title>drift null draw: Sharpe 1.74</title></circle>
+<circle class="dot-over" cx="683.4" cy="112.0" r="4.6"><title>drift null draw: Sharpe 1.75</title></circle>
+<circle class="dot-over" cx="700.8" cy="242.0" r="4.6"><title>drift null draw: Sharpe 1.86</title></circle>
+<circle class="dot-over" cx="707.9" cy="229.0" r="4.6"><title>drift null draw: Sharpe 1.91</title></circle>
+<circle class="dot-over" cx="711.7" cy="216.0" r="4.6"><title>drift null draw: Sharpe 1.94</title></circle>
+<circle class="dot-over" cx="714.0" cy="242.0" r="4.6"><title>drift null draw: Sharpe 1.95</title></circle>
+<line class="mark-book" x1="587.6" y1="176" x2="587.6" y2="254"/>
+<text class="lab-book" x="587.6" y="170" text-anchor="middle">book 1.09</text>
+<text class="pin-lab" x="970" y="254" text-anchor="end">47 of 50 nulls beat it</text>
+<text class="axis" x="178" y="334" text-anchor="start">Sharpe, matched to 18% median drawdown &#183; red dots are null draws at or above the book</text>
 </svg>
+
     </div>
-    <figcaption>Fifty drift nulls, each one the same book run on ordinary
-    sessions instead of surprises &mdash; same names, same count, same exits.
-    Four of the fifty reach the book's 2.74, so the book beats its own control
-    in 46 draws out of 50. That is an empirical p of 0.08: suggestive, not
-    settled.</figcaption>
+    <figcaption>The same control run on two universes. On 42 hand-picked
+    names over four years the book clears its drift null 46 times in 50. On 142
+    names over thirteen years &mdash; eighty times the trades &mdash; the null
+    beats the book 47 times in 50. The narrow test was measuring its
+    universe.</figcaption>
   </figure>
 
   <div class="split">
-    <div class="card k-hi">
-      <h3>It survives, narrowly</h3>
-      <p>Parameters chosen on 2017&ndash;2021, frozen, evaluated on
-      2022&ndash;2026: <b>2.74</b> on 230 trades against a null median of
-      <b>1.01</b>. The null is wide &mdash; it runs from &minus;1.13 to 3.21
-      &mdash; because 230 trades over four years is a thin sample. The book
-      clears it 92% of the time and no more than that.</p>
+    <div class="card k-lo">
+      <h3>What the wide universe said</h3>
+      <p>142 names, 1999&ndash;2026, threshold swept from 1.5 to 4.0 and chosen on
+      the first half alone. It picked <b>1.5 deviations, not 3</b>. Out of sample
+      that book scored <b>1.09</b> on 18,245 trades against a drift null of
+      <b>1.55</b>. Forty-seven of fifty null draws beat it.</p>
     </div>
     <div class="card k-mid">
-      <h3>Both ways, one side tradeable</h3>
-      <p>The short arm beats its own null (&minus;0.09 against &minus;0.79), and
-      the down-move continuation is the <em>larger</em> effect in the event
-      study. It still lands at zero. The information is there and is bigger on
-      the down side; drift and cost consume all of it.</p>
+      <h3>Where the 3&times; threshold came from</h3>
+      <p>An event study computed over the whole 2017&ndash;2026 span &mdash;
+      including the period it was then "tested" on. When the threshold is chosen
+      honestly, on in-sample data from a universe that is not survivor-picked, it
+      is not 3&times; and the effect it was pointing at is not there.</p>
     </div>
   </div>
 
   <div class="card k-lo">
-    <h3>Two readings this went through, and why the second is the one to trust</h3>
+    <h3>Three readings, and only the last one had the power to settle it</h3>
     <p>A five-draw null put the band at [&minus;0.05, 1.30] and made the signal
     look decisive. A twenty-five-draw null put it at [&minus;3.33, 4.07] and made
-    it look like noise. Neither was right: the draws were seeded from Python's
-    <code>hash()</code> on the ticker, which is salted per process, so the
-    control produced a different answer every time it was run. Seeded from a
-    stable checksum instead and drawn fifty times, it lands at p = 0.08 and stays
-    there.</p>
-    <p>A control that moves when you re-run it cannot settle anything, and the
-    failure was invisible in the output &mdash; both bands looked like ordinary
-    numbers.</p>
+    it look like noise &mdash; both were unreproducible, because the draws were
+    seeded from Python's <code>hash()</code> on the ticker, which is salted per
+    process. Seeded from a stable checksum and drawn fifty times it settled at
+    p = 0.08 on 230 trades, which looked like a narrow pass.</p>
+    <p>Then the same test ran on eighty times the trades and came back at
+    p = 0.94. Nothing about the method changed. The 230-trade sample simply never
+    had the power to answer the question, and a Sharpe measured over four years
+    carries a standard error near 1.0 &mdash; wide enough to produce 2.74 from a
+    process whose true value is the null's.</p>
   </div>
 
-  <p class="note">Two things stand regardless. The effect is very likely
-  post-earnings-announcement drift &mdash; a 3&times; implied move is nearly
-  always an earnings surprise, and PEAD is among the most replicated anomalies
-  there is. And the signal is <em>structurally taker-only</em>: a patient limit
-  resting half an implied move below the next open filled just 48 of 230 times,
-  because a momentum signal runs away from a limit underneath it. There is no
-  maker version of this trade to be had.</p>
+  <p class="note">Two things still stand. The signal is <em>structurally
+  taker-only</em>: a patient limit resting half an implied move below the next
+  open filled just 48 of 230 times, because a momentum entry runs away from a
+  limit underneath it. And the short mirror is dead again &mdash; following a
+  down surprise scored &minus;1.74 out of sample on the wide universe, in line
+  with every other short arm this programme has measured.</p>
 </section>
 
 <section>
