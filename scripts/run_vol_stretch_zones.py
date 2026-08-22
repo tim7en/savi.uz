@@ -54,6 +54,7 @@ import random
 import sqlite3
 import statistics
 import sys
+import zlib
 from collections import defaultdict
 from datetime import date
 from pathlib import Path
@@ -98,6 +99,16 @@ def parse_args(argv=None):
     parser.add_argument("--out", type=Path,
                         default=Path("out/strategy/vol_stretch_zones.json"))
     return parser.parse_args(argv)
+
+
+def ticker_seed(ticker):
+    """A stable per-name seed.
+
+    ``hash()`` on a str is salted per interpreter process, so a null drawn with
+    it is not reproducible between runs -- and a control whose band moves when
+    you run it again cannot settle anything.
+    """
+    return zlib.crc32(ticker.encode("utf-8")) % 10_000
 
 
 def ratio(numerator, denominator):
@@ -306,7 +317,7 @@ def build(book, panel, args, stretch, offset, kind, zone_kind, fixed_rr=None,
         if random_days is None:
             events = triggers(daily, moves, stretch)
         else:
-            rng = random.Random(random_days + hash(ticker) % 10_000)
+            rng = random.Random(random_days + ticker_seed(ticker))
             pool = [(i, daily[i].timestamp[:10],
                      moves.get(daily[i - 1].timestamp[:10], 0.0) * daily[i - 1].close,
                      daily[i].close)

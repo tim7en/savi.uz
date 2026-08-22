@@ -43,6 +43,7 @@ import math
 import random
 import statistics
 import sys
+import zlib
 from collections import defaultdict
 from datetime import date
 from pathlib import Path
@@ -59,6 +60,16 @@ STOPS = (1.5, 2.0, 3.0)
 TARGETS = (1.5, 2.0, 3.0)
 HOLDS = (3, 5, 10)
 RISK_RUNGS = (0.005, 0.01, 0.015, 0.02, 0.03)
+
+
+def ticker_seed(ticker):
+    """A stable per-name seed.
+
+    ``hash()`` on a str is salted per interpreter process, so a null drawn with
+    it is not reproducible between runs -- and a control whose band moves when
+    you run it again cannot settle anything.
+    """
+    return zlib.crc32(ticker.encode("utf-8")) % 10_000
 
 
 def parse_args(argv=None):
@@ -155,7 +166,7 @@ def book_trades(book, rows, args, stretch, stop_mult, target_r, hold, patient,
             pool = quiet.get(ticker, [])
             if not pool:
                 continue
-            rng = random.Random(null_seed + (hash(ticker) % 10_000))
+            rng = random.Random(null_seed + ticker_seed(ticker))
             by_ticker[ticker] = sorted(rng.sample(pool, min(count, len(pool))),
                                        key=lambda r: r["day"])
 
@@ -371,7 +382,8 @@ def main(argv=None) -> int:
               f"{'':>7s} {'':>8s} {statistics.median(nulls):>7.2f} "
               f"{('[%.2f-%.2f]' % (nulls[0], nulls[-1])):>15s}")
         report["out_of_sample"]["drift_null"] = {
-            "sharpe": statistics.median(nulls), "low": nulls[0], "high": nulls[-1]}
+            "sharpe": statistics.median(nulls), "low": nulls[0], "high": nulls[-1],
+            "draws": nulls}
 
     # ---- sizing ---------------------------------------------------------
     taken = data.cap(outside, args.max_positions, random.Random(0))

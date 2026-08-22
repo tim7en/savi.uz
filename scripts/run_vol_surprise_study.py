@@ -43,6 +43,7 @@ import math
 import random
 import statistics
 import sys
+import zlib
 from collections import defaultdict
 from datetime import date
 from pathlib import Path
@@ -55,6 +56,16 @@ import run_vol_stretch_zones as data  # noqa: E402
 
 HORIZONS = (1, 3, 5, 10)
 Z_BUCKETS = ((1.0, 1.5), (1.5, 2.0), (2.0, 3.0), (3.0, 99.0))
+
+
+def ticker_seed(ticker):
+    """A stable per-name seed.
+
+    ``hash()`` on a str is salted per interpreter process, so a null drawn with
+    it is not reproducible between runs -- and a control whose band moves when
+    you run it again cannot settle anything.
+    """
+    return zlib.crc32(ticker.encode("utf-8")) % 10_000
 
 
 def parse_args(argv=None):
@@ -292,7 +303,7 @@ def arm(book, rows, args, action, move_direction, null_seed=None):
             pool = quiet.get(ticker, [])
             if not pool:
                 continue
-            rng = random.Random(null_seed + (hash(ticker) % 10_000))
+            rng = random.Random(null_seed + ticker_seed(ticker))
             picked = rng.sample(pool, min(count, len(pool)))
             by_ticker[ticker] = sorted(picked, key=lambda r: r["day"])
     side = move_direction if action == "follow" else -move_direction
