@@ -1,0 +1,388 @@
+<title>Where the Market Is Not Efficient</title>
+<style>
+  :root{
+    color-scheme:light;
+    --ground:#F2F1EE; --surface:#FFFFFF; --sunken:#E7E5E0; --rule:#D5D2CB;
+    --rule-soft:#E4E2DC;
+    --ink:#171614; --ink-2:#4A4842; --ink-3:#7E7B73;
+    --live:#1D6B4F; --dead:#9A3F35; --open:#8A6B1F;
+    --accent:#2C4A63; --accent-soft:#E3EAF0;
+    --display:"Helvetica Neue",Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --body:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#100F0D; --surface:#191816; --sunken:#211F1C; --rule:#2F2D29;
+    --rule-soft:#262421;
+    --ink:#EAE8E3; --ink-2:#B2AFA8; --ink-3:#807D76;
+    --live:#59BB93; --dead:#D88173; --open:#CFA84E;
+    --accent:#8FB4CE; --accent-soft:#16242E;
+  }}
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --ground:#100F0D; --surface:#191816; --sunken:#211F1C; --rule:#2F2D29;
+    --rule-soft:#262421;
+    --ink:#EAE8E3; --ink-2:#B2AFA8; --ink-3:#807D76;
+    --live:#59BB93; --dead:#D88173; --open:#CFA84E;
+    --accent:#8FB4CE; --accent-soft:#16242E;
+  }
+  :root[data-theme="light"]{
+    color-scheme:light;
+    --ground:#F2F1EE; --surface:#FFFFFF; --sunken:#E7E5E0; --rule:#D5D2CB;
+    --rule-soft:#E4E2DC;
+    --ink:#171614; --ink-2:#4A4842; --ink-3:#7E7B73;
+    --live:#1D6B4F; --dead:#9A3F35; --open:#8A6B1F;
+    --accent:#2C4A63; --accent-soft:#E3EAF0;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;padding:0 20px 90px;background:var(--ground);color:var(--ink);
+       font-family:var(--body);font-size:16px;line-height:1.62;
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:940px;margin:0 auto}
+
+  header{padding:60px 0 30px;border-bottom:3px solid var(--ink);
+         display:flex;flex-direction:column;gap:14px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+           text-transform:uppercase;color:var(--ink-3);margin:0}
+  h1{font-family:var(--display);font-weight:800;font-size:clamp(2.2rem,6.2vw,3.7rem);
+     line-height:1.0;letter-spacing:-.035em;margin:0;text-wrap:balance}
+  .standfirst{font-size:1.15rem;line-height:1.55;color:var(--ink-2);
+              max-width:63ch;margin:0}
+
+  .tallies{display:grid;grid-template-columns:repeat(auto-fit,minmax(146px,1fr));
+           gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:20px}
+  .tally{background:var(--surface);padding:15px 17px;display:flex;
+         flex-direction:column;gap:3px}
+  .tally b{font-family:var(--mono);font-size:1.55rem;font-weight:700;
+           letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1}
+  .tally span{font-size:12px;color:var(--ink-3);line-height:1.36}
+  .t-live{color:var(--live)} .t-dead{color:var(--dead)} .t-open{color:var(--open)}
+
+  section{padding-top:48px;display:flex;flex-direction:column;gap:15px}
+  h2{font-family:var(--display);font-size:1.7rem;font-weight:750;margin:0;
+     letter-spacing:-.025em;text-wrap:balance}
+  h3{font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+     text-transform:uppercase;color:var(--ink-3);margin:0 0 7px;font-weight:600}
+  p{margin:0;max-width:68ch}
+  .lede{color:var(--ink-2)}
+
+  .card{background:var(--surface);border:1px solid var(--rule);padding:21px 23px;
+        display:flex;flex-direction:column;gap:11px}
+  .k-live{border-left:3px solid var(--live)}
+  .k-dead{border-left:3px solid var(--dead)}
+  .k-open{border-left:3px solid var(--open)}
+  .split{display:grid;grid-template-columns:repeat(auto-fit,minmax(288px,1fr));gap:16px}
+
+  .scroll{overflow-x:auto;border:1px solid var(--rule);background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;
+        font-variant-numeric:tabular-nums}
+  caption{text-align:left;padding:14px 17px 2px;font-size:12.5px;color:var(--ink-3)}
+  th{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+     color:var(--ink-3);font-weight:600;text-align:right;padding:10px 13px;
+     border-bottom:1px solid var(--rule);white-space:nowrap}
+  td{padding:9px 13px;text-align:right;border-bottom:1px solid var(--rule-soft);
+     white-space:nowrap;font-family:var(--mono);font-size:12.5px}
+  th:first-child,td:first-child{text-align:left;font-family:var(--body);
+     font-size:13.5px;white-space:normal;min-width:200px}
+  th:nth-child(2),td:nth-child(2){text-align:left;white-space:normal}
+  tbody tr:last-child td{border-bottom:0}
+  tr.hi td{background:var(--sunken);font-weight:600}
+  tr.group td{background:var(--sunken);font-family:var(--body);font-weight:700;
+              font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;
+              color:var(--ink-2);text-align:left}
+  td.up{color:var(--live)} td.down{color:var(--dead)} td.dim{color:var(--ink-3)}
+
+  .tag{display:inline-block;font-family:var(--mono);font-size:9.5px;
+       letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;
+       font-weight:700;border-radius:2px;white-space:nowrap}
+  .g-live{background:color-mix(in srgb,var(--live) 16%,transparent);color:var(--live)}
+  .g-dead{background:color-mix(in srgb,var(--dead) 16%,transparent);color:var(--dead)}
+  .g-open{background:color-mix(in srgb,var(--open) 20%,transparent);color:var(--open)}
+
+  figure{margin:0;display:flex;flex-direction:column;gap:11px}
+  figcaption{font-size:13px;color:var(--ink-3);max-width:74ch}
+  .plate{background:var(--surface);border:1px solid var(--rule);padding:22px}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .axis{font-family:var(--mono);font-size:10.5px;fill:var(--ink-3);
+        font-variant-numeric:tabular-nums}
+  .gridline{stroke:var(--rule);stroke-width:1}
+  .zero{stroke:var(--ink-3);stroke-width:1.4}
+
+  ul,ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:9px;
+        max-width:70ch}
+  li::marker{color:var(--ink-3)}
+  code{font-family:var(--mono);font-size:.87em;background:var(--sunken);
+       padding:1px 5px;border-radius:2px}
+  .note{font-size:14px;color:var(--ink-2);border-top:1px solid var(--rule);
+        padding-top:16px;max-width:76ch}
+  footer{margin-top:54px;padding-top:20px;border-top:1px solid var(--rule);
+         font-size:12.5px;color:var(--ink-3);max-width:78ch;line-height:1.6}
+  a{color:var(--accent)}
+  a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Research ledger &middot; consolidated &middot; 118&ndash;137 US equities &middot; 2015&ndash;2026 &middot; Binance costs</p>
+  <h1>Where the Market Is Not Efficient</h1>
+  <p class="standfirst">Twenty-six things were tested against their own controls.
+  Every one that tried to <em>predict</em> failed. Everything that survived was
+  about execution, sizing or timeframe. That pattern is the finding &mdash; the
+  market prices information efficiently and prices <em>frictions</em> badly, and
+  the frictions are what a systematic book can actually harvest.</p>
+
+  <div class="tallies">
+    <div class="tally"><b class="t-dead">17</b>
+      <span>proposals killed by a control</span></div>
+    <div class="tally"><b class="t-live">6</b>
+      <span>that survived their reversal</span></div>
+    <div class="tally"><b class="t-live">0.95</b>
+      <span>best Sharpe at true taker cost, 4-hour bars</span></div>
+    <div class="tally"><b class="t-open">0.48</b>
+      <span>same rules on the third of names that did worst</span></div>
+  </div>
+</header>
+
+<section>
+  <h2>The pattern in one table</h2>
+  <p class="lede">Sorting every result by what it was trying to do, rather than by
+  what it was called, makes the shape obvious.</p>
+  <div class="split">
+    <div class="card k-dead">
+      <h3>Everything predictive failed</h3>
+      <p>Dealer gamma, CFTC positioning, macro regime, earnings deterioration,
+      volume bursts, volume-profile location, theme strength, relative-strength
+      ranking, MA crossovers, option-surface machine learning, pre-breakout volume,
+      range compression, single-name drawdown spillover.</p>
+      <p>Thirteen attempts to know something the price did not already say. All
+      failed a reversal test, a null, or a redundancy check. <strong>This is the
+      efficient-market result, and it is the bulk of the evidence.</strong></p>
+    </div>
+    <div class="card k-live">
+      <h3>Everything structural survived</h3>
+      <p>Choosing a slower bar. Sizing by volatility. Halving into an adverse
+      regime. Stopping the pyramid at two units. Entering with a resting limit
+      rather than a stop. Not trading the short side.</p>
+      <p>None of these forecast anything. They exploit that <strong>cost, capacity
+      and volatility are mispriced by the participant, not by the market</strong>
+      &mdash; a book that pays 10bp where it could pay 5, or trades a 30-minute bar
+      where 4 hours works better, is losing to arithmetic rather than to
+      competition.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The single largest effect is real and untradeable</h2>
+  <p class="lede">Worth its own section because it is the cleanest illustration of
+  where the boundary sits.</p>
+  <div class="card k-dead">
+    <p>Where a breakout bar closes within its own range separates outcomes more
+    sharply than anything else measured: bottom quintile <strong>&minus;1.203R
+    with an 86.8% stop-out rate</strong>, top quintile <strong>+1.140R</strong>,
+    monotone across five buckets, right tail +14.2 points, <em>p</em> &lt; 0.001.</p>
+    <p>And it cannot be used. Acting on it requires waiting for the bar to close,
+    which surrenders the channel-edge fill and costs <strong>0.73 Sharpe</strong>
+    &mdash; more than the selection is worth. The information exists, and it arrives
+    exactly one bar after the moment when acting on it would have been free.</p>
+    <p class="note" style="border:0;padding:0"><strong>That is what efficiency
+    looks like from the inside.</strong> Not an absence of signal, but a signal
+    priced so that capturing it costs slightly more than it pays.</p>
+  </div>
+</section>
+
+<section>
+  <h2>The complete ledger</h2>
+  <p class="lede">Each row carries the control that decided it. Anything that
+  changes exposure is compared at matched drawdown; anything with a direction had
+  to beat its own reversal.</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Proposal</th><th>Control that decided it</th><th>Result</th>
+      <th>Verdict</th></tr></thead>
+      <tbody id="ledger"></tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Where the edge actually lives</h2>
+  <p class="lede">Conditioning on volatility shows the whole strategy in one
+  picture &mdash; and it is not the picture the programme assumed.</p>
+  <figure>
+    <div class="plate">
+      <svg id="vix" viewBox="0 0 1000 330" role="img"
+           aria-label="Annualised return of strategy and SPY by VIX quintile, with book exposure"></svg>
+    </div>
+    <figcaption>Annualised return by VIX quintile, 2,911 sessions. The strategy's
+    entire advantage is in the calmest fifth of days; in the fourth quintile it
+    loses money while SPY is roughly flat.</figcaption>
+  </figure>
+  <div class="split">
+    <div class="card k-live">
+      <h3>A low-volatility momentum system</h3>
+      <p>At VIX under 13 the book returns <strong>76.8% annualised</strong> against
+      SPY's 46.9%, running <strong>141% exposure</strong>. Above VIX 18 it loses
+      money. This is not crisis alpha; it is a calm-tape system that survives
+      crises by shrinking.</p>
+      <p>The shrinking is arithmetic, not skill. Size is <code>equity &times; risk / N</code>,
+      so tripling volatility cuts position size by two-thirds automatically. In
+      March 2020 the book held <strong>2.1 positions at 29% exposure</strong>
+      against its normal six and ~100%.</p>
+    </div>
+    <div class="card k-open">
+      <h3>The protection has a bill attached</h3>
+      <p>It lost only 5.6% while SPY fell 33.8% in COVID &mdash; then made 23.3% in
+      the rebound against SPY's 51.5%. After Q4 2018 it made <strong>5.8% against
+      SPY's 25.1%</strong>. Having de-risked at the bottom, a 55-bar channel cannot
+      re-arm until price has rebuilt it.</p>
+      <p>Over a full round trip 2018 was close to a wash. Convexity that costs the
+      rebound is insurance, not alpha, and should be priced as such.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>What would break every number here</h2>
+  <div class="card k-open">
+    <h3>Survivorship, quantified rather than estimated</h3>
+    <p>The universe is Binance's trad-FI list as it stands today. Splitting it by
+    each name's own outcome: the strategy scores Sharpe <strong>1.33 on the third
+    that rose most</strong>, 0.87 in the middle, and <strong>0.48 on the worst
+    third</strong> &mdash; whose median member still returned +54%, because nothing
+    in this universe was delisted.</p>
+    <p>The edge scales almost perfectly with how much the underlying went up. On a
+    money-weighted basis the book returns <strong>18.1% IRR against SPY's
+    15.0%</strong> with $1,000 monthly contributions &mdash; but that +3.1pp is the
+    same order as the survivorship bias, before tax on 9,046 trades taxed annually
+    while an index defers indefinitely.</p>
+    <p><strong>No out-of-sample test has ever been run</strong>, on this or on
+    anything else in the programme.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Ideas worth testing, ranked by what the evidence points at</h2>
+  <ol id="ideas"></ol>
+</section>
+
+<footer>
+  US-listed equities and ordinary ETFs from the Binance trad-FI universe, levered
+  and inverse wrappers excluded; 118&ndash;137 instruments depending on the minimum-history
+  test. Alpha Vantage consolidated 5-minute bars resampled upward, 2015-01-02 to
+  2026-07-31. Long-only unless stated. Costs are Binance round trips: 5bp making,
+  10bp taking, 7.5bp blended for a maker entry with a taker exit; a stop order is a
+  taker, so 10bp is the honest default. Every exposure-changing comparison is matched
+  to an 18% median drawdown; every comparison is paired on identical capacity
+  orderings, because the random tie-break alone spans a [0.57&ndash;0.96] Sharpe band.
+  Drawdowns are marked to market daily. Option features cover 2015&ndash;2026 only
+  around events; the machine-learning study used the 2025&ndash;26 year, which contains
+  no crisis.
+</footer>
+</div>
+
+<script>
+const LEDGER=[
+ {g:"Predictive — all failed"},
+ {k:"Close location in the breakout bar",c:"Costs 0.73 Sharpe to observe",r:"+2.343R effect, untradeable",v:"dead"},
+ {k:"Dealer gamma (GEX) overlay",c:"15 years vs the 1 it was fitted on",r:"+12.8pp → −7.9pp",v:"dead"},
+ {k:"CFTC positioning",c:"Circular-shift null, 18 arms",r:"0 of 18 cleared",v:"dead"},
+ {k:"Option surface, gradient boosting",c:"Shuffled-label null",r:"IC 0.021, p=0.333",v:"dead"},
+ {k:"Earnings features added to the model",c:"Same, on top of price",r:"0.0419 → 0.0400",v:"dead"},
+ {k:"Relative-strength slot priority",c:"Its own reversal, 3 lookbacks",r:"wins 1 of 3, below random at 2",v:"dead"},
+ {k:"MA crossover 5:15 / 15:30 / 50:200",c:"Its own reversal",r:"all three lose to reversal",v:"dead"},
+ {k:"Volume burst filter",c:"Close-confirm control",r:"wash vs stop entry",v:"dead"},
+ {k:"Leading volume into the level",c:"Label-shuffling null",r:"tail +0.5pp, p=0.383",v:"dead"},
+ {k:"Range compression before breakout",c:"Label-shuffling null",r:"tail +0.7pp, p=0.225",v:"dead"},
+ {k:"Macro regime tilt",c:"Beaten by its own reversal",r:"2.24 vs 2.35 reversed",v:"dead"},
+ {k:"Single-name drawdown → cross-asset",c:"1,793 de-overlapped events",r:"nothing moves",v:"dead"},
+ {k:"Short side, unconditional",c:"Long-only at matched drawdown",r:"0.20 → −0.44",v:"dead"},
+ {g:"Structural — survived"},
+ {k:"Choosing a 4-hour bar over 30-minute",c:"Seven-interval sweep at true cost",r:"0.20 → 0.95",v:"live"},
+ {k:"Price momentum (21d return, MA distance)",c:"Shuffled-label null",r:"IC 0.042, p<0.001",v:"live"},
+ {k:"Half size below the moving average",c:"Reversal at 50/100/200 sessions",r:"+0.04 to +0.08, consistent",v:"live"},
+ {k:"Stopping the pyramid at two units",c:"Sweep 1→8 units",r:"Sharpe 1.13 peak, tail peak",v:"live"},
+ {k:"Dip entry at VWAP, 4-hour only",c:"Random entries in same regime",r:"1.28 vs 0.79 null, 15/15",v:"live"},
+ {k:"Gold and miners as the crisis sleeve",c:"15 market drawdowns",r:"GDX +6.3%, 67% hit rate",v:"live"},
+ {g:"Real but not usable as proposed"},
+ {k:"VIX sizing tilt",c:"Redundancy against the MA tilt",r:"beats reversal, adds +0.02",v:"open"},
+ {k:"Dip entry below 4-hour bars",c:"Same rule, faster intervals",r:"+1.28 → −3.24 at 5min",v:"open"},
+ {k:"Pyramiding past two units",c:"Right-tail share",r:"tail thins 22.3% → 13.4%",v:"open"},
+ {k:"Cash held for a drawdown trigger",c:"Invest-on-schedule",r:"17.1% vs 18.1% IRR",v:"dead"},
+ {k:"Leverage as a return lever",c:"Matched drawdown",r:"70/85/100% identical",v:"dead"},
+ {k:"Bonds as the equity hedge",c:"15 market drawdowns",r:"TLT −0.5%, 40% hit rate",v:"dead"},
+];
+
+const IDEAS=[
+ ["Run T1.1 out-of-sample on the 4-hour book","Choose on 2015–2021, score on 2022–2026, parameters frozen first. It has never been run on anything, and every result above is scored against a configuration that has not passed it. If the held-out edge is under half the in-sample edge, nothing built on top matters."],
+ ["Build a point-in-time universe with delisted names","The single largest threat to every number here. The worst third of today's survivors still returned +54%; a universe containing names that went to zero would price the survivorship bias instead of estimating it at −0.1 to −0.5 Sharpe."],
+ ["A participation rule at VIX quintile four","The one regime where the book is worse than doing nothing: −17.0% annualised against SPY's −0.5%. Sizing rules were tested; a rule that simply declines to open new positions in that band was not."],
+ ["Correlation-grouped capacity instead of random tie-breaks","72% of breakouts are refused at 30-minute bars, and the tie-break governs most trading decisions. Grouping needs no forecast to justify itself, and any deterministic rule cuts the Sharpe band roughly fourfold whether or not it lifts the median."],
+ ["The option surface around breakouts versus drawdowns","Downloading now: ±7 sessions around 15,338 drawdowns and 15,364 breakouts, 2015–2026, including 2018, 2020 and 2022. The first dataset able to ask whether accumulation is visible before an upside break, and whether that signature differs from the pre-drawdown one."],
+ ["Genuinely uncorrelated markets, not more equities","IR = IC × √breadth, and 118 correlated US equities are perhaps 3–8 independent bets. Adding a handful of futures across rates, FX and commodities would do more for the information ratio than any refinement to the entry."],
+ ["Cost as a first-class parameter","A stop order is a taker; a resting limit is a maker. The dip strategy's advantage is partly that its entry is structurally cheaper. Systematically asking which rules can be expressed as maker orders is unexplored and cheap."],
+ ["Tax and funding in the comparison","9,046 trades taxed annually at short-term rates against an index that defers indefinitely; and median 94% gross exposure with a 164% 95th percentile means borrowed notional carrying a real funding rate. Neither appears in any figure here."],
+];
+
+const NS="http://www.w3.org/2000/svg";
+const el=(t,a)=>{const n=document.createElementNS(NS,t);for(const k in a)n.setAttribute(k,a[k]);return n;};
+const VIX=[
+ {q:"1",r:"9–13",s:0.768,p:0.469,e:1.41},
+ {q:"2",r:"13–16",s:0.232,p:0.335,e:1.14},
+ {q:"3",r:"16–18",s:0.170,p:0.391,e:0.94},
+ {q:"4",r:"18–23",s:-0.170,p:-0.005,e:0.80},
+ {q:"5",r:"23–83",s:-0.144,p:-0.469,e:0.56},
+];
+
+function draw(){
+  const svg=document.getElementById("vix");svg.textContent="";
+  const W=1000,H=330,L=70,R=120,T=30,B=56;
+  const iw=W-L-R, ih=H-T-B, cw=iw/VIX.length;
+  const lo=-0.6, hi=0.9;
+  const y=v=>T+ih-((v-lo)/(hi-lo))*ih;
+  [-0.5,-0.25,0,0.25,0.5,0.75].forEach(v=>{
+    svg.appendChild(el("line",{x1:L,x2:L+iw,y1:y(v),y2:y(v),class:v===0?"zero":"gridline"}));
+    const t=el("text",{x:L-10,y:y(v)+3.5,class:"axis","text-anchor":"end"});
+    t.textContent=(v*100).toFixed(0)+"%";svg.appendChild(t);
+  });
+  VIX.forEach((d,i)=>{
+    const cx=L+i*cw+cw/2, bw=cw*0.26;
+    [[d.s,"strategy",-1],[d.p,"spy",1]].forEach(([v,which,side])=>{
+      const colour=which==="strategy"
+        ? (v>=0?"var(--live)":"var(--dead)") : "var(--ink-3)";
+      const top=Math.min(y(v),y(0)), h=Math.abs(y(v)-y(0));
+      svg.appendChild(el("rect",{x:cx+(side<0?-bw-3:3),y:top,width:bw,
+        height:Math.max(h,1.5),rx:2,fill:colour,opacity:which==="spy"?.45:1}));
+      const t=el("text",{x:cx+(side<0?-bw/2-3:bw/2+3),y:v>=0?top-6:top+h+13,
+        class:"axis","text-anchor":"middle",fill:colour,"font-weight":"700"});
+      t.textContent=(v*100).toFixed(0)+"%";svg.appendChild(t);
+    });
+    const q=el("text",{x:cx,y:H-32,class:"axis","text-anchor":"middle",
+      fill:"var(--ink)","font-weight":"700"});
+    q.textContent="VIX "+d.r;svg.appendChild(q);
+    const e=el("text",{x:cx,y:H-17,class:"axis","text-anchor":"middle"});
+    e.textContent=(d.e*100).toFixed(0)+"% invested";svg.appendChild(e);
+  });
+  const a=el("text",{x:L+iw+14,y:T+14,class:"axis",fill:"var(--live)","font-weight":"700"});
+  a.textContent="strategy";svg.appendChild(a);
+  const b=el("text",{x:L+iw+14,y:T+30,class:"axis",fill:"var(--ink-3)"});
+  b.textContent="SPY";svg.appendChild(b);
+}
+
+document.getElementById("ledger").innerHTML=LEDGER.map(d=>{
+  if(d.g) return '<tr class="group"><td colspan="4">'+d.g+'</td></tr>';
+  const tag={live:["g-live","survived"],dead:["g-dead","killed"],open:["g-open","conditional"]}[d.v];
+  return '<tr'+(d.v==="live"?' class="hi"':'')+'><td>'+d.k+'</td><td class="dim">'+
+    d.c+'</td><td>'+d.r+'</td><td><span class="tag '+tag[0]+'">'+tag[1]+'</span></td></tr>';
+}).join("");
+
+document.getElementById("ideas").innerHTML=IDEAS.map(
+  ([h,b])=>'<li><strong>'+h+'.</strong> '+b+'</li>').join("");
+
+draw();
+let t;addEventListener("resize",()=>{clearTimeout(t);t=setTimeout(draw,150);});
+</script>
