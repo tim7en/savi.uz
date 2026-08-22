@@ -1176,10 +1176,10 @@
     leverage comes out of this calculation rather than going into it.</figcaption>
   </figure>
 
-  <p>At 0.5% risk the average position lands near <b>$1,100</b>, and twelve of
-  those is about $13,000 &mdash; slightly more than the account. In practice on a
-  cash account that means holding about <b>nine</b> positions rather than twelve,
-  or dropping the risk budget to 0.35%.</p>
+  <p>At 0.5% risk the average position lands near <b>$1,100</b> and the book runs
+  around 0.92&times; equity &mdash; roughly fully invested, peaking near
+  2.1&times;. Double the risk budget and every one of those numbers doubles too;
+  the exposure table below is what that actually looks like.</p>
 
   <p>Capacity binds harder than the signal does. Twelve slots held for forty
   sessions is room for roughly 75 trades a year against 225 that qualify, so
@@ -1195,10 +1195,10 @@
           <th>Worst drop</th><th>Ending value</th></tr>
       </thead>
       <tbody>
-        <tr class="hi"><td>0.5%</td><td>$50</td><td>+10.3%</td>
+        <tr class="hi"><td>0.5% &mdash; runnable</td><td>$50</td><td>+10.3%</td>
           <td>&minus;26%</td><td>~$37,000</td></tr>
-        <tr><td>1.0%</td><td>$100</td><td>+20.3%</td><td>&minus;45%</td>
-          <td>~$120,000</td></tr>
+        <tr><td>1.0% &mdash; needs 4.2&times; margin</td><td>$100</td><td>+20.3%</td>
+          <td>&minus;45%</td><td>~$120,000</td></tr>
         <tr><td>2.0%</td><td>$200</td><td>+38.6%</td><td class="down">&minus;72%</td>
           <td class="dim">~$804,000</td></tr>
         <tr><td>3.0%</td><td>$300</td><td>+53.6%</td><td class="down">&minus;86%</td>
@@ -1217,6 +1217,82 @@
     Buying the same 141 names on <em>random days</em> with identical sizing and
     identical exits scored better &mdash; 2.13 against 1.93. The same book scored
     0.14 in 1999&ndash;2012 and 1.06 in 2013&ndash;2026.</p>
+  </div>
+
+  <h3>What the book actually holds &mdash; and what it is not</h3>
+  <p>It is worth being explicit that this is <em>not</em> the turtle book, because
+  both appear in this ledger and they are different machines. The only pieces they
+  share are the slot cap and the risk-fraction sizing.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>Two books, side by side.</caption>
+      <thead>
+        <tr><th></th><th>The breakout (turtle) book</th><th>The earnings book</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Entry</td><td class="dim">55-day channel break</td>
+          <td class="dim">earnings beat, and the stock rose</td></tr>
+        <tr><td>Units</td><td class="dim">pyramids to four, at half-N intervals</td>
+          <td class="dim">one, never added to</td></tr>
+        <tr><td>Stop</td><td class="dim">2N, then a 3N chandelier that trails up</td>
+          <td class="dim">3 daily deviations, and it never moves</td></tr>
+        <tr><td>Exit</td><td class="dim">the trailing stop takes you out</td>
+          <td class="dim">the clock, at 40 sessions</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>So: buy once at the open, never add, never move the stop, leave on the clock
+  or the stop. 59% stop out, 41% run the clock, median hold 37 calendar days.</p>
+
+  <h3>Half the signals are never traded</h3>
+  <div class="split">
+    <div class="card k-mid">
+      <h3>Capacity, not conviction</h3>
+      <p>2,453 triggers qualified out of sample. <b>1,159 were taken &mdash;
+      47%.</b> The other 1,294 were declined for one reason only: no free slot.
+      The book sits at its twelve-position cap on <b>30.4% of all days</b> and
+      holds nothing on 2.2% of them.</p>
+    </div>
+    <div class="card k-lo">
+      <h3>Which is where an ordering could act</h3>
+      <p>With more than half of all signals refused for space, the rule deciding
+      <em>which</em> competitor gets the slot matters as much as the entry rule.
+      What we used was a random tie-break, and nothing tested beat it. That is
+      the one shape of this idea still untested.</p>
+    </div>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <caption>Gross exposure at 1% risk per position, as a multiple of account
+      equity. 1.00&times; is fully invested with no borrowing.</caption>
+      <thead>
+        <tr><th>Measure</th><th>Multiple of equity</th><th>On $10,000</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>median gross exposure</td><td>1.83&times;</td><td>$18,300</td></tr>
+        <tr><td>95th percentile</td><td>3.39&times;</td><td>$33,900</td></tr>
+        <tr class="hi"><td>maximum</td><td class="down">4.21&times;</td>
+          <td class="down">$42,100</td></tr>
+        <tr><td>largest single position</td><td>0.714&times;</td><td>$7,139</td></tr>
+        <tr><td>typical single position</td><td>0.217&times;</td><td>$2,168</td></tr>
+        <tr><td>days above 1.00&times;, needing margin</td>
+          <td class="down">73.4%</td><td class="dim">&mdash;</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card k-lo">
+    <h3>A correction to the returns table above</h3>
+    <p>The +20.3% row runs at 1% risk, and at that setting the book is on margin
+    nearly three days in four, peaking at <b>4.21&times;</b>. Reg-T caps a retail
+    margin account at <b>2&times; held overnight</b>, so that row is not runnable
+    in a standard account as simulated. At 0.5% risk every position halves: median
+    gross falls to about 0.92&times; and the peak to roughly 2.1&times;, which
+    fits. <b>The +10.3% row is the honest one for $10,000</b>, and it is the row
+    marked runnable above.</p>
   </div>
 
   <h3>What the fees take, and why they barely bite here</h3>
