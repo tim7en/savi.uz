@@ -1,4 +1,4 @@
-<title>Six Proposals, No Survivor</title>
+<title>Seven Proposals, One Replication</title>
 <style>
   :root{
     color-scheme:light;
@@ -157,32 +157,34 @@
 
 <header>
   <p class="eyebrow">Session ledger &middot; 42 US names intraday, 143 daily &middot; 2017&ndash;2026 &middot; per-leg execution costs</p>
-  <h1>Six Proposals, No Survivor</h1>
-  <p class="standfirst">Six ways to improve the book were tested in one sitting:
-  a machine-learned trade filter, a leveraged 3:1 scalp, support and resistance
-  zones, 20x leverage, a volatility-surprise trade, and option activity as a
-  trend signal. Five died on their controls. The sixth looked like it had
-  survived on 230 trades, and then lost to its own control on eighteen thousand.
-  The two things that did move the result were never about picking the trade.</p>
+  <h1>Seven Proposals, One Replication</h1>
+  <p class="standfirst">Seven ideas were tested in one sitting: a
+  machine-learned trade filter, a leveraged 3:1 scalp, support and resistance
+  zones, 20x leverage, a volatility-surprise trade, option activity as a trend
+  signal, and earnings drift. Six died on their controls. The seventh is the only
+  thing here that replicated on a universe not picked with hindsight &mdash; and
+  it is a tilt, not a strategy.</p>
 
   <div class="tallies">
-    <div class="tally"><b class="t-lo">47 / 50</b>
-      <span>drift-null draws that beat the surprise book on 142 names</span></div>
+    <div class="tally"><b class="t-hi">2&nbsp;of&nbsp;2</b>
+      <span>universes where the earnings ordering replicates</span></div>
+    <div class="tally"><b class="t-lo">1 of 8</b>
+      <span>surprise arms clearing a null &mdash; what chance predicts</span></div>
     <div class="tally"><b class="t-mid">1.08</b>
       <span>Sharpe lost to the entry order type alone</span></div>
     <div class="tally"><b class="t-lo">0.0%</b>
       <span>of trades that ever reach the 20x cap, at any risk budget</span></div>
-    <div class="tally"><b class="t-lo">&minus;0.015</b>
-      <span>out-of-sample IC of the trade-selection model</span></div>
   </div>
 </header>
 
 <section>
   <h2>The ledger</h2>
   <p class="lede">Each row is a proposal, the control that decided it, and what
-  the control said. The pattern in the right-hand column is the finding: every
-  proposal about <em>which trade to take</em> failed, and the two that changed
-  the result were about <em>how the trade is executed and sized</em>.</p>
+  the control said. Two patterns run down the right-hand column: nearly every
+  proposal about <em>which trade to take</em> failed, and the two that changed a
+  result outright were about <em>how the trade is executed and sized</em>. The one
+  survivor earned its place by repeating itself on a universe that was not chosen
+  with hindsight.</p>
 
   <div class="scroll">
     <table>
@@ -211,6 +213,10 @@
           <td class="dim">the same null on 142 names and 27 years</td>
           <td class="down">1.09 against a null median of 1.55, p = 0.94</td>
           <td><span class="verdict v-fail">failed</span></td></tr>
+        <tr class="hi"><td>Earnings drift after a miss the market sold</td>
+          <td class="dim">replication on 141 unpicked names</td>
+          <td class="up">same ordering, 9,352 events</td>
+          <td><span class="verdict v-pass">replicates</span></td></tr>
         <tr><td>Option activity as a trend-strength signal</td>
           <td class="dim">within-name, over time</td>
           <td class="down">negative on every measure</td>
@@ -775,44 +781,62 @@
     universe.</figcaption>
   </figure>
 
-  <div class="split">
-    <div class="card k-lo">
-      <h3>What the wide universe said</h3>
-      <p>142 names, 1999&ndash;2026, threshold swept from 1.5 to 4.0 and chosen on
-      the first half alone. It picked <b>1.5 deviations, not 3</b>. Out of sample
-      that book scored <b>1.09</b> on 18,245 trades against a drift null of
-      <b>1.55</b>. Forty-seven of fifty null draws beat it.</p>
-    </div>
-    <div class="card k-mid">
-      <h3>Where the 3&times; threshold came from</h3>
-      <p>An event study computed over the whole 2017&ndash;2026 span &mdash;
-      including the period it was then "tested" on. When the threshold is chosen
-      honestly, on in-sample data from a universe that is not survivor-picked, it
-      is not 3&times; and the effect it was pointing at is not there.</p>
-    </div>
+  <div class="scroll">
+    <table>
+      <caption>The leak-free rerun. Threshold swept from 1.0 deviations upward and
+      chosen in sample only; direction not selected, so all four combinations get
+      their own search and their own out-of-sample number. Realised vol, no chain.</caption>
+      <thead>
+        <tr><th>Arm</th><th>Chosen</th><th>OOS trades</th><th>Sharpe</th>
+          <th>Drift null</th><th>p</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>142 names &middot; follow up, long</td><td class="dim">1.5&sigma;</td>
+          <td>21,504</td><td>0.64</td><td>1.03</td><td class="down">1.00</td></tr>
+        <tr><td>142 names &middot; follow down, short</td><td class="dim">4&sigma;</td>
+          <td>2,026</td><td class="down">&minus;0.40</td><td>&minus;1.20</td>
+          <td class="dim">0.06</td></tr>
+        <tr><td>142 names &middot; fade up, short</td><td class="dim">4&sigma;</td>
+          <td>2,061</td><td class="down">&minus;1.80</td><td>&minus;1.04</td>
+          <td class="down">0.94</td></tr>
+        <tr><td>142 names &middot; fade down, long</td><td class="dim">1.0&sigma;</td>
+          <td>32,020</td><td>0.87</td><td>1.01</td><td class="down">0.86</td></tr>
+        <tr><td>42 names &middot; follow up, long</td><td class="dim">4&sigma;</td>
+          <td>215</td><td>1.57</td><td>1.29</td><td class="down">0.40</td></tr>
+        <tr><td>42 names &middot; follow down, short</td><td class="dim">3&sigma;</td>
+          <td>459</td><td class="down">&minus;1.62</td><td>&minus;1.17</td>
+          <td class="down">0.62</td></tr>
+        <tr><td>42 names &middot; fade up, short</td><td class="dim">1.0&sigma;</td>
+          <td>6,019</td><td class="down">&minus;1.36</td><td>&minus;1.11</td>
+          <td class="down">0.80</td></tr>
+        <tr class="hi"><td>42 names &middot; fade down, long</td><td class="dim">2.0&sigma;</td>
+          <td>1,530</td><td class="up">2.29</td><td>1.35</td><td class="up">0.04</td></tr>
+      </tbody>
+    </table>
   </div>
 
-  <div class="card k-lo">
-    <h3>Three readings, and only the last one had the power to settle it</h3>
-    <p>A five-draw null put the band at [&minus;0.05, 1.30] and made the signal
-    look decisive. A twenty-five-draw null put it at [&minus;3.33, 4.07] and made
-    it look like noise &mdash; both were unreproducible, because the draws were
-    seeded from Python's <code>hash()</code> on the ticker, which is salted per
-    process. Seeded from a stable checksum and drawn fifty times it settled at
-    p = 0.08 on 230 trades, which looked like a narrow pass.</p>
-    <p>Then the same test ran on eighty times the trades and came back at
-    p = 0.94. Nothing about the method changed. The 230-trade sample simply never
-    had the power to answer the question, and a Sharpe measured over four years
-    carries a standard error near 1.0 &mdash; wide enough to produce 2.74 from a
-    process whose true value is the null's.</p>
+  <div class="split">
+    <div class="card k-lo">
+      <h3>One arm in eight, at p = 0.04</h3>
+      <p>Which is the number chance predicts: eight independent tests at a 5%
+      threshold yield 0.4 hits by luck alone, so one is unremarkable. And the same
+      arm on the wide universe &mdash; 32,020 trades against 1,530 &mdash; scores
+      0.87 against a null of 1.01. It does not replicate.</p>
+    </div>
+    <div class="card k-mid">
+      <h3>There is no threshold cliff</h3>
+      <p>The honest in-sample search picked 1.0, 1.5, 2, 3 and 4 deviations across
+      the eight arms, with no pattern. A real effect with a real threshold would
+      not scatter like that. The original 3&times; came from an event study that
+      had already seen the test period.</p>
+    </div>
   </div>
 
   <p class="note">Two things still stand. The signal is <em>structurally
-  taker-only</em>: a patient limit resting half an implied move below the next
-  open filled just 48 of 230 times, because a momentum entry runs away from a
-  limit underneath it. And the short mirror is dead again &mdash; following a
-  down surprise scored &minus;1.74 out of sample on the wide universe, in line
-  with every other short arm this programme has measured.</p>
+  taker-only</em>: a patient limit resting below the next open filled just 48 of
+  230 times, because a momentum entry runs away from a limit underneath it. And
+  the short side fails again on its own fresh evidence &mdash; both short arms
+  are negative on both universes.</p>
 </section>
 
 <section>
@@ -905,6 +929,130 @@
 </section>
 
 <section>
+  <h2>Earnings drift: the one thing that replicated</h2>
+  <p>The volatility-surprise study was a proxy for this. It looked for sessions
+  that travelled further than options priced and asked what followed, without
+  ever knowing why they moved. Most of them were earnings. Naming the catalyst
+  separates three things the proxy had to leave tangled: the surprise against
+  consensus, the reaction price actually gave it, and what the chain had priced
+  going in.</p>
+
+  <p>Announcements released after the close are traded the following session and
+  the drift is measured from the open <em>after</em> the reaction &mdash; the
+  first price a person reading the release could obtain.</p>
+
+  <figure>
+    <div class="plate">
+<svg viewBox="0 0 1000 330" role="img" aria-label="Twenty-session drift after earnings, as excess over each universe's own drift, on both universes">
+<line class="gridline" x1="74" y1="238.4" x2="974" y2="238.4"/>
+<text class="axis" x="64" y="242.4" text-anchor="end">-0.75</text>
+<line class="gridline" x1="74" y1="191.5" x2="974" y2="191.5"/>
+<text class="axis" x="64" y="195.5" text-anchor="end">-0.50</text>
+<line class="gridline" x1="74" y1="144.6" x2="974" y2="144.6"/>
+<text class="axis" x="64" y="148.6" text-anchor="end">-0.25</text>
+<line class="gridline" x1="74" y1="97.8" x2="974" y2="97.8"/>
+<text class="axis" x="64" y="101.8" text-anchor="end">+0.00</text>
+<line class="gridline" x1="74" y1="50.9" x2="974" y2="50.9"/>
+<text class="axis" x="64" y="54.9" text-anchor="end">+0.25</text>
+<line class="zero" x1="74" y1="97.8" x2="974" y2="97.8"/>
+<text class="lab-drift" x="970" y="88.8" text-anchor="end">each universe&#8217;s own unconditional drift</text>
+<rect class="bar-up" x="122.5" y="97.8" width="58" height="4.7" rx="4"><title>141 names, daily &#183; beat, price rose: -0.025 deviations against its own drift over 20 sessions, 3,623 events, 57.0% up</title></rect>
+<text class="val" x="151.5" y="119.4" text-anchor="middle">-0.03</text>
+<rect class="bar-dn" x="192.5" y="54.2" width="58" height="43.5" rx="4"><title>29 names, intraday &#183; beat, price rose: +0.232 deviations against its own drift over 20 sessions, 353 events, 56.9% up</title></rect>
+<text class="val" x="221.5" y="46.2" text-anchor="middle">+0.23</text>
+<text class="axis strong" x="186.5" y="270.0" text-anchor="middle">beat, price rose</text>
+<text class="axis dim" x="186.5" y="287.0" text-anchor="middle">57.0% / 56.9% up</text>
+<rect class="bar-up" x="347.5" y="97.8" width="58" height="21.9" rx="4"><title>141 names, daily &#183; miss, price rose: -0.117 deviations against its own drift over 20 sessions, 1,251 events, 55.3% up</title></rect>
+<text class="val" x="376.5" y="136.7" text-anchor="middle">-0.12</text>
+<rect class="bar-dn" x="417.5" y="84.4" width="58" height="13.3" rx="4"><title>29 names, intraday &#183; miss, price rose: +0.071 deviations against its own drift over 20 sessions, 86 events, 54.7% up</title></rect>
+<text class="val" x="446.5" y="76.4" text-anchor="middle">+0.07</text>
+<text class="axis strong" x="411.5" y="270.0" text-anchor="middle">miss, price rose</text>
+<text class="axis dim" x="411.5" y="287.0" text-anchor="middle">55.3% / 54.7% up</text>
+<rect class="bar-up" x="572.5" y="97.8" width="58" height="26.4" rx="4"><title>141 names, daily &#183; beat, price fell: -0.141 deviations against its own drift over 20 sessions, 2,585 events, 53.7% up</title></rect>
+<text class="val" x="601.5" y="141.2" text-anchor="middle">-0.14</text>
+<rect class="bar-dn" x="642.5" y="97.8" width="58" height="40.1" rx="4"><title>29 names, intraday &#183; beat, price fell: -0.214 deviations against its own drift over 20 sessions, 337 events, 57.0% up</title></rect>
+<text class="val" x="671.5" y="154.9" text-anchor="middle">-0.21</text>
+<text class="axis strong" x="636.5" y="270.0" text-anchor="middle">beat, price fell</text>
+<text class="axis dim" x="636.5" y="287.0" text-anchor="middle">53.7% / 57.0% up</text>
+<rect class="bar-up" x="797.5" y="97.8" width="58" height="71.6" rx="4"><title>141 names, daily &#183; miss, price fell: -0.382 deviations against its own drift over 20 sessions, 1,893 events, 50.7% up</title></rect>
+<text class="val" x="826.5" y="186.4" text-anchor="middle">-0.38</text>
+<rect class="bar-dn" x="867.5" y="97.8" width="58" height="127.9" rx="4"><title>29 names, intraday &#183; miss, price fell: -0.682 deviations against its own drift over 20 sessions, 137 events, 52.6% up</title></rect>
+<text class="val" x="896.5" y="242.6" text-anchor="middle">-0.68</text>
+<text class="axis strong" x="861.5" y="270.0" text-anchor="middle">miss, price fell</text>
+<text class="axis dim" x="861.5" y="287.0" text-anchor="middle">50.7% / 52.6% up</text>
+<rect class="bar-up" x="74" y="308" width="13" height="13" rx="3"/>
+<text class="axis" x="93" y="319">141 names, daily, 9,352 events</text>
+<rect class="bar-dn" x="374" y="308" width="13" height="13" rx="3"/>
+<text class="axis" x="393" y="319">29 names, intraday, 913 events</text>
+</svg>
+
+    </div>
+    <figcaption>Twenty-session drift after earnings, measured against each
+    universe's own unconditional drift so the two are comparable despite one
+    drifting twice as hard as the other. The rank order is identical on both:
+    a beat the market bought does best, a miss the market sold does worst, and
+    the two disagreement cases sit between them.</figcaption>
+  </figure>
+
+  <div class="scroll">
+    <table>
+      <caption>The wide universe, 141 names and 9,352 announcements. Forward move
+      in the name's own daily deviations; unconditional drift is +0.640.</caption>
+      <thead>
+        <tr><th>Reaction to the news</th><th>Events</th><th>+5s</th><th>+10s</th>
+          <th>+20s</th><th>Up at +20</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>fell more than 2&sigma;</td><td>1,941</td><td>&minus;0.013</td>
+          <td>&minus;0.005</td><td class="down">+0.310</td>
+          <td class="down">50.4%</td></tr>
+        <tr><td>fell 0&ndash;2&sigma;</td><td>2,537</td><td>+0.082</td>
+          <td>+0.160</td><td>+0.464</td><td>54.0%</td></tr>
+        <tr><td>rose 0&ndash;2&sigma;</td><td>2,526</td><td>+0.134</td>
+          <td>+0.227</td><td>+0.532</td><td>55.8%</td></tr>
+        <tr class="hi"><td>rose more than 2&sigma;</td><td>2,348</td><td>+0.176</td>
+          <td>+0.341</td><td class="up">+0.656</td><td class="up">57.4%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="split">
+    <div class="card k-hi">
+      <h3>It is a tilt, not a short</h3>
+      <p>Every bucket is still positive. A miss the market sold keeps drifting
+      <em>up</em> &mdash; at 40% of the normal rate, and only 50.7% of the time
+      against 57.0% for a beat that rallied. What earnings buys is knowing which
+      names will underperform the drift, not which will reverse it.</p>
+    </div>
+    <div class="card k-mid">
+      <h3>What the chain adds, and what it does not</h3>
+      <p>Reactions blowing through the implied move by more than 3&times; are the
+      only bucket anywhere in this ledger below a 50% up-rate: +0.242 against a
+      drift of +1.245, on 63 events. But the vol risk premium going in &mdash;
+      implied over realised &mdash; predicts nothing at all, a 0.19 spread from
+      cheapest quarter to dearest.</p>
+    </div>
+  </div>
+
+  <p class="note">The two universes disagree on one number in a way worth
+  reading: the unconditional drift is <b>+1.245</b> on the 42 hand-picked names
+  and <b>+0.640</b> on the 141 unpicked ones. That is the hindsight premium
+  showing up as a clean factor of two, and it is the same premium that
+  manufactured every result this session that failed to replicate.</p>
+
+  <div class="card k-lo">
+    <h3>Why this is not yet a strategy</h3>
+    <p>This is an event study of raw forward returns: no cost, no stop, no
+    six-slot cap, no drift null. The leak-free tests above showed that effects of
+    exactly this size do not survive being turned into a standalone bracket
+    trade. A conditional expectation of 0.36 deviations over twenty sessions is
+    real and thin at once. Its honest use is a veto on an existing book &mdash;
+    decline the breakout in a name that just missed and sold off &mdash; and that
+    is the next test, not a new book.</p>
+  </div>
+</section>
+
+<section>
   <h2>Open threads</h2>
   <ol>
     <li><b>The trend-line system is not built.</b> Long-term against short-term
@@ -918,9 +1066,10 @@
     option chain is needed. That universe also contains the names that did not
     recover &mdash; BHC, CHGG, RIG, TDOC. The cost is daily-resolution fills.
     <span class="verdict v-open">next</span></li>
-    <li><b>Cut the vol surprise by earnings dates.</b> Decides whether it is
-    post-earnings drift or something else. <code>data/equity/equity.db</code>
-    carries an <code>analyst_earnings</code> table.
+    <li><b>Test earnings as a veto on the breakout book.</b> Decline the
+    breakout in a name that just missed and sold off. This is the form the
+    evidence supports &mdash; a tilt on an existing book, not a new one &mdash;
+    and it is the only open thread with a replicated effect behind it.
     <span class="verdict v-open">next</span></li>
     <li><b>The 120-instrument intraday universe is missing.</b>
     <code>bars_av.db</code> is neither on disk nor inside <code>data.rar</code>;
