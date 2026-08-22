@@ -151,6 +151,12 @@
   .pin-lab{fill:var(--ink-2);font-family:var(--mono);font-size:10.5px}
   .bar-hold{fill:var(--c1)}
   .bar-ruin{fill:var(--c2)}
+  section h3{font-family:var(--display);font-size:1.12rem;
+     letter-spacing:-.01em;text-transform:none;color:var(--ink);
+     margin:6px 0 0;font-weight:700}
+  .card h3{font-family:var(--mono);font-size:11px;
+     letter-spacing:.1em;text-transform:uppercase;
+     color:var(--ink-3);margin:0 0 7px;font-weight:600}
 </style>
 
 <div class="wrap">
@@ -1098,6 +1104,120 @@
   veto run also showed: the breakout book itself scored <b>0.14</b> in
   1999&ndash;2012 and <b>1.06</b> in 2013&ndash;2026 &mdash; the same rules, the
   same names, two different worlds.</p>
+</section>
+
+<section>
+  <h2>What running it would actually look like, on $10,000</h2>
+  <p class="lede">Everything above is measured in Sharpe and deviations, which
+  is the right language for deciding whether an effect is real and the wrong one
+  for deciding whether to get out of bed. This is the same rule written as a
+  procedure. It is included because the machinery is worth understanding even
+  though the edge did not survive &mdash; the sizing logic in particular is the
+  part of this programme that has held up under every test.</p>
+
+  <ol>
+    <li><b>Keep a fixed list.</b> 141 companies, decided in advance, checked
+    daily. Nothing leveraged or inverse &mdash; those move as a multiple of
+    something already on the list.</li>
+    <li><b>Wait for a report.</b> About 560 a year across the list, so a couple
+    most days. A report released after the close is traded the following session;
+    one released before the open is traded that morning.</li>
+    <li><b>Require both halves.</b> The company beat the estimate <em>and</em> the
+    stock rose on the session that traded the news. Roughly 40% of reports qualify
+    &mdash; about 225 a year.</li>
+    <li><b>Buy at the next open.</b> Not on the news, not at the close of the
+    reaction day. The next morning's open is the first price a person reading the
+    release could actually obtain.</li>
+    <li><b>Size by danger, not by dollars.</b> The step below.</li>
+    <li><b>Exit on the clock at 40 sessions</b>, or at the stop if it gets there
+    first. About 57% stop out; the rest run the clock.</li>
+  </ol>
+
+  <h3>Step five is the one that matters</h3>
+  <p>Fix a risk budget &mdash; say 0.5% of the account per position, which is
+  <b>$50</b> on $10,000. Put the stop three average daily moves below the entry.
+  Then the position size is whatever makes those two numbers agree.</p>
+
+  <figure>
+    <div class="plate">
+<svg viewBox="0 0 1000 300" role="img" aria-label="Equal dollar risk produces very different position sizes">
+<text class="axis strong" x="250" y="32">position bought, in dollars</text>
+<line class="gridline" x1="250.0" y1="44" x2="250.0" y2="228"/>
+<text class="axis" x="250.0" y="248" text-anchor="middle">$0</text>
+<line class="gridline" x1="397.9" y1="44" x2="397.9" y2="228"/>
+<text class="axis" x="397.9" y="248" text-anchor="middle">$250</text>
+<line class="gridline" x1="545.8" y1="44" x2="545.8" y2="228"/>
+<text class="axis" x="545.8" y="248" text-anchor="middle">$500</text>
+<line class="gridline" x1="693.8" y1="44" x2="693.8" y2="228"/>
+<text class="axis" x="693.8" y="248" text-anchor="middle">$750</text>
+<line class="gridline" x1="841.7" y1="44" x2="841.7" y2="228"/>
+<text class="axis" x="841.7" y="248" text-anchor="middle">$1,000</text>
+<text class="axis strong" x="234" y="84" text-anchor="end">A steady name</text>
+<text class="axis dim" x="234" y="101" text-anchor="end">moves ~1.5% on a normal day</text>
+<rect class="bar-up" x="250" y="62" width="627.8" height="46" rx="4"><title>A steady name: $1,111 bought, stop 4.5% below entry</title></rect>
+<rect class="bar-dn" x="877.8" y="62" width="29.6" height="46" rx="4"><title>the $50 you lose if the stop is hit</title></rect>
+<text class="val" x="919.3" y="83">$1,111 bought</text>
+<text class="val" x="919.3" y="100">stop 4.5% below</text>
+<text class="axis strong" x="234" y="180" text-anchor="end">A jumpy name</text>
+<text class="axis dim" x="234" y="197" text-anchor="end">moves ~5% on a normal day</text>
+<rect class="bar-up" x="250" y="158" width="167.4" height="46" rx="4"><title>A jumpy name: $333 bought, stop 15% below entry</title></rect>
+<rect class="bar-dn" x="417.4" y="158" width="29.6" height="46" rx="4"><title>the $50 you lose if the stop is hit</title></rect>
+<text class="val" x="459.0" y="179">$333 bought</text>
+<text class="val" x="459.0" y="196">stop 15% below</text>
+<line class="mark-drift" x1="877.8" y1="112" x2="417.4" y2="158"/>
+<rect class="bar-dn" x="250" y="270" width="13" height="13" rx="3"/>
+<text class="axis" x="269" y="281">the $50 at risk &#8212; the same width in both bars, which is the whole point</text>
+</svg>
+
+    </div>
+    <figcaption>Both positions risk exactly $50. The calm name gets three times
+    the dollars because its stop is three times closer. You are buying an equal
+    quantity of danger, not an equal quantity of stock &mdash; which is why
+    leverage comes out of this calculation rather than going into it.</figcaption>
+  </figure>
+
+  <p>At 0.5% risk the average position lands near <b>$1,100</b>, and twelve of
+  those is about $13,000 &mdash; slightly more than the account. In practice on a
+  cash account that means holding about <b>nine</b> positions rather than twelve,
+  or dropping the risk budget to 0.35%.</p>
+
+  <p>Capacity binds harder than the signal does. Twelve slots held for forty
+  sessions is room for roughly 75 trades a year against 225 that qualify, so
+  <b>two out of three signals are declined for lack of space</b>. In the actual
+  run: 2,453 offered, 1,153 taken.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>What the beat-and-rose book returned out of sample, 2013&ndash;2026,
+      starting from $10,000.</caption>
+      <thead>
+        <tr><th>Risk per position</th><th>On $10,000</th><th>Return a year</th>
+          <th>Worst drop</th><th>Ending value</th></tr>
+      </thead>
+      <tbody>
+        <tr class="hi"><td>0.5%</td><td>$50</td><td>+10.3%</td>
+          <td>&minus;26%</td><td>~$37,000</td></tr>
+        <tr><td>1.0%</td><td>$100</td><td>+20.3%</td><td>&minus;45%</td>
+          <td>~$120,000</td></tr>
+        <tr><td>2.0%</td><td>$200</td><td>+38.6%</td><td class="down">&minus;72%</td>
+          <td class="dim">~$804,000</td></tr>
+        <tr><td>3.0%</td><td>$300</td><td>+53.6%</td><td class="down">&minus;86%</td>
+          <td class="dim">~$3.2M</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card k-lo">
+    <h3>Why the bottom two rows are not options</h3>
+    <p>A &minus;86% drawdown on the way to $3.2M means watching the account fall
+    to roughly $450,000 from its peak and holding. Almost nobody does, and
+    stopping means keeping the fall without the recovery. The top row is the
+    honest one: about ten percent a year with a one-in-four drawdown.</p>
+    <p>And the returns in that column are mostly the market, not the signal.
+    Buying the same 141 names on <em>random days</em> with identical sizing and
+    identical exits scored better &mdash; 2.13 against 1.93. The same book scored
+    0.14 in 1999&ndash;2012 and 1.06 in 2013&ndash;2026.</p>
+  </div>
 </section>
 
 <section>
