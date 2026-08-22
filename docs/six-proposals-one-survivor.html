@@ -1040,16 +1040,64 @@
   showing up as a clean factor of two, and it is the same premium that
   manufactured every result this session that failed to replicate.</p>
 
-  <div class="card k-lo">
-    <h3>Why this is not yet a strategy</h3>
-    <p>This is an event study of raw forward returns: no cost, no stop, no
-    six-slot cap, no drift null. The leak-free tests above showed that effects of
-    exactly this size do not survive being turned into a standalone bracket
-    trade. A conditional expectation of 0.36 deviations over twenty sessions is
-    real and thin at once. Its honest use is a veto on an existing book &mdash;
-    decline the breakout in a name that just missed and sold off &mdash; and that
-    is the next test, not a new book.</p>
+  <div class="scroll">
+    <table>
+      <caption>The same effect at the other end of the telescope: S&amp;P earnings
+      against forward <em>real total return</em>, 1871&ndash;2024, 1,842 monthly
+      observations. Baseline is +8.58% / +7.29% / +7.09% at 1, 3 and 5 years.</caption>
+      <thead>
+        <tr><th>Trailing 12m index earnings</th><th>Months</th><th>+1y</th>
+          <th>+3y</th><th>+5y</th></tr>
+      </thead>
+      <tbody>
+        <tr class="hi"><td>falling more than 20%</td><td>154</td><td>+7.28%</td>
+          <td>+8.33%</td><td class="up">+11.12%</td></tr>
+        <tr><td>falling 0&ndash;20%</td><td>508</td><td class="up">+11.85%</td>
+          <td>+7.93%</td><td>+7.06%</td></tr>
+        <tr><td>rising 0&ndash;20%</td><td>687</td><td>+7.83%</td><td>+6.65%</td>
+          <td>+6.29%</td></tr>
+        <tr><td>rising more than 20%</td><td>361</td><td class="down">+5.95%</td>
+          <td>+7.18%</td><td>+6.93%</td></tr>
+      </tbody>
+    </table>
   </div>
+
+  <p>Over a century and a half the ordering <em>inverts</em>: falling index
+  earnings precede better real returns, not worse. That is not a contradiction of
+  the per-name result, it is a different mechanism at a different horizon. Twenty
+  sessions after one company's surprise is information diffusion. Five years after
+  an earnings collapse is valuation &mdash; price fell further than earnings did,
+  and the buyer collects the yield. Read the 1y and 3y columns: at ten years there
+  are roughly fifteen independent windows in 154 years, not seventeen hundred.</p>
+
+  <div class="split">
+    <div class="card k-lo">
+      <h3>As a book of its own: inside its null</h3>
+      <p>Entry at the open after the reaction, time exit at the drift horizon,
+      volatility stop beneath it, size = risk budget over stop distance. Chosen in
+      sample, evaluated out. <b>Beat and rose 1.93</b> against a drift null of
+      2.13. Rose-any-surprise 1.99 against 2.30. Every announcement 1.26 against
+      1.92. Miss-and-fell 0.42 against 1.94. The ordering replicates perfectly and
+      every arm still loses to buying the same names on random days.</p>
+    </div>
+    <div class="card k-lo">
+      <h3>As a veto on the breakout book: it never fires</h3>
+      <p>Refuse a 55-bar breakout in a name that just missed and sold off, and
+      you decline <b>31 of 11,269 trades</b> at a 20-session window &mdash; 0.3%,
+      rising to 1.1% at sixty. A name that just missed and got sold is not making
+      a fifty-five-day high. The two conditions are very nearly disjoint, so the
+      veto has almost nothing to act on, and the numbers agree: 0.96, 1.04 and
+      1.07 against an incumbent of 1.06 and a random veto of 1.02.</p>
+    </div>
+  </div>
+
+  <p class="note">Which closes the thread rather than opening one. The earnings
+  effect is real, replicated and correctly ordered, and it has now failed as a
+  standalone book and as a filter on the only book here that could host it. An
+  effect can be true and have nowhere to live. Worth noting in passing what the
+  veto run also showed: the breakout book itself scored <b>0.14</b> in
+  1999&ndash;2012 and <b>1.06</b> in 2013&ndash;2026 &mdash; the same rules, the
+  same names, two different worlds.</p>
 </section>
 
 <section>
@@ -1066,11 +1114,11 @@
     option chain is needed. That universe also contains the names that did not
     recover &mdash; BHC, CHGG, RIG, TDOC. The cost is daily-resolution fills.
     <span class="verdict v-open">next</span></li>
-    <li><b>Test earnings as a veto on the breakout book.</b> Decline the
-    breakout in a name that just missed and sold off. This is the form the
-    evidence supports &mdash; a tilt on an existing book, not a new one &mdash;
-    and it is the only open thread with a replicated effect behind it.
-    <span class="verdict v-open">next</span></li>
+    <li><b>Find a host for the earnings ordering.</b> It fails as its own
+    book and the breakout book cannot host it &mdash; the two signals barely
+    co-occur. A book that trades more names more often, or a cross-sectional
+    ranking rather than a trigger, is where it would have to live.
+    <span class="verdict v-open">open</span></li>
     <li><b>The 120-instrument intraday universe is missing.</b>
     <code>bars_av.db</code> is neither on disk nor inside <code>data.rar</code>;
     it would have to be rebuilt.
