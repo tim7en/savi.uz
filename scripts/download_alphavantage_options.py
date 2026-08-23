@@ -241,6 +241,16 @@ def main(argv=None):
     key = api_key()
     args.db.parent.mkdir(parents=True, exist_ok=True)
     store = sqlite3.connect(args.db)
+    # Write-ahead logging, because the contract table makes this write-heavy: the
+    # default rollback journal creates, fsyncs and deletes a journal file on every
+    # commit, and with ~330 contract rows per session that overhead grew until it,
+    # not the vendor's rate limit, set the pace (70/min -> 56/min over the first
+    # few hundred sessions, against a flat 70/min when only aggregates were
+    # stored). synchronous=NORMAL skips the per-commit fsync; in WAL mode that
+    # risks losing the last few transactions on a power cut but cannot corrupt the
+    # database -- and the run is resumable, so a lost minute costs a minute.
+    store.execute("PRAGMA journal_mode=WAL")
+    store.execute("PRAGMA synchronous=NORMAL")
     store.executescript(SCHEMA)
     store.commit()
 
