@@ -75,6 +75,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--skip-sec", action="store_true", help="skip SEC XBRL frames")
     parser.add_argument("--skip-index", action="store_true", help="skip Yahoo index history")
     parser.add_argument("--skip-estimates", action="store_true", help="skip Alpha Vantage estimates")
+    parser.add_argument(
+        "--estimates-per-minute", type=int, default=5,
+        help="Alpha Vantage request rate for estimates (default 5, the free-tier "
+             "allowance); raise it to match a premium plan's limit",
+    )
     return parser.parse_args(argv)
 
 
@@ -161,7 +166,8 @@ def download_estimates(store: EquityStore, args: argparse.Namespace, run_id: str
         store.log(run_id, utc_now_iso(), "ALPHAVANTAGE", "estimates", 0, "skipped", "no api key")
         return 0
 
-    client = AlphaVantageEarningsClient(api_key)
+    client = AlphaVantageEarningsClient(
+        api_key, max_per_minute=args.estimates_per_minute)
     total = 0
     for ticker in args.tickers:
         try:
