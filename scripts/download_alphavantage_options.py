@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import sqlite3
 import sys
@@ -100,6 +101,35 @@ def parse_args(argv=None):
                              "of every session in a date range")
     parser.add_argument("--limit", type=int, default=0, help="stop after N fetches")
     return parser.parse_args(argv)
+
+
+def acquire_lock(db_path: pathlib.Path):
+    """Refuse to start when another copy of this script is already downloading.
+
+    ``av_contracts`` carries no unique constraint, so two instances racing on the
+    same (symbol, date) both insert a full chain and the duplicates are invisible
+    to the resume logic, which only consults ``av_daily``. A run that overlapped
+    another one this way produced 14% duplicate contract rows before it was
+    noticed. They also split one rate-limit allowance between them, so each
+    appears to be running at a fraction of its true speed.
+    """
+    lock = db_path.with_suffix(".lock")
+    if lock.exists():
+        try:
+            pid = int(lock.read_text().strip())
+        except (ValueError, OSError):
+            pid = None
+        if pid is not None:
+            try:
+                os.kill(pid, 0)                 # signal 0 only tests existence
+            except OSError:
+                pass                            # stale lock, previous run died
+            else:
+                raise SystemExit(
+                    f"error: another download is already running (pid {pid}). "
+                    f"Stop it first, or remove {lock} if that pid is dead.")
+    lock.write_text(str(os.getpid()), encoding="utf-8")
+    return lock
 
 
 def api_key() -> str:
@@ -240,6 +270,7 @@ def main(argv=None):
     args = parse_args(argv)
     key = api_key()
     args.db.parent.mkdir(parents=True, exist_ok=True)
+    lock = acquire_lock(args.db)
     store = sqlite3.connect(args.db)
     # Write-ahead logging, because the contract table makes this write-heavy: the
     # default rollback journal creates, fsyncs and deletes a journal file on every
