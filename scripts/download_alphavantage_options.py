@@ -11,12 +11,13 @@ Design notes:
   daily gamma and surface features are computed before any truncation, so the
   series carries no moneyness or maturity bias.  Only a bounded window of
   contracts is persisted, because the full chains would run to tens of gigabytes
-  and gamma outside +/-15% of spot is negligible.
+  and gamma outside +/-20% of spot is negligible.
 * **Resumable.**  Every (symbol, date) already stored is skipped, so the run can
   be interrupted and restarted without duplicating work or wasting requests.
-* **Spot comes from the bar database**, not from the chain.  SPY and QQQ have
-  never split, so their unadjusted closes are the correct reference for raw
-  strike prices.
+* **Spot comes from unadjusted closes** (``raw_closes``), not from the chain
+  and not from the bar database.  Bars are back-adjusted for splits and
+  dividends while strikes are not, so an adjusted spot compares two different
+  units and corrupts every moneyness-dependent feature.
 * **The key is read from .env and never logged.**
 
 Terms: Alpha Vantage's Alpha X data is licensed for personal use and may not be
@@ -44,6 +45,15 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 from savi_uz.option_features import Contract, snapshot_features  # noqa: E402
 
 ENDPOINT = "https://www.alphavantage.co/query"
+
+# Alpha Vantage's option endpoint names share classes without a separator, while
+# the bar database follows the hyphenated convention used everywhere else here.
+# Only the outbound request is translated: rows stay keyed on the local symbol so
+# they still join against bars and the rest of the project. Without this, every
+# BRK-B request comes back "No data for symbol BRK-B" and silently stores an
+# empty session.
+API_SYMBOLS = {"BRK-B": "BRKB"}
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS av_daily (
   symbol TEXT, observation_date TEXT, spot REAL,
@@ -77,14 +87,14 @@ def parse_args(argv=None):
     parser.add_argument("--end", default="2026-08-14")
     parser.add_argument("--workers", type=int, default=3,
                         help="concurrent requests; keep well under the plan's limit")
-    parser.add_argument("--keep-moneyness", type=float, default=0.15,
+    parser.add_argument("--keep-moneyness", type=float, default=0.20,
                         help="store contracts within this fraction of spot")
-    parser.add_argument("--keep-dte", type=int, default=120)
+    parser.add_argument("--keep-dte", type=int, default=45)
     parser.add_argument("--no-contracts", action="store_true",
                         help="store only the daily aggregates, skipping the "
                              "per-contract table -- the daily features are what "
-                             "the strategy consumes, and the contract rows cost "
-                             "roughly a gigabyte per symbol-pair")
+                             "the strategy consumes; the contract rows are what "
+                             "makes a feature fix recomputable without re-fetching")
     parser.add_argument("--targets", type=pathlib.Path, default=None,
                         help="JSON list of [symbol, date] pairs to fetch, instead "
                              "of every session in a date range")
@@ -101,24 +111,28 @@ def api_key() -> str:
     raise SystemExit("error: ALPHAVANTAGE_API_KEY missing from .env")
 
 
-def trading_days(bars_path: pathlib.Path, symbol: str, start: str, end: str):
-    """Sessions and closes taken from the bar database.
+def session_closes(store, symbol: str, start: str, end: str):
+    """Sessions and *unadjusted* closes -- the reference that matches strikes.
 
-    One ordered pass, not one query per session: ``substr(ts,1,10)=?`` cannot use
-    the (ticker, ts) index, so the per-session form full-scanned the ticker's bars
-    thousands of times over.  Walking the range in ts order and keeping the last
-    close seen for each day gives the same answer from a single index range scan.
+    Spot used to come from the bar database, whose prices are back-adjusted for
+    splits and dividends.  Strikes are not adjusted, so that comparison ran in
+    two different units: a pre-split AAPL session priced spot near $120 against
+    a chain struck near $500, and every moneyness-dependent feature -- ATM
+    volatility, skew, the gamma flip -- was measured against the wrong end of
+    the curve.  Dividends did the same thing quietly, drifting a steady payer a
+    few percent a year with no split anywhere.
+
+    ``raw_closes`` is populated by download_raw_closes.py and holds the price as
+    it actually printed, so the two sides now agree.
     """
-    connection = sqlite3.connect(f"file:{bars_path}?mode=ro", uri=True)
-    closes = {}
-    for ts, close in connection.execute(
-        "SELECT ts, close FROM bars WHERE ticker=? AND frequency='5min' "
-        "AND ts>=? AND ts<? ORDER BY ts", (symbol, start, end)
-    ):
-        if close is not None:
-            closes[ts[:10]] = float(close)
-    connection.close()
-    return closes
+    return {
+        day: float(close)
+        for day, close in store.execute(
+            "SELECT observation_date, raw_close FROM raw_closes "
+            "WHERE symbol=? AND observation_date>=? AND observation_date<? "
+            "AND raw_close IS NOT NULL AND raw_close>0 "
+            "ORDER BY observation_date", (symbol, start, end))
+    }
 
 
 class _Pacer:
@@ -148,7 +162,8 @@ PACER = _Pacer(70.0)
 
 
 def fetch(symbol: str, day: str, key: str, attempts: int = 4):
-    params = {"function": "HISTORICAL_OPTIONS", "symbol": symbol,
+    params = {"function": "HISTORICAL_OPTIONS",
+              "symbol": API_SYMBOLS.get(symbol, symbol),
               "date": day, "apikey": key}
     url = f"{ENDPOINT}?{urllib.parse.urlencode(params)}"
     for attempt in range(attempts):
@@ -238,7 +253,7 @@ def main(argv=None):
         for symbol, day in json.loads(args.targets.read_text(encoding="utf-8")):
             wanted[symbol].add(day)
         for symbol in sorted(wanted):
-            closes = trading_days(args.bars, symbol, "2000-01-01", "2100-01-01")
+            closes = session_closes(store, symbol, "2000-01-01", "2100-01-01")
             have = {d for (d,) in store.execute(
                 "SELECT observation_date FROM av_daily WHERE symbol=?", (symbol,))}
             for day in sorted(wanted[symbol]):
@@ -246,7 +261,11 @@ def main(argv=None):
                     todo.append((symbol, day, closes[day]))
     else:
         for symbol in args.symbols:
-            closes = trading_days(args.bars, symbol, args.start, args.end)
+            closes = session_closes(store, symbol, args.start, args.end)
+            if not closes:
+                print(f"  skipping {symbol}: no raw closes -- run "
+                      f"download_raw_closes.py first", flush=True)
+                continue
             have = {d for (d,) in store.execute(
                 "SELECT observation_date FROM av_daily WHERE symbol=?", (symbol,))}
             for day, spot in sorted(closes.items()):
