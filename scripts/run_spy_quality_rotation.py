@@ -11,14 +11,17 @@ The requested idea is encoded as an auditable first pass:
   a static illustrative basket of mega-cap compounders and dividend growers;
 * stock positions are capped so a 79% stress loss costs at most 1% of account
   equity per name; no stop is invented;
-* after the stock purchase, sell 10% of the original shares whenever SPY has
-  risen another 10% from its purchase level, and move proceeds to reserve;
+* after the stock purchase, sell 10% of the original shares whenever the chosen
+  control signal has risen another 10% from its purchase level, and move the
+  proceeds to reserve;
 * drawdown signals are known at one close and executed at the next close.
 
-Two leverage interpretations are run: 3x -> 1x at a 40% SPY drawdown, and the
-more defensive 3x -> 2x at 20% -> 1x at 40%.  The quality basket is a current,
-survivor-selected illustration, not point-in-time membership.  Results before
-the underlying companies' listings use only the names then available.
+Two leverage interpretations are run: 3x -> 1x at a 40% drawdown, and the more
+defensive 3x -> 2x at 20% -> 1x at 40%.  The main comparison runs the defensive
+policy using either SPY drawdown or total-portfolio drawdown as the control
+signal.  The quality basket is a current, survivor-selected illustration, not
+point-in-time membership.  Results before the underlying companies' listings
+use only the names then available.
 """
 
 from __future__ import annotations
@@ -55,6 +58,7 @@ class Event:
     strategy: str
     kind: str
     amount: float
+    signal_drawdown: float
     spy_drawdown: float
     detail: str
 
@@ -65,7 +69,7 @@ class Lot:
     original_shares: float
     remaining_shares: float
     entry_price: float
-    entry_spy: float
+    entry_reference: float
     next_sale_rung: int
     cost: float
 
@@ -275,7 +279,10 @@ def metrics(wealth: pd.Series, rates: pd.Series) -> dict:
 
 def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
              leverage_policy: str, staging: bool,
-             quality_at_40: bool, harvest_share: float) -> tuple[pd.DataFrame, list[Event]]:
+             quality_at_40: bool, harvest_share: float,
+             signal_source: str = "spy") -> tuple[pd.DataFrame, list[Event]]:
+    if signal_source not in {"spy", "portfolio"}:
+        raise ValueError(f"unknown signal source: {signal_source}")
     spy = prices["SPY"].dropna()
     prices = prices.reindex(spy.index)
     rates = rates.reindex(spy.index).ffill().bfill()
@@ -295,10 +302,16 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
     rows = []
     ruined = False
     cost_rate = args.trade_bp / 10_000.0
+    portfolio_high = args.initial
+    previous_portfolio_drawdown = 0.0
 
     for position, stamp in enumerate(spy.index):
         signal_position = max(0, position - 1)
-        signal_drawdown = float(spy_drawdown.iloc[signal_position])
+        signal_drawdown = (
+            float(spy_drawdown.iloc[signal_position])
+            if signal_source == "spy"
+            else previous_portfolio_drawdown
+        )
         applied_leverage = leverage_for(signal_drawdown, leverage_policy)
 
         if position:
@@ -317,14 +330,20 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
 
         current_row = prices.iloc[position]
         current_quality = lot_value(lots, current_row)
+        pre_action_total = main + reserve + current_quality
+        recovery_reference = (
+            float(spy.iloc[position])
+            if signal_source == "spy"
+            else pre_action_total
+        )
 
-        # Sell one tenth of original shares at each 10% SPY recovery rung.
+        # Sell one tenth at each 10% recovery in the selected control signal.
         for lot in lots:
             stock_price = current_row.get(lot.ticker, np.nan)
             if pd.isna(stock_price) or lot.remaining_shares <= 0.0:
                 continue
             while (lot.next_sale_rung <= 10
-                   and float(spy.iloc[position]) / lot.entry_spy
+                   and recovery_reference / lot.entry_reference
                    >= 1.0 + lot.next_sale_rung * 0.10 - 1e-12):
                 shares = min(lot.original_shares * 0.10, lot.remaining_shares)
                 proceeds = shares * float(stock_price) * (1.0 - cost_rate)
@@ -332,8 +351,10 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
                 reserve += proceeds
                 events.append(Event(
                     stamp.date().isoformat(), name, "quality_sale", proceeds,
+                    signal_drawdown,
                     float(spy_drawdown.iloc[position]),
-                    f"{lot.ticker}; SPY +{lot.next_sale_rung * 10}% from entry",
+                    f"{lot.ticker}; {signal_source} "
+                    f"+{lot.next_sale_rung * 10}% from entry",
                 ))
                 lot.next_sale_rung += 1
 
@@ -352,7 +373,9 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
                     main += amount
                     events.append(Event(
                         stamp.date().isoformat(), name, "deploy_spy", amount,
-                        signal_drawdown, f"-{threshold:.0%} reserve rung",
+                        signal_drawdown,
+                        float(spy_drawdown.iloc[position]),
+                        f"-{threshold:.0%} reserve rung",
                     ))
                     continue
 
@@ -382,13 +405,14 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
                         original_shares=shares,
                         remaining_shares=shares,
                         entry_price=stock_price,
-                        entry_spy=float(spy.iloc[position]),
+                        entry_reference=recovery_reference,
                         next_sale_rung=1,
                         cost=cash,
                     ))
                 events.append(Event(
                     stamp.date().isoformat(), name, "deploy_quality", deployed,
                     signal_drawdown,
+                    float(spy_drawdown.iloc[position]),
                     f"-{threshold:.0%} rung; {len(available)} names; "
                     f"${per_name:,.0f} per name cap",
                 ))
@@ -400,6 +424,7 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
                 reserve += amount
                 events.append(Event(
                     stamp.date().isoformat(), name, "annual_harvest", amount,
+                    signal_drawdown,
                     float(spy_drawdown.iloc[position]),
                     "10% of positive calendar-year SPY-sleeve profit",
                 ))
@@ -407,12 +432,21 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
 
         current_quality = lot_value(lots, current_row)
         total = main + reserve + current_quality
+        portfolio_high = max(portfolio_high, total)
+        portfolio_drawdown = total / portfolio_high - 1.0
+        previous_portfolio_drawdown = portfolio_drawdown
         rows.append({
             "wealth": total,
             "spy_sleeve": main,
             "reserve": reserve,
             "quality_sleeve": current_quality,
             "spy_drawdown": float(spy_drawdown.iloc[position]),
+            "portfolio_drawdown": portfolio_drawdown,
+            "action_drawdown": (
+                float(spy_drawdown.iloc[position])
+                if signal_source == "spy"
+                else portfolio_drawdown
+            ),
             "applied_leverage": applied_leverage,
             "spy_gross_exposure": (main * applied_leverage / total) if total > 0 else 0.0,
             "quality_exposure": (current_quality / total) if total > 0 else 0.0,
@@ -449,12 +483,18 @@ def rolling_study(prices: pd.DataFrame, rates: pd.Series, args) -> dict:
             window_prices, window_rates, args, "quality_step_rolling",
             "step_3_2_1", True, True, args.harvest,
         )
+        portfolio_step, portfolio_events = simulate(
+            window_prices, window_rates, args, "quality_portfolio_step_rolling",
+            "step_3_2_1", True, True, args.harvest,
+            signal_source="portfolio",
+        )
         all_spy, _ = simulate(
             window_prices, window_rates, args, "all_spy_step_rolling",
             "step_3_2_1", True, False, args.harvest,
         )
         spy = args.initial * window_prices["SPY"] / window_prices["SPY"].iloc[0]
         step_stats = metrics(step["wealth"], window_rates)
+        portfolio_stats = metrics(portfolio_step["wealth"], window_rates)
         all_spy_stats = metrics(all_spy["wealth"], window_rates)
         spy_stats = metrics(spy, window_rates)
         records.append({
@@ -463,6 +503,9 @@ def rolling_study(prices: pd.DataFrame, rates: pd.Series, args) -> dict:
             "quality_cagr": step_stats["cagr"],
             "quality_max_drawdown": step_stats["max_drawdown"],
             "quality_terminal": step_stats["terminal"],
+            "portfolio_signal_cagr": portfolio_stats["cagr"],
+            "portfolio_signal_max_drawdown": portfolio_stats["max_drawdown"],
+            "portfolio_signal_terminal": portfolio_stats["terminal"],
             "all_spy_cagr": all_spy_stats["cagr"],
             "all_spy_max_drawdown": all_spy_stats["max_drawdown"],
             "all_spy_terminal": all_spy_stats["terminal"],
@@ -470,6 +513,9 @@ def rolling_study(prices: pd.DataFrame, rates: pd.Series, args) -> dict:
             "spy_max_drawdown": spy_stats["max_drawdown"],
             "spy_terminal": spy_stats["terminal"],
             "quality_deployments": sum(e.kind == "deploy_quality" for e in events),
+            "portfolio_signal_quality_deployments": sum(
+                e.kind == "deploy_quality" for e in portfolio_events
+            ),
         })
     frame = pd.DataFrame(records)
     return {
@@ -478,6 +524,10 @@ def rolling_study(prices: pd.DataFrame, rates: pd.Series, args) -> dict:
         "cohorts": len(frame),
         "quality_cagr": quantiles(frame["quality_cagr"]),
         "quality_max_drawdown": quantiles(frame["quality_max_drawdown"]),
+        "portfolio_signal_cagr": quantiles(frame["portfolio_signal_cagr"]),
+        "portfolio_signal_max_drawdown": quantiles(
+            frame["portfolio_signal_max_drawdown"]
+        ),
         "spy_cagr": quantiles(frame["spy_cagr"]),
         "spy_max_drawdown": quantiles(frame["spy_max_drawdown"]),
         "quality_beats_spy_share": float(
@@ -486,8 +536,17 @@ def rolling_study(prices: pd.DataFrame, rates: pd.Series, args) -> dict:
         "quality_beats_all_spy_share": float(
             (frame["quality_terminal"] > frame["all_spy_terminal"]).mean()
         ),
+        "portfolio_signal_beats_spy_share": float(
+            (frame["portfolio_signal_terminal"] > frame["spy_terminal"]).mean()
+        ),
+        "portfolio_signal_beats_spy_signal_share": float(
+            (frame["portfolio_signal_terminal"] > frame["quality_terminal"]).mean()
+        ),
         "cohorts_with_quality_deployment": int(
             (frame["quality_deployments"] > 0).sum()
+        ),
+        "cohorts_with_portfolio_signal_quality_deployment": int(
+            (frame["portfolio_signal_quality_deployments"] > 0).sum()
         ),
         "records": records,
     }
@@ -501,19 +560,24 @@ def main(argv=None) -> int:
     rates = load_rates(prices.index)
 
     variants = {
-        "static_3x_80_20": ("constant_3x", False, False, 0.0),
-        "all_spy_step": ("step_3_2_1", True, False, args.harvest),
-        "quality_step": ("step_3_2_1", True, True, args.harvest),
-        "quality_late": ("late_3_to_1", True, True, args.harvest),
+        "static_3x_80_20": ("constant_3x", False, False, 0.0, "spy"),
+        "all_spy_step": ("step_3_2_1", True, False, args.harvest, "spy"),
+        "quality_step": ("step_3_2_1", True, True, args.harvest, "spy"),
+        "quality_portfolio_step": (
+            "step_3_2_1", True, True, args.harvest, "portfolio"
+        ),
+        "quality_late": ("late_3_to_1", True, True, args.harvest, "spy"),
     }
     paths, event_sets, summaries = {}, {}, {}
-    for name, (policy, staging, quality, harvest) in variants.items():
+    for name, (policy, staging, quality, harvest, signal_source) in variants.items():
         path, events = simulate(
             prices, rates, args, name, policy, staging, quality, harvest,
+            signal_source=signal_source,
         )
         paths[name], event_sets[name] = path, events
         summaries[name] = metrics(path["wealth"], rates)
         summaries[name].update({
+            "signal_source": signal_source,
             "ending_reserve": float(path["reserve"].iloc[-1]),
             "ending_quality": float(path["quality_sleeve"].iloc[-1]),
             "annual_harvested": float(sum(
@@ -540,7 +604,16 @@ def main(argv=None) -> int:
             "reserve_rungs": list(THRESHOLDS),
             "reserve_fractions": list(DEPLOY_FRACTIONS),
             "quality_trigger": -0.40,
-            "quality_sale_rule": "10% of original shares at every +10% SPY rebound",
+            "action_signal_variants": {
+                "quality_step": "prior-close SPY drawdown from its high",
+                "quality_portfolio_step": (
+                    "prior-close total-portfolio drawdown from its NAV high"
+                ),
+            },
+            "quality_sale_rule": (
+                "10% of original shares at every +10% rebound in the selected "
+                "SPY or total-portfolio control signal"
+            ),
             "risk_per_stock": args.risk_per_stock,
             "stock_tail_loss_assumption": args.stock_tail_loss,
             "minimum_price_history_years_at_purchase": args.min_history_years,
@@ -588,6 +661,7 @@ def main(argv=None) -> int:
         daily[f"{name}_reserve"] = path["reserve"]
         daily[f"{name}_quality"] = path["quality_sleeve"]
         daily[f"{name}_spy_gross"] = path["spy_gross_exposure"]
+        daily[f"{name}_action_drawdown"] = path["action_drawdown"]
     daily.to_csv(args.out / "daily.csv", index_label="date")
 
     print(json.dumps({

@@ -55,6 +55,40 @@ class SpyQualityRotationTests(unittest.TestCase):
         ])
         self.assertAlmostEqual(path["reserve"].iloc[-1], 0.0)
 
+    def test_portfolio_signal_reacts_to_levered_nav_not_spy_drawdown(self):
+        dates = pd.date_range("2020-01-02", periods=3, freq="B")
+        prices = pd.DataFrame({"SPY": [100.0, 95.0, 95.0]}, index=dates)
+        rates = pd.Series(0.0, index=dates)
+        args = SimpleNamespace(
+            initial=100_000.0,
+            spy_share=0.80,
+            spread=0.0,
+            trade_bp=0.0,
+            min_history_years=3.0,
+            risk_per_stock=0.01,
+            stock_tail_loss=0.79,
+        )
+
+        _, spy_events = MODULE.simulate(
+            prices, rates, args, "spy_signal", "step_3_2_1",
+            staging=True, quality_at_40=False, harvest_share=0.0,
+            signal_source="spy",
+        )
+        path, portfolio_events = MODULE.simulate(
+            prices, rates, args, "portfolio_signal", "step_3_2_1",
+            staging=True, quality_at_40=False, harvest_share=0.0,
+            signal_source="portfolio",
+        )
+
+        self.assertFalse(any(event.kind == "deploy_spy" for event in spy_events))
+        deployments = [
+            event for event in portfolio_events if event.kind == "deploy_spy"
+        ]
+        self.assertEqual(len(deployments), 1)
+        self.assertEqual(deployments[0].date, dates[2].date().isoformat())
+        self.assertAlmostEqual(deployments[0].signal_drawdown, -0.12)
+        self.assertAlmostEqual(path["reserve"].iloc[-1], 15_000.0)
+
 
 if __name__ == "__main__":
     unittest.main()
