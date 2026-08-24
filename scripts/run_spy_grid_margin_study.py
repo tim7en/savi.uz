@@ -8,6 +8,7 @@ a transparent proxy, not an execution-grade reconstruction of intraday fills.
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -17,6 +18,10 @@ import yfinance as yf
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from run_spy_account_drawdown_5x_study import simulate_account_rule  # noqa: E402
+
 SOURCE_RATES = ROOT / "out/strategy/spy_reverse_vault/daily.csv"
 OUTPUT = ROOT / "out/strategy/spy_grid_margin/results.json"
 OHLC_OUTPUT = ROOT / "out/strategy/spy_grid_margin/spy_adjusted_ohlc.csv"
@@ -300,6 +305,44 @@ def spy_benchmark(prices: pd.DataFrame) -> dict:
             "max_drawdown_flow_adjusted": float((close / close.cummax() - 1.0).min())}
 
 
+def previous_strategy_benchmark(source: pd.DataFrame) -> dict:
+    asset_return = source["spy_hold"].pct_change().fillna(0.0).loc[START:END].copy()
+    asset_return.iloc[0] = 0.0
+    contributions = monthly_schedule(asset_return.index)
+    path, stats = simulate_account_rule(
+        asset_return, source["treasury_rate"].loc[START:END], contributions,
+        (5.0, 3.0, 3.0, 1.0), "trading_sleeve", "trading_sleeve")
+    rates = source["treasury_rate"].loc[START:END]
+    days = asset_return.index.to_series().diff().dt.days.fillna(0.0)
+    known_rate = rates.shift(1).ffill().bfill()
+    leverage = path["applied_leverage"]
+    strategy_return = (leverage * asset_return
+                       - (leverage - 1.0).clip(lower=0.0)
+                       * (known_rate + 0.01) * days / 365.0)
+    pnl = path["main"].shift(1) * strategy_return
+    pnl.iloc[0] = 0.0
+    log_return = np.log1p(strategy_return)
+    total_pnl = float(pnl.sum())
+    total_log_return = float(log_return.sum())
+    attribution = {}
+    for level in (5.0, 3.0, 1.0):
+        mask = leverage == level
+        values = pnl[mask]
+        state_pnl = float(values.sum())
+        state_log_return = float(log_return[mask].sum())
+        attribution[f"{int(level)}x"] = {
+            "sessions": int(mask.sum()),
+            "time_share": float(mask.mean()),
+            "net_pnl": state_pnl,
+            "net_pnl_share": state_pnl / total_pnl,
+            "gross_winning_day_pnl": float(values[values > 0].sum()),
+            "gross_losing_day_pnl": float(values[values < 0].sum()),
+            "log_growth_share": state_log_return / total_log_return,
+        }
+    stats["pnl_attribution"] = attribution
+    return stats
+
+
 def main() -> int:
     prices = load_prices()
     rates_source = pd.read_csv(SOURCE_RATES, parse_dates=["date"], index_col="date")
@@ -334,6 +377,7 @@ def main() -> int:
             "limitations": "daily OHLC path proxy; no real intraday sequence, queue priority, partial fills, taxes, broker maintenance margin, or market impact",
         },
         "spy_x1": spy_benchmark(prices),
+        "previous_5_3_3_1": previous_strategy_benchmark(rates_source),
         "scenarios": scenarios,
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

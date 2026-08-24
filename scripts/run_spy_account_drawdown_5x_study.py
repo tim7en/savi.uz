@@ -29,9 +29,11 @@ OUTPUT = ROOT / "out/strategy/spy_account_drawdown_5x/results.json"
 
 def simulate_account_rule(asset_return: pd.Series, rates: pd.Series,
                           contributions: pd.Series,
-                          levels: tuple[float, float, float, float],
+                          levels: tuple[float, ...],
                           drawdown_driver: str,
-                          contribution_destination: str) -> tuple[pd.DataFrame, dict]:
+                          contribution_destination: str,
+                          leverage_thresholds: tuple[float, ...] = (0.10, 0.30, 0.50),
+                          ) -> tuple[pd.DataFrame, dict]:
     """Run leverage and reserve rungs from flow-adjusted combined-account DD."""
     index = asset_return.index
     stamps = index.to_series()
@@ -94,12 +96,10 @@ def simulate_account_rule(asset_return: pd.Series, rates: pd.Series,
         signal_drawdown = signal_nav / signal_peak - 1.0
 
         if not recovered:
-            if signal_drawdown <= -0.50:
-                rung = max(rung, 3)
-            elif signal_drawdown <= -0.30:
-                rung = max(rung, 2)
-            elif signal_drawdown <= -0.10:
-                rung = max(rung, 1)
+            for threshold_position in range(len(leverage_thresholds) - 1, -1, -1):
+                if signal_drawdown <= -leverage_thresholds[threshold_position]:
+                    rung = max(rung, threshold_position + 1)
+                    break
         target_leverage = levels[rung]
 
         for threshold, fraction in zip(THRESHOLDS, DEPLOY_FRACTIONS):
@@ -174,8 +174,14 @@ def main() -> int:
             "contribution_destination": "trading_sleeve"},
         "sensitivity_profit_reserve_5_3_2_1": {
             "levels": (5.0, 3.0, 2.0, 1.0), "driver": "trading_sleeve",
-            "contribution_destination": "trading_sleeve"},
+            "contribution_destination": "trading_sleeve",
+            "thresholds": (0.10, 0.30, 0.50)},
+        "fear_relever_profit_reserve_5_3_3_1_3": {
+            "levels": (5.0, 3.0, 3.0, 1.0, 3.0), "driver": "trading_sleeve",
+            "contribution_destination": "trading_sleeve",
+            "thresholds": (0.10, 0.30, 0.50, 0.60)},
     }
+    variants["literal_profit_reserve_5_3_3_1"]["thresholds"] = (0.10, 0.30, 0.50)
     records = {name: [] for name in variants}
     spy_records = []
 
@@ -206,7 +212,8 @@ def main() -> int:
             _, stats = simulate_account_rule(
                 window_return, window_rates, contributions,
                 specification["levels"], specification["driver"],
-                specification["contribution_destination"])
+                specification["contribution_destination"],
+                specification["thresholds"])
             records[name].append({
                 "start": start.date().isoformat(),
                 "end": end.date().isoformat(),
@@ -239,6 +246,7 @@ def main() -> int:
             name: {"levels": list(variants[name]["levels"]),
                    "driver": variants[name]["driver"],
                    "contribution_destination": variants[name]["contribution_destination"],
+                   "thresholds": list(variants[name]["thresholds"]),
                    **summarize(pd.DataFrame(items))}
             for name, items in records.items()
         },

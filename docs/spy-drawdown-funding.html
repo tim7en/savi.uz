@@ -111,9 +111,10 @@
   <p class="lead">This 30-year daily-OHLC proxy used 12 levels on each side at 0.4%, a prior-known 20-session EMA center, one basis point per fill, and a 5x cap reduced to 2x at a 20% account loss and 1x at 60%. Of each $10,000 annual contribution, 70% entered trading and 30% savings.</p>
   <div class="scroll"><table><thead><tr><th>Inventory model</th><th>Ending wealth</th><th>XIRR</th><th>Max drawdown</th><th>Median effective leverage</th><th>Time at 1x cap</th></tr></thead><tbody>
     <tr><td><strong>SPY 1x</strong><small>all $300,000 invested</small></td><td>$2,059,525</td><td>10.89%</td><td>-55.19%</td><td>1.00x</td><td>—</td></tr>
-    <tr class="featured"><td><strong>Long-core grid</strong><small>50–100% of active cap</small></td><td>$543,327</td><td>3.69%</td><td>-69.53%</td><td>0.57x</td><td>80.4%</td></tr>
-    <tr><td><strong>Long-only grid</strong><small>0–100% of active cap</small></td><td>$274,421</td><td>-0.60%</td><td>-76.63%</td><td>0.33x</td><td>80.5%</td></tr>
-    <tr><td><strong>Neutral grid</strong><small>short above / long below average</small></td><td>$159,794</td><td>-4.63%</td><td>-94.92%</td><td>0.14x</td><td>93.2%</td></tr>
+    <tr class="featured"><td><strong>Previous 5→3→3→1 rule</strong><small>profit sweep and reserve; no grid</small></td><td>$3,030,755</td><td>12.83%</td><td>-59.62%</td><td>1.77x</td><td>—</td></tr>
+    <tr><td><strong>Long-core grid</strong><small>50–100% of active cap</small></td><td>$543,301</td><td>3.69%</td><td>-69.53%</td><td>0.57x</td><td>80.4%</td></tr>
+    <tr><td><strong>Long-only grid</strong><small>0–100% of active cap</small></td><td>$274,407</td><td>-0.60%</td><td>-76.63%</td><td>0.33x</td><td>80.5%</td></tr>
+    <tr><td><strong>Neutral grid</strong><small>short above / long below average</small></td><td>$159,792</td><td>-4.63%</td><td>-94.92%</td><td>0.14x</td><td>93.2%</td></tr>
   </tbody></table></div>
   <p class="note warning"><strong>Daily bars are not execution data.</strong> The high/low order, queue position, partial fills and spread are unknowable over 30 years. Open-low-high-close and open-high-low-close produced similar estimates here, but neither establishes an executable expected return. The base rule reached its 1x cap in 2002 and never recovered the old performance high.</p>
 </section>

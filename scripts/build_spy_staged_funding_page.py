@@ -269,13 +269,15 @@ def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
         grid_core = grid["scenarios"]["long_core_base_OLHC"]
         grid_neutral = grid["scenarios"]["neutral_base_OLHC"]
         grid_spy = grid["spy_x1"]
+        grid_previous = grid["previous_5_3_3_1"]
         twenty_section += f"""
 <section class="wide">
   <div class="eyebrow">V.B · The volatility grid</div><h2>The grid harvested movement but surrendered the trend.</h2>
   <p class="lead">This 30-year daily-OHLC proxy used 12 levels on each side at 0.4%, a prior-known 20-session EMA center, one basis point per fill, and a 5x cap reduced to 2x at a 20% account loss and 1x at 60%. Of each $10,000 annual contribution, 70% entered trading and 30% savings.</p>
   <div class="scroll"><table><thead><tr><th>Inventory model</th><th>Ending wealth</th><th>XIRR</th><th>Max drawdown</th><th>Median effective leverage</th><th>Time at 1x cap</th></tr></thead><tbody>
     <tr><td><strong>SPY 1x</strong><small>all $300,000 invested</small></td><td>{money(grid_spy['terminal_wealth'])}</td><td>{pct(grid_spy['xirr'])}</td><td>{pct(grid_spy['max_drawdown_flow_adjusted'])}</td><td>1.00x</td><td>—</td></tr>
-    <tr class="featured"><td><strong>Long-core grid</strong><small>50–100% of active cap</small></td><td>{money(grid_core['terminal_wealth'])}</td><td>{pct(grid_core['xirr'])}</td><td>{pct(grid_core['max_drawdown'])}</td><td>{grid_core['median_effective_leverage']:.2f}x</td><td>{pct(grid_core['time_at_1x_cap'], 1)}</td></tr>
+    <tr class="featured"><td><strong>Previous 5→3→3→1 rule</strong><small>profit sweep and reserve; no grid</small></td><td>{money(grid_previous['terminal_wealth'])}</td><td>{pct(grid_previous['xirr'])}</td><td>{pct(grid_previous['max_drawdown'])}</td><td>{grid_previous['mean_applied_leverage']:.2f}x</td><td>—</td></tr>
+    <tr><td><strong>Long-core grid</strong><small>50–100% of active cap</small></td><td>{money(grid_core['terminal_wealth'])}</td><td>{pct(grid_core['xirr'])}</td><td>{pct(grid_core['max_drawdown'])}</td><td>{grid_core['median_effective_leverage']:.2f}x</td><td>{pct(grid_core['time_at_1x_cap'], 1)}</td></tr>
     <tr><td><strong>Long-only grid</strong><small>0–100% of active cap</small></td><td>{money(grid_base['terminal_wealth'])}</td><td>{pct(grid_base['xirr'])}</td><td>{pct(grid_base['max_drawdown'])}</td><td>{grid_base['median_effective_leverage']:.2f}x</td><td>{pct(grid_base['time_at_1x_cap'], 1)}</td></tr>
     <tr><td><strong>Neutral grid</strong><small>short above / long below average</small></td><td>{money(grid_neutral['terminal_wealth'])}</td><td>{pct(grid_neutral['xirr'])}</td><td>{pct(grid_neutral['max_drawdown'])}</td><td>{grid_neutral['median_effective_leverage']:.2f}x</td><td>{pct(grid_neutral['time_at_1x_cap'], 1)}</td></tr>
   </tbody></table></div>
