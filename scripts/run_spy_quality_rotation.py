@@ -70,8 +70,11 @@ class Lot:
     remaining_shares: float
     entry_price: float
     entry_reference: float
+    entry_date: pd.Timestamp
+    recovery_spy: float
     next_sale_rung: int
     cost: float
+    exit_date: pd.Timestamp | None = None
 
 
 def parse_args(argv=None):
@@ -86,6 +89,8 @@ def parse_args(argv=None):
     parser.add_argument("--stock-tail-loss", type=float, default=0.79)
     parser.add_argument("--min-history-years", type=float, default=3.0)
     parser.add_argument("--trade-bp", type=float, default=5.0)
+    parser.add_argument("--max-quality-hold-years", type=float, default=5.0)
+    parser.add_argument("--trend-exit-days", type=int, default=200)
     parser.add_argument("--rolling-years", type=int, default=20)
     parser.add_argument(
         "--cohort-frequency", choices=("annual", "quarterly", "monthly"),
@@ -280,9 +285,15 @@ def metrics(wealth: pd.Series, rates: pd.Series) -> dict:
 def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
              leverage_policy: str, staging: bool,
              quality_at_40: bool, harvest_share: float,
-             signal_source: str = "spy") -> tuple[pd.DataFrame, list[Event]]:
+             signal_source: str = "spy",
+             exit_policy: str = "signal_rebound") -> tuple[pd.DataFrame, list[Event]]:
     if signal_source not in {"spy", "portfolio"}:
         raise ValueError(f"unknown signal source: {signal_source}")
+    if exit_policy not in {
+        "signal_rebound", "spy_recovery_ladder",
+        "spy_recovery_ladder_sunset", "spy_recovery_ladder_trend",
+    }:
+        raise ValueError(f"unknown quality exit policy: {exit_policy}")
     spy = prices["SPY"].dropna()
     prices = prices.reindex(spy.index)
     rates = rates.reindex(spy.index).ffill().bfill()
@@ -304,6 +315,7 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
     cost_rate = args.trade_bp / 10_000.0
     portfolio_high = args.initial
     previous_portfolio_drawdown = 0.0
+    previous_portfolio_total = args.initial
 
     for position, stamp in enumerate(spy.index):
         signal_position = max(0, position - 1)
@@ -331,20 +343,35 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
         current_row = prices.iloc[position]
         current_quality = lot_value(lots, current_row)
         pre_action_total = main + reserve + current_quality
-        recovery_reference = (
+        entry_reference = (
             float(spy.iloc[position])
             if signal_source == "spy"
             else pre_action_total
         )
+        signal_spy_price = float(spy.iloc[signal_position])
+        recovery_signal_reference = (
+            signal_spy_price
+            if signal_source == "spy"
+            else previous_portfolio_total
+        )
 
-        # Sell one tenth at each 10% recovery in the selected control signal.
+        # Recovery signals are observed at the prior close and executed now.
         for lot in lots:
             stock_price = current_row.get(lot.ticker, np.nan)
             if pd.isna(stock_price) or lot.remaining_shares <= 0.0:
                 continue
+            if exit_policy == "signal_rebound":
+                recovery_multiple = recovery_signal_reference / lot.entry_reference
+                required_multiple = lambda rung: 1.0 + rung * 0.10
+                exit_label = signal_source
+            else:
+                recovery_multiple = signal_spy_price / lot.recovery_spy
+                required_multiple = lambda rung: 1.0 + (rung - 1) * 0.10
+                exit_label = "SPY recovery high"
+
             while (lot.next_sale_rung <= 10
-                   and recovery_reference / lot.entry_reference
-                   >= 1.0 + lot.next_sale_rung * 0.10 - 1e-12):
+                   and recovery_multiple
+                   >= required_multiple(lot.next_sale_rung) - 1e-12):
                 shares = min(lot.original_shares * 0.10, lot.remaining_shares)
                 proceeds = shares * float(stock_price) * (1.0 - cost_rate)
                 lot.remaining_shares -= shares
@@ -353,10 +380,43 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
                     stamp.date().isoformat(), name, "quality_sale", proceeds,
                     signal_drawdown,
                     float(spy_drawdown.iloc[position]),
-                    f"{lot.ticker}; {signal_source} "
-                    f"+{lot.next_sale_rung * 10}% from entry",
+                    f"{lot.ticker}; {exit_label}; sale rung "
+                    f"{lot.next_sale_rung}/10",
                 ))
                 lot.next_sale_rung += 1
+
+            if lot.remaining_shares <= 0.0:
+                lot.exit_date = stamp
+                continue
+            forced_kind = None
+            if exit_policy == "spy_recovery_ladder_sunset":
+                maximum_holding_days = args.max_quality_hold_years * 365.2425
+                if (stamp - lot.entry_date).days >= maximum_holding_days:
+                    forced_kind = "quality_sunset_sale"
+            elif (exit_policy == "spy_recovery_ladder_trend"
+                  and signal_spy_price >= lot.recovery_spy
+                  and signal_position >= args.trend_exit_days):
+                prior_window = prices[lot.ticker].iloc[
+                    signal_position - args.trend_exit_days:signal_position
+                ].dropna()
+                signal_stock_price = prices[lot.ticker].iloc[signal_position]
+                if (len(prior_window) == args.trend_exit_days
+                        and pd.notna(signal_stock_price)
+                        and float(signal_stock_price) < float(prior_window.min())):
+                    forced_kind = "quality_trend_sale"
+
+            if forced_kind is not None:
+                proceeds = (
+                    lot.remaining_shares * float(stock_price) * (1.0 - cost_rate)
+                )
+                lot.remaining_shares = 0.0
+                lot.exit_date = stamp
+                reserve += proceeds
+                events.append(Event(
+                    stamp.date().isoformat(), name, forced_kind, proceeds,
+                    signal_drawdown, float(spy_drawdown.iloc[position]),
+                    f"{lot.ticker}; residual position closed",
+                ))
 
         if staging:
             if signal_drawdown >= -1e-12:
@@ -405,7 +465,9 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
                         original_shares=shares,
                         remaining_shares=shares,
                         entry_price=stock_price,
-                        entry_reference=recovery_reference,
+                        entry_reference=entry_reference,
+                        entry_date=stamp,
+                        recovery_spy=float(spy.iloc[:position + 1].max()),
                         next_sale_rung=1,
                         cost=cash,
                     ))
@@ -435,6 +497,7 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
         portfolio_high = max(portfolio_high, total)
         portfolio_drawdown = total / portfolio_high - 1.0
         previous_portfolio_drawdown = portfolio_drawdown
+        previous_portfolio_total = total
         rows.append({
             "wealth": total,
             "spy_sleeve": main,
@@ -453,7 +516,30 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
             "ruined": ruined,
         })
 
-    return pd.DataFrame(rows, index=spy.index), events
+    frame = pd.DataFrame(rows, index=spy.index)
+    closed_days = [
+        (lot.exit_date - lot.entry_date).days
+        for lot in lots if lot.exit_date is not None
+    ]
+    open_lots = [lot for lot in lots if lot.remaining_shares > 0.0]
+    frame.attrs["quality_lots"] = {
+        "purchased_lots": len(lots),
+        "closed_lots": len(closed_days),
+        "open_lots": len(open_lots),
+        "median_closed_holding_years": (
+            float(np.median(closed_days) / 365.2425) if closed_days else None
+        ),
+        "maximum_closed_holding_years": (
+            float(max(closed_days) / 365.2425) if closed_days else None
+        ),
+        "oldest_open_holding_years": (
+            float((spy.index[-1] - min(lot.entry_date for lot in open_lots)).days
+                  / 365.2425)
+            if open_lots else None
+        ),
+        "open_tickers": sorted({lot.ticker for lot in open_lots}),
+    }
+    return frame, events
 
 
 def quantiles(values: pd.Series) -> dict:
@@ -488,6 +574,23 @@ def rolling_study(prices: pd.DataFrame, rates: pd.Series, args) -> dict:
             "step_3_2_1", True, True, args.harvest,
             signal_source="portfolio",
         )
+        recovery, recovery_events = simulate(
+            window_prices, window_rates, args, "quality_recovery_rolling",
+            "step_3_2_1", True, True, args.harvest,
+            signal_source="portfolio", exit_policy="spy_recovery_ladder",
+        )
+        recovery_sunset, recovery_sunset_events = simulate(
+            window_prices, window_rates, args, "quality_recovery_sunset_rolling",
+            "step_3_2_1", True, True, args.harvest,
+            signal_source="portfolio",
+            exit_policy="spy_recovery_ladder_sunset",
+        )
+        recovery_trend, recovery_trend_events = simulate(
+            window_prices, window_rates, args, "quality_recovery_trend_rolling",
+            "step_3_2_1", True, True, args.harvest,
+            signal_source="portfolio",
+            exit_policy="spy_recovery_ladder_trend",
+        )
         all_spy, _ = simulate(
             window_prices, window_rates, args, "all_spy_step_rolling",
             "step_3_2_1", True, False, args.harvest,
@@ -495,6 +598,9 @@ def rolling_study(prices: pd.DataFrame, rates: pd.Series, args) -> dict:
         spy = args.initial * window_prices["SPY"] / window_prices["SPY"].iloc[0]
         step_stats = metrics(step["wealth"], window_rates)
         portfolio_stats = metrics(portfolio_step["wealth"], window_rates)
+        recovery_stats = metrics(recovery["wealth"], window_rates)
+        recovery_sunset_stats = metrics(recovery_sunset["wealth"], window_rates)
+        recovery_trend_stats = metrics(recovery_trend["wealth"], window_rates)
         all_spy_stats = metrics(all_spy["wealth"], window_rates)
         spy_stats = metrics(spy, window_rates)
         records.append({
@@ -506,6 +612,15 @@ def rolling_study(prices: pd.DataFrame, rates: pd.Series, args) -> dict:
             "portfolio_signal_cagr": portfolio_stats["cagr"],
             "portfolio_signal_max_drawdown": portfolio_stats["max_drawdown"],
             "portfolio_signal_terminal": portfolio_stats["terminal"],
+            "recovery_cagr": recovery_stats["cagr"],
+            "recovery_max_drawdown": recovery_stats["max_drawdown"],
+            "recovery_terminal": recovery_stats["terminal"],
+            "recovery_sunset_cagr": recovery_sunset_stats["cagr"],
+            "recovery_sunset_max_drawdown": recovery_sunset_stats["max_drawdown"],
+            "recovery_sunset_terminal": recovery_sunset_stats["terminal"],
+            "recovery_trend_cagr": recovery_trend_stats["cagr"],
+            "recovery_trend_max_drawdown": recovery_trend_stats["max_drawdown"],
+            "recovery_trend_terminal": recovery_trend_stats["terminal"],
             "all_spy_cagr": all_spy_stats["cagr"],
             "all_spy_max_drawdown": all_spy_stats["max_drawdown"],
             "all_spy_terminal": all_spy_stats["terminal"],
@@ -515,6 +630,15 @@ def rolling_study(prices: pd.DataFrame, rates: pd.Series, args) -> dict:
             "quality_deployments": sum(e.kind == "deploy_quality" for e in events),
             "portfolio_signal_quality_deployments": sum(
                 e.kind == "deploy_quality" for e in portfolio_events
+            ),
+            "recovery_quality_deployments": sum(
+                e.kind == "deploy_quality" for e in recovery_events
+            ),
+            "recovery_sunset_sales": sum(
+                e.kind == "quality_sunset_sale" for e in recovery_sunset_events
+            ),
+            "recovery_trend_sales": sum(
+                e.kind == "quality_trend_sale" for e in recovery_trend_events
             ),
         })
     frame = pd.DataFrame(records)
@@ -527,6 +651,16 @@ def rolling_study(prices: pd.DataFrame, rates: pd.Series, args) -> dict:
         "portfolio_signal_cagr": quantiles(frame["portfolio_signal_cagr"]),
         "portfolio_signal_max_drawdown": quantiles(
             frame["portfolio_signal_max_drawdown"]
+        ),
+        "recovery_cagr": quantiles(frame["recovery_cagr"]),
+        "recovery_max_drawdown": quantiles(frame["recovery_max_drawdown"]),
+        "recovery_sunset_cagr": quantiles(frame["recovery_sunset_cagr"]),
+        "recovery_sunset_max_drawdown": quantiles(
+            frame["recovery_sunset_max_drawdown"]
+        ),
+        "recovery_trend_cagr": quantiles(frame["recovery_trend_cagr"]),
+        "recovery_trend_max_drawdown": quantiles(
+            frame["recovery_trend_max_drawdown"]
         ),
         "spy_cagr": quantiles(frame["spy_cagr"]),
         "spy_max_drawdown": quantiles(frame["spy_max_drawdown"]),
@@ -542,12 +676,32 @@ def rolling_study(prices: pd.DataFrame, rates: pd.Series, args) -> dict:
         "portfolio_signal_beats_spy_signal_share": float(
             (frame["portfolio_signal_terminal"] > frame["quality_terminal"]).mean()
         ),
+        "recovery_beats_spy_share": float(
+            (frame["recovery_terminal"] > frame["spy_terminal"]).mean()
+        ),
+        "recovery_sunset_beats_spy_share": float(
+            (frame["recovery_sunset_terminal"] > frame["spy_terminal"]).mean()
+        ),
+        "recovery_trend_beats_spy_share": float(
+            (frame["recovery_trend_terminal"] > frame["spy_terminal"]).mean()
+        ),
+        "recovery_sunset_beats_recovery_share": float(
+            (frame["recovery_sunset_terminal"] > frame["recovery_terminal"]).mean()
+        ),
+        "recovery_trend_beats_recovery_share": float(
+            (frame["recovery_trend_terminal"] > frame["recovery_terminal"]).mean()
+        ),
         "cohorts_with_quality_deployment": int(
             (frame["quality_deployments"] > 0).sum()
         ),
         "cohorts_with_portfolio_signal_quality_deployment": int(
             (frame["portfolio_signal_quality_deployments"] > 0).sum()
         ),
+        "cohorts_with_recovery_quality_deployment": int(
+            (frame["recovery_quality_deployments"] > 0).sum()
+        ),
+        "total_recovery_sunset_sales": int(frame["recovery_sunset_sales"].sum()),
+        "total_recovery_trend_sales": int(frame["recovery_trend_sales"].sum()),
         "records": records,
     }
 
@@ -560,24 +714,49 @@ def main(argv=None) -> int:
     rates = load_rates(prices.index)
 
     variants = {
-        "static_3x_80_20": ("constant_3x", False, False, 0.0, "spy"),
-        "all_spy_step": ("step_3_2_1", True, False, args.harvest, "spy"),
-        "quality_step": ("step_3_2_1", True, True, args.harvest, "spy"),
-        "quality_portfolio_step": (
-            "step_3_2_1", True, True, args.harvest, "portfolio"
+        "static_3x_80_20": (
+            "constant_3x", False, False, 0.0, "spy", "signal_rebound"
         ),
-        "quality_late": ("late_3_to_1", True, True, args.harvest, "spy"),
+        "all_spy_step": (
+            "step_3_2_1", True, False, args.harvest, "spy", "signal_rebound"
+        ),
+        "quality_step": (
+            "step_3_2_1", True, True, args.harvest, "spy", "signal_rebound"
+        ),
+        "quality_portfolio_step": (
+            "step_3_2_1", True, True, args.harvest, "portfolio",
+            "signal_rebound"
+        ),
+        "quality_portfolio_spy_recovery": (
+            "step_3_2_1", True, True, args.harvest, "portfolio",
+            "spy_recovery_ladder"
+        ),
+        "quality_portfolio_spy_recovery_sunset": (
+            "step_3_2_1", True, True, args.harvest, "portfolio",
+            "spy_recovery_ladder_sunset"
+        ),
+        "quality_portfolio_spy_recovery_trend": (
+            "step_3_2_1", True, True, args.harvest, "portfolio",
+            "spy_recovery_ladder_trend"
+        ),
+        "quality_late": (
+            "late_3_to_1", True, True, args.harvest, "spy", "signal_rebound"
+        ),
     }
     paths, event_sets, summaries = {}, {}, {}
-    for name, (policy, staging, quality, harvest, signal_source) in variants.items():
+    for name, values in variants.items():
+        policy, staging, quality, harvest, signal_source, exit_policy = values
         path, events = simulate(
             prices, rates, args, name, policy, staging, quality, harvest,
             signal_source=signal_source,
+            exit_policy=exit_policy,
         )
         paths[name], event_sets[name] = path, events
         summaries[name] = metrics(path["wealth"], rates)
         summaries[name].update({
             "signal_source": signal_source,
+            "quality_exit_policy": exit_policy,
+            "quality_lots": path.attrs["quality_lots"],
             "ending_reserve": float(path["reserve"].iloc[-1]),
             "ending_quality": float(path["quality_sleeve"].iloc[-1]),
             "annual_harvested": float(sum(
@@ -587,7 +766,10 @@ def main(argv=None) -> int:
                 event.amount for event in events if event.kind == "deploy_quality"
             )),
             "quality_sale_proceeds": float(sum(
-                event.amount for event in events if event.kind == "quality_sale"
+                event.amount for event in events
+                if event.kind in {
+                    "quality_sale", "quality_sunset_sale", "quality_trend_sale"
+                }
             )),
         })
 
@@ -611,8 +793,13 @@ def main(argv=None) -> int:
                 ),
             },
             "quality_sale_rule": (
-                "10% of original shares at every +10% rebound in the selected "
-                "SPY or total-portfolio control signal"
+                "Compare entry-rebound exits with holding until SPY regains its "
+                "pre-drawdown high, then selling 10% at recovery and each +10%"
+            ),
+            "quality_exit_sunset_years": args.max_quality_hold_years,
+            "quality_trend_exit": (
+                f"after SPY recovery, close residual stock below its prior "
+                f"{args.trend_exit_days}-session low"
             ),
             "risk_per_stock": args.risk_per_stock,
             "stock_tail_loss_assumption": args.stock_tail_loss,

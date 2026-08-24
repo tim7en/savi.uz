@@ -89,6 +89,40 @@ class SpyQualityRotationTests(unittest.TestCase):
         self.assertAlmostEqual(deployments[0].signal_drawdown, -0.12)
         self.assertAlmostEqual(path["reserve"].iloc[-1], 15_000.0)
 
+    def test_spy_recovery_exit_waits_for_prior_high_and_sells_one_tenth(self):
+        dates = pd.date_range("2020-01-02", periods=5, freq="B")
+        prices = pd.DataFrame(
+            {"SPY": [100.0, 80.0, 80.0, 100.0, 100.0],
+             "QUALITY": [10.0] * 5},
+            index=dates,
+        )
+        rates = pd.Series(0.0, index=dates)
+        args = SimpleNamespace(
+            initial=100_000.0,
+            spy_share=0.80,
+            spread=0.0,
+            trade_bp=0.0,
+            min_history_years=0.0,
+            risk_per_stock=0.01,
+            stock_tail_loss=0.79,
+            max_quality_hold_years=5.0,
+            trend_exit_days=200,
+        )
+
+        path, events = MODULE.simulate(
+            prices, rates, args, "recovery_test", "step_3_2_1",
+            staging=True, quality_at_40=True, harvest_share=0.0,
+            signal_source="portfolio", exit_policy="spy_recovery_ladder",
+        )
+        purchases = [event for event in events if event.kind == "deploy_quality"]
+        sales = [event for event in events if event.kind == "quality_sale"]
+
+        self.assertEqual(len(purchases), 1)
+        self.assertEqual(len(sales), 1)
+        self.assertEqual(sales[0].date, dates[4].date().isoformat())
+        self.assertAlmostEqual(sales[0].amount, purchases[0].amount * 0.10)
+        self.assertGreater(path["quality_sleeve"].iloc[-1], 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()
