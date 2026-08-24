@@ -27,6 +27,8 @@ def parse_args(argv=None):
                         default=Path("out/strategy/spy_grid_margin/results.json"))
     parser.add_argument("--rescue", type=Path,
                         default=Path("out/strategy/spy_rescue_capital/results.json"))
+    parser.add_argument("--rescue-daily", type=Path,
+                        default=Path("out/strategy/spy_rescue_capital/matched_30y.csv"))
     parser.add_argument("--out", type=Path,
                         default=Path("docs/spy-drawdown-funding.html"))
     return parser.parse_args(argv)
@@ -178,6 +180,89 @@ def drawdown_svg(frame: pd.DataFrame, frequency: list[dict]) -> str:
     </figure>"""
 
 
+def rescue_comparison_svg(frame: pd.DataFrame) -> str:
+    """Plot matched-contribution wealth and flow-adjusted drawdowns."""
+    data = sampled(frame, 8)
+    width, height, left, right, top, bottom = 920, 390, 74, 24, 22, 42
+    x, inner_height, x_ticks = chart_axes(data.index, width, height,
+                                         left, right, top, bottom)
+    wealth_columns = [
+        ("strategy_wealth", "3x to 2x to 1x + rescue", "var(--teal)"),
+        ("spy_wealth", "SPY 1x", "var(--ink)"),
+    ]
+    positive = data[[item[0] for item in wealth_columns]].where(lambda item: item > 0)
+    low = 10 ** math.floor(math.log10(float(positive.min().min())))
+    high = 10 ** math.ceil(math.log10(float(positive.max().max())))
+    log_low, log_high = math.log10(low), math.log10(high)
+
+    def wealth_y(value: float) -> float:
+        share = (math.log10(value) - log_low) / (log_high - log_low)
+        return top + (1.0 - share) * inner_height
+
+    wealth_grid = []
+    tick = low
+    while tick <= high:
+        position = wealth_y(tick)
+        label = (f"${tick / 1_000_000:g}m" if tick >= 1_000_000
+                 else f"${tick / 1_000:g}k")
+        wealth_grid.append(
+            f'<line x1="{left}" x2="{width-right}" y1="{position:.1f}" '
+            f'y2="{position:.1f}" class="gridline"/>'
+            f'<text x="{left-10}" y="{position+4:.1f}" text-anchor="end" '
+            f'class="chart-axis">{label}</text>')
+        tick *= 10
+    wealth_paths, legend = [], []
+    for column, label, color in wealth_columns:
+        points = [f"{x(stamp):.1f},{wealth_y(float(value)):.1f}"
+                  for stamp, value in data[column].items() if value > 0]
+        wealth_paths.append(
+            f'<polyline points="{" ".join(points)}" fill="none" '
+            f'stroke="{color}" stroke-width="2.2" vector-effect="non-scaling-stroke"/>')
+        legend.append(f'<span><i style="--swatch:{color}"></i>{label}</span>')
+
+    draw_columns = [
+        ("strategy_drawdown", "Strategy", "var(--brick)"),
+        ("spy_drawdown", "SPY 1x", "var(--ink)"),
+    ]
+    draw_low = math.floor(float(data[[item[0] for item in draw_columns]].min().min()) * 10) / 10
+
+    def draw_y(value: float) -> float:
+        return top + (0.0 - value) / (0.0 - draw_low) * inner_height
+
+    draw_grid = []
+    tick_value = 0.0
+    while tick_value >= draw_low - 1e-9:
+        position = draw_y(tick_value)
+        draw_grid.append(
+            f'<line x1="{left}" x2="{width-right}" y1="{position:.1f}" '
+            f'y2="{position:.1f}" class="gridline"/>'
+            f'<text x="{left-10}" y="{position+4:.1f}" text-anchor="end" '
+            f'class="chart-axis">{tick_value:.0%}</text>')
+        tick_value -= 0.1
+    draw_paths = []
+    for column, _, color in draw_columns:
+        points = [f"{x(stamp):.1f},{draw_y(float(value)):.1f}"
+                  for stamp, value in data[column].items()]
+        draw_paths.append(
+            f'<polyline points="{" ".join(points)}" fill="none" '
+            f'stroke="{color}" stroke-width="2" vector-effect="non-scaling-stroke"/>')
+
+    return f"""<figure>
+      <div class="figure-head"><strong>SPY versus the annual-sweep strategy</strong><span>actual account wealth - log scale</span></div>
+      <div class="plate"><svg viewBox="0 0 {width} {height}" role="img" aria-label="Account wealth for SPY and the 3x to 2x to 1x rescue strategy">
+        {x_ticks}{''.join(wealth_grid)}{''.join(wealth_paths)}
+      </svg><div class="legend">{''.join(legend)}</div></div>
+      <figcaption>Both paths receive the same scheduled $10,000 per year. The strategy line also includes any separately reported rescue top-up, so XIRR remains the fair return comparison.</figcaption>
+    </figure>
+    <figure>
+      <div class="figure-head"><strong>The price of the extra return</strong><span>flow-adjusted drawdown</span></div>
+      <div class="plate"><svg viewBox="0 0 {width} {height}" role="img" aria-label="Flow-adjusted drawdown for SPY and the rescue strategy">
+        {x_ticks}{''.join(draw_grid)}{''.join(draw_paths)}
+      </svg><div class="legend"><span><i style="--swatch:var(--brick)"></i>Strategy</span><span><i style="--swatch:var(--ink)"></i>SPY 1x</span></div></div>
+      <figcaption>External contributions are removed from this performance path. A cash injection can lift displayed wealth, but it cannot erase an investment loss.</figcaption>
+    </figure>"""
+
+
 def outcome_row(name: str, note: str, ending: float, supplied: float,
                 return_value: float, return_label: str, drawdown: float,
                 featured: bool = False) -> str:
@@ -190,7 +275,8 @@ def outcome_row(name: str, note: str, ending: float, supplied: float,
 
 def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
            twenty_year: dict | None, five_x: dict | None,
-           grid: dict | None, rescue: dict | None) -> str:
+           grid: dict | None, rescue: dict | None,
+           rescue_daily: pd.DataFrame | None) -> str:
     sample = result["sample"]
     stats = result["results"]
     frequency = result["threshold_history"]
@@ -257,6 +343,7 @@ def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
     rescue_corrected_half_30 = rescue.get("corrected_3_2_1_half_balance_matched_30y") if rescue else None
     rescue_corrected_equal_20 = rescue.get("corrected_3_2_1_equal_balance_rolling_20y") if rescue else None
     rescue_corrected_equal_30 = rescue.get("corrected_3_2_1_equal_balance_matched_30y") if rescue else None
+    rescue_plots = rescue_comparison_svg(rescue_daily) if rescue_daily is not None else ""
     twenty_section = ""
     if twenty_year:
         roll = twenty_year["rolling_20y"]
@@ -279,17 +366,17 @@ def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
         rescue_30_row = f"""<tr><td><strong>Equal-capital rescue</strong><small>1x tranche at −60%; exit at +10%</small></td><td>{money(rescue_30['terminal_wealth'])}</td><td>{pct(rescue_30['xirr'])}</td><td>{pct(rescue_30['max_drawdown'])}</td><td>1.00x rescue</td><td>—</td></tr>"""
         rescue_30_row += f"""<tr><td><strong>5→2→1 plus rescue</strong><small>cut at −20/−50%; equal capital at −60%</small></td><td>{money(rescue_new_30['terminal_wealth'])}</td><td>{pct(rescue_new_30['xirr'])}</td><td>{pct(rescue_new_30['max_drawdown'])}</td><td>1.00x rescue</td><td>—</td></tr>"""
         if rescue_corrected_half_30:
-            rescue_30_row += f"""<tr class="featured"><td><strong>3x to 2x to 1x + half-balance rescue</strong><small>cut at -30/-50%; quarterly profit sweep; rescue at -60%</small></td><td>{money(rescue_corrected_half_30['terminal_wealth'])}</td><td>{pct(rescue_corrected_half_30['xirr'])}</td><td>{pct(rescue_corrected_half_30['max_drawdown'])}</td><td>{rescue_corrected_half_30['mean_applied_leverage']:.2f}x</td><td>-</td></tr>"""
+            rescue_30_row += f"""<tr class="featured"><td><strong>3x to 2x to 1x + half-balance rescue</strong><small>cut at -30/-50%; year-end profit sweep; rescue at -60%</small></td><td>{money(rescue_corrected_half_30['terminal_wealth'])}</td><td>{pct(rescue_corrected_half_30['xirr'])}</td><td>{pct(rescue_corrected_half_30['max_drawdown'])}</td><td>{rescue_corrected_half_30['mean_applied_leverage']:.2f}x</td><td>-</td></tr>"""
         if rescue_corrected_equal_30:
-            rescue_30_row += f"""<tr><td><strong>3x to 2x to 1x + equal-balance rescue</strong><small>literal equal leftover at -60%; quarterly profit sweep</small></td><td>{money(rescue_corrected_equal_30['terminal_wealth'])}</td><td>{pct(rescue_corrected_equal_30['xirr'])}</td><td>{pct(rescue_corrected_equal_30['max_drawdown'])}</td><td>{rescue_corrected_equal_30['mean_applied_leverage']:.2f}x</td><td>-</td></tr>"""
+            rescue_30_row += f"""<tr><td><strong>3x to 2x to 1x + equal-balance rescue</strong><small>literal equal leftover at -60%; year-end profit sweep</small></td><td>{money(rescue_corrected_equal_30['terminal_wealth'])}</td><td>{pct(rescue_corrected_equal_30['xirr'])}</td><td>{pct(rescue_corrected_equal_30['max_drawdown'])}</td><td>{rescue_corrected_equal_30['mean_applied_leverage']:.2f}x</td><td>-</td></tr>"""
     rescue_20_row = ""
     if rescue_20:
         rescue_20_row = f"""<tr><td><strong>Equal-capital rescue</strong><small>external top-up counted in XIRR</small></td><td>{money(rescue_20['terminal_wealth']['median'])}</td><td>{pct(rescue_20['xirr']['median'])}</td><td>{pct(rescue_20['max_drawdown']['median'])}</td><td>{rescue_20['longest_underwater_years']['median']:.1f} years</td><td>1.00x rescue</td><td>—</td></tr>"""
         rescue_20_row += f"""<tr><td><strong>5→2→1 plus rescue</strong><small>median external rescue {money(rescue_new_20['total_rescue_external']['median'])}</small></td><td>{money(rescue_new_20['terminal_wealth']['median'])}</td><td>{pct(rescue_new_20['xirr']['median'])}</td><td>{pct(rescue_new_20['max_drawdown']['median'])}</td><td>{rescue_new_20['longest_underwater_years']['median']:.1f} years</td><td>1.00x rescue</td><td>—</td></tr>"""
         if rescue_corrected_half_20:
-            rescue_20_row += f"""<tr class="featured"><td><strong>3x to 2x to 1x + half-balance rescue</strong><small>quarterly sweep; median external rescue {money(rescue_corrected_half_20['total_rescue_external']['median'])}</small></td><td>{money(rescue_corrected_half_20['terminal_wealth']['median'])}</td><td>{pct(rescue_corrected_half_20['xirr']['median'])}</td><td>{pct(rescue_corrected_half_20['max_drawdown']['median'])}</td><td>{rescue_corrected_half_20['longest_underwater_years']['median']:.1f} years</td><td>{rescue_corrected_half_20['mean_applied_leverage']['median']:.2f}x</td><td>-</td></tr>"""
+            rescue_20_row += f"""<tr class="featured"><td><strong>3x to 2x to 1x + half-balance rescue</strong><small>year-end sweep; median external rescue {money(rescue_corrected_half_20['total_rescue_external']['median'])}</small></td><td>{money(rescue_corrected_half_20['terminal_wealth']['median'])}</td><td>{pct(rescue_corrected_half_20['xirr']['median'])}</td><td>{pct(rescue_corrected_half_20['max_drawdown']['median'])}</td><td>{rescue_corrected_half_20['longest_underwater_years']['median']:.1f} years</td><td>{rescue_corrected_half_20['mean_applied_leverage']['median']:.2f}x</td><td>-</td></tr>"""
         if rescue_corrected_equal_20:
-            rescue_20_row += f"""<tr><td><strong>3x to 2x to 1x + equal-balance rescue</strong><small>quarterly sweep; median external rescue {money(rescue_corrected_equal_20['total_rescue_external']['median'])}</small></td><td>{money(rescue_corrected_equal_20['terminal_wealth']['median'])}</td><td>{pct(rescue_corrected_equal_20['xirr']['median'])}</td><td>{pct(rescue_corrected_equal_20['max_drawdown']['median'])}</td><td>{rescue_corrected_equal_20['longest_underwater_years']['median']:.1f} years</td><td>{rescue_corrected_equal_20['mean_applied_leverage']['median']:.2f}x</td><td>-</td></tr>"""
+            rescue_20_row += f"""<tr><td><strong>3x to 2x to 1x + equal-balance rescue</strong><small>year-end sweep; median external rescue {money(rescue_corrected_equal_20['total_rescue_external']['median'])}</small></td><td>{money(rescue_corrected_equal_20['terminal_wealth']['median'])}</td><td>{pct(rescue_corrected_equal_20['xirr']['median'])}</td><td>{pct(rescue_corrected_equal_20['max_drawdown']['median'])}</td><td>{rescue_corrected_equal_20['longest_underwater_years']['median']:.1f} years</td><td>{rescue_corrected_equal_20['mean_applied_leverage']['median']:.2f}x</td><td>-</td></tr>"""
     if grid:
         grid_base = grid["scenarios"]["base_OLHC"]
         grid_core = grid["scenarios"]["long_core_base_OLHC"]
@@ -310,6 +397,7 @@ def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
     <tr><td><strong>Long-only grid</strong><small>0–100% of active cap</small></td><td>{money(grid_base['terminal_wealth'])}</td><td>{pct(grid_base['xirr'])}</td><td>{pct(grid_base['max_drawdown'])}</td><td>{grid_base['median_effective_leverage']:.2f}x</td><td>{pct(grid_base['time_at_1x_cap'], 1)}</td></tr>
     <tr><td><strong>Neutral grid</strong><small>short above / long below average</small></td><td>{money(grid_neutral['terminal_wealth'])}</td><td>{pct(grid_neutral['xirr'])}</td><td>{pct(grid_neutral['max_drawdown'])}</td><td>{grid_neutral['median_effective_leverage']:.2f}x</td><td>{pct(grid_neutral['time_at_1x_cap'], 1)}</td></tr>
   </tbody></table></div>
+  {rescue_plots}
   <p class="note warning"><strong>Daily bars are not execution data.</strong> The high/low order, queue position, partial fills and spread are unknowable over 30 years. Open-low-high-close and open-high-low-close produced similar estimates here, but neither establishes an executable expected return. The base rule reached its 1x cap in 2002 and never recovered the old performance high.</p>
 </section>"""
     if five_x:
@@ -419,7 +507,10 @@ def main(argv=None) -> int:
             if args.grid.exists() else None)
     rescue = (json.loads(args.rescue.read_text(encoding="utf-8"))
               if args.rescue.exists() else None)
-    page = render(result, daily, all_at_50, twenty_year, five_x, grid, rescue)
+    rescue_daily = (pd.read_csv(args.rescue_daily, parse_dates=["date"]).set_index("date")
+                    if args.rescue_daily.exists() else None)
+    page = render(result, daily, all_at_50, twenty_year, five_x, grid, rescue,
+                  rescue_daily)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(page, encoding="utf-8")
     print(f"Wrote {args.out} ({len(page):,} chars)")
