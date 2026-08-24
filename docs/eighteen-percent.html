@@ -172,7 +172,9 @@
   That is true of index funds. Carried to a hundred and thirty-four individual
   companies it stops being true &mdash; the depth threshold does nothing, and the
   gate meant to keep you out of expensive quality turns out to have been keeping
-  you out of the better half.</p>
+  you out of the better half. And for a levered book the whole framing is wrong:
+  what stops leverage paying is not the borrowing cost, which four entries in
+  five already beat, but being closed out before the recovery arrives.</p>
 
   <div class="tallies">
     <div class="tally"><b class="t-hi">1.04&rarr;2.23</b>
@@ -183,6 +185,12 @@
       <span>ETF CAGR at 3% risk, against the index&rsquo;s +6.2%</span></div>
     <div class="tally"><b class="t-lo">28th</b>
       <span>percentile of its own null: where the cheap gate landed</span></div>
+    <div class="tally"><b class="t-hi">80%</b>
+      <span>of drawdown entries already beat a 5% borrow &mdash; carry is not the
+      constraint</span></div>
+    <div class="tally"><b class="t-lo">22%</b>
+      <span>closed out at 3&times; before the recovery arrived &mdash; the real
+      constraint</span></div>
   </div>
 </header>
 
@@ -632,6 +640,160 @@
 </section>
 
 <section>
+  <h2>When the recovery outruns the carry</h2>
+  <p class="lede">Every test above measures how much a drawdown entry returns.
+  That is the wrong quantity for a levered book. Carry accrues per unit of time
+  and the recovery does not, so what decides whether borrowing pays is the
+  <em>rate</em>, not the size. A +30% recovery over three years annualises to
+  9.1% and loses to a 5% borrow once the levered portion is paid for; the same
+  +30% in six months annualises to 69%.</p>
+
+  <div class="card k-mid">
+    <h3>The answer is not the one the question expects</h3>
+    <p>At a 5% borrow, carry is <b>almost never the binding constraint</b>. Of
+    all 167 ETF drawdown entries, <b>80%</b> recover by more than the carry they
+    accrue. Conditioning on anything barely moves that: the best cell found here
+    clears carry on 78% of entries against 80% for everything else. At realistic
+    financing the question answers itself.</p>
+    <p>What actually kills a levered drawdown book is <b>closeout, not carry</b>.
+    At 3&times;, 22% of positions in the best cell are wiped before the recovery
+    arrives, and 31&ndash;33% on single stocks. That is the constraint worth
+    engineering around.</p>
+  </div>
+
+  <p>Carry only starts to bind at borrow rates well above a broker&rsquo;s. And
+  that is where conditioning earns its keep &mdash; not by raising the chance of
+  beating the carry, but by <b>buying headroom on the rate you can afford to
+  pay</b>.</p>
+
+  <figure>
+    <div class="plate">
+<svg viewBox="0 0 1000 360" role="img" aria-label="Median excess of recovery over carry, by borrow rate">
+<line class="gridline" x1="68" y1="48.7" x2="790" y2="48.7"/>
+<text class="axis" x="58" y="52.7" text-anchor="end">+20%</text>
+<line class="gridline" x1="68" y1="80.0" x2="790" y2="80.0"/>
+<text class="axis" x="58" y="84.0" text-anchor="end">+10%</text>
+<line class="gridline" x1="68" y1="111.2" x2="790" y2="111.2"/>
+<text class="axis" x="58" y="115.2" text-anchor="end">+0%</text>
+<line class="gridline" x1="68" y1="173.6" x2="790" y2="173.6"/>
+<text class="axis" x="58" y="177.6" text-anchor="end">-20%</text>
+<line class="gridline" x1="68" y1="236.0" x2="790" y2="236.0"/>
+<text class="axis" x="58" y="240.0" text-anchor="end">-40%</text>
+<line class="zero" x1="68" y1="111.2" x2="790" y2="111.2"/>
+<text class="axis" x="68.0" y="310.0" text-anchor="middle">5%</text>
+<text class="axis" x="148.2" y="310.0" text-anchor="middle">10%</text>
+<text class="axis" x="228.4" y="310.0" text-anchor="middle">15%</text>
+<text class="axis" x="308.7" y="310.0" text-anchor="middle">20%</text>
+<text class="axis" x="469.1" y="310.0" text-anchor="middle">30%</text>
+<text class="axis" x="790.0" y="310.0" text-anchor="middle">50%</text>
+<polyline class="line-maker" points="68.0,46.2 148.2,55.3 228.4,66.2 308.7,76.8 469.1,98.4 790.0,142.7"/>
+<circle class="pin" cx="68.0" cy="46.2" r="3.5"><title>ETF, fast and broad: at a 5% borrow the median entry beats carry by +20.8%</title></circle>
+<circle class="pin" cx="148.2" cy="55.3" r="3.5"><title>ETF, fast and broad: at a 10% borrow the median entry beats carry by +17.9%</title></circle>
+<circle class="pin" cx="228.4" cy="66.2" r="3.5"><title>ETF, fast and broad: at a 15% borrow the median entry beats carry by +14.4%</title></circle>
+<circle class="pin" cx="308.7" cy="76.8" r="3.5"><title>ETF, fast and broad: at a 20% borrow the median entry beats carry by +11.0%</title></circle>
+<circle class="pin" cx="469.1" cy="98.4" r="3.5"><title>ETF, fast and broad: at a 30% borrow the median entry beats carry by +4.1%</title></circle>
+<circle class="pin" cx="790.0" cy="142.7" r="3.5"><title>ETF, fast and broad: at a 50% borrow the median entry beats carry by -10.1%</title></circle>
+<text class="lab-maker" x="802" y="146.7">ETF, fast and broad</text>
+<polyline class="line-taker" points="68.0,58.4 148.2,80.6 228.4,103.4 308.7,129.3 469.1,175.8 790.0,275.1"/>
+<circle class="pin" cx="68.0" cy="58.4" r="3.5"><title>ETF, everything else: at a 5% borrow the median entry beats carry by +16.9%</title></circle>
+<circle class="pin" cx="148.2" cy="80.6" r="3.5"><title>ETF, everything else: at a 10% borrow the median entry beats carry by +9.8%</title></circle>
+<circle class="pin" cx="228.4" cy="103.4" r="3.5"><title>ETF, everything else: at a 15% borrow the median entry beats carry by +2.5%</title></circle>
+<circle class="pin" cx="308.7" cy="129.3" r="3.5"><title>ETF, everything else: at a 20% borrow the median entry beats carry by -5.8%</title></circle>
+<circle class="pin" cx="469.1" cy="175.8" r="3.5"><title>ETF, everything else: at a 30% borrow the median entry beats carry by -20.7%</title></circle>
+<circle class="pin" cx="790.0" cy="275.1" r="3.5"><title>ETF, everything else: at a 50% borrow the median entry beats carry by -52.5%</title></circle>
+<text class="lab-taker" x="802" y="279.1">ETF, everything else</text>
+<line class="mark-book" x1="483.6" y1="30.0" x2="483.6" y2="111.2"/>
+<line class="mark-drift" x1="250.9" y1="30.0" x2="250.9" y2="111.2"/>
+<text class="lab-taker" x="256.9" y="44">else: break-even ~16%</text>
+<text class="lab-maker" x="489.6" y="64">cell: break-even ~31%</text>
+<text class="axis" x="68" y="350">annual borrow rate charged on the levered portion</text>
+<text class="axis" x="58" y="20" text-anchor="end">excess</text>
+</svg>
+
+    </div>
+    <figcaption>Median excess of the recovery over the carry accrued, by annual
+    borrow rate. Both lines start positive and only the separation matters:
+    ordinary drawdown entries stop paying for themselves at about a 16% borrow,
+    while the fast-and-broad cell survives to about 31%.</figcaption>
+  </figure>
+
+  <div class="scroll">
+    <table>
+      <caption>Share of entries whose recovery beats the carry, and the median
+      excess. Fast is a fall of 80 sessions or less from the peak; broad is a
+      quarter of the universe already 10% down. Both are known at the entry bar.</caption>
+      <thead>
+        <tr><th>Borrow rate</th><th>ETF cell</th><th>ETF rest</th>
+          <th>Cell excess</th><th>Rest excess</th><th>Stock cell</th>
+          <th>Stock rest</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>5%</td><td>78%</td><td>80%</td><td>+20.8%</td><td>+16.9%</td>
+          <td>80%</td><td>78%</td></tr>
+        <tr><td>10%</td><td>75%</td><td>71%</td><td>+17.9%</td><td>+9.8%</td>
+          <td>77%</td><td>74%</td></tr>
+        <tr class="hi"><td>15%</td><td>64%</td><td>55%</td><td class="up">+14.4%</td>
+          <td>+2.5%</td><td>70%</td><td>65%</td></tr>
+        <tr><td>20%</td><td>59%</td><td>40%</td><td class="up">+11.0%</td>
+          <td class="down">&minus;5.8%</td><td>65%</td><td>59%</td></tr>
+        <tr><td>30%</td><td>53%</td><td>18%</td><td>+4.1%</td>
+          <td class="down">&minus;20.7%</td><td>56%</td><td>50%</td></tr>
+        <tr><td>50%</td><td>33%</td><td>12%</td><td class="down">&minus;10.1%</td>
+          <td class="down">&minus;52.5%</td><td>44%</td><td>35%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><b>The mechanism is speed, and only speed.</b> The fast-and-broad cell
+  recovers in a median <b>179 sessions</b> against <b>384</b> for everything
+  else, on almost the same median gain. Half the time at risk means half the
+  carry, which is the entire separation in that chart. It is also why the cell
+  matters to a book even at a 5% borrow: capital that turns over twice as fast
+  can be put to work twice as often.</p>
+
+  <div class="split">
+    <div class="card k-hi">
+      <h3>It clears a proper null, and survives the extremes</h3>
+      <p>+37.6% annualised against a quarter-block null median of +17.1%, band
+      +10.3% to +29.6% &mdash; the <b>99th percentile</b>. Dropping 2008&ndash;09
+      and 2020 entirely leaves it at <b>+35.2%</b> with a 127-session median
+      hold. It is not a crisis artifact.</p>
+    </div>
+    <div class="card k-lo">
+      <h3>On single stocks it is marginal</h3>
+      <p>+41.6% against a null band topping out at +42.0% &mdash; the 94th
+      percentile, sitting on the edge. And the carry separation nearly vanishes:
+      56% vs 50% at a 30% borrow, against the ETF gap of 53% vs 18%. Same result
+      as everywhere else on this page &mdash; the conditioner works on indices
+      and thins out on individual companies.</p>
+    </div>
+  </div>
+
+  <div class="card k-lo">
+    <h3>What nearly fooled me here</h3>
+    <p>The first null drew 64 entries at random and put the cell at the
+    <b>100th percentile</b> with a band half as wide. But those 64 entries are
+    not 64 independent observations &mdash; they collapse into <b>17 episodes</b>,
+    and March 2020 alone supplies 16 of the entries. Drawing whole episodes
+    instead widened the band from [+14.7%, +23.3%] to [+10.3%, +29.6%] and moved
+    the result from certain to marginal.</p>
+    <p>The 2008 entries are the useful corrective: the two episodes spanning
+    December 2007 and July 2008 returned <b>&minus;1.0%</b> and
+    <b>&minus;0.1%</b> annualised. The deepest crisis in the sample is the one
+    where fast-and-broad did not work.</p>
+  </div>
+
+  <p class="note">One more artifact to name, because it inflates every number in
+  this section&rsquo;s right tail. Annualising a short hold explodes: a 25% gain
+  in twenty sessions annualises past 800%, and the 95th percentile of single-stock
+  entries reads +1,681%. Medians are used throughout for that reason, and the
+  excess-over-carry column is the honest one because it never annualises at all.
+  None of these rates are compounding returns &mdash; they are the breakeven
+  borrow rate for one position over one holding period, and nothing guarantees
+  the capital can be redeployed at anything like them.</p>
+</section>
+
+<section>
   <h2>The rule, stated</h2>
   <ol>
     <li><b>Universe.</b> Equity index and sector ETFs. Exclude futures-backed
@@ -655,6 +817,16 @@
     universe median landed at the 28th percentile of its own null &mdash; worse
     than choosing at random from the same drawdowns. Keep the quality cut, which
     is weakly positive; drop the cheapness cut, which is not.</li>
+    <li><b>Speed and breadth.</b> The one conditioner that clears a block-resampled
+    null: a fall of 80 sessions or less from the peak, taken while a quarter of
+    the universe is already 10% down. It recovers in 179 sessions against 384,
+    which is what lets it carry a 31% borrow where an ordinary entry breaks even
+    near 16%. It holds on indices, thins to marginal on single stocks, and
+    survives removing 2008&ndash;09 and 2020.</li>
+    <li><b>Carry is not the binding constraint.</b> At a 5% borrow, 80% of
+    drawdown entries recover by more than they accrue. Engineer against closeout
+    instead: 22% of 3&times; positions in the best cell are wiped before the
+    recovery lands.</li>
     <li><b>Leverage.</b> The measured ceiling is under 2&times; on a plain hold.
     A centred grid roughly halves the closeout rate, but about half of that
     benefit is simply that a centred grid deploys half its capital at entry.</li>
