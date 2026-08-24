@@ -56,7 +56,11 @@ import run_quality_value_drawdown as base  # noqa: E402
 HORIZONS = (20, 60)
 FEATURES = ("depth", "beta", "ivol", "book_yield", "roe", "leverage",
             "vix", "market_dd")
-INTERACTIONS = (("depth", "beta"), ("depth", "ivol"), ("depth", "market_dd"))
+# The regime interactions matter as much as the drawdown ones: the claim under
+# test is that fundamentals are priced in calm markets and ignored in fearful
+# ones, which is a valuation-against-VIX term, not a valuation term.
+INTERACTIONS = (("depth", "beta"), ("depth", "ivol"), ("depth", "market_dd"),
+                ("book_yield", "vix"), ("roe", "vix"), ("leverage", "vix"))
 
 
 def parse_args(argv=None):
@@ -270,6 +274,34 @@ def main(argv=None) -> int:
             a = statistics.fmean(p[0][key] for p in pairs)
             b = statistics.fmean(p[1][key] for p in pairs)
             print(f"  matched on {label:12s} {a:>12.2f} {b:>14.2f}")
+
+        # The same pairs, split by how frightened the market was on entry day.
+        # If fundamentals are priced in calm and ignored in fear, the screen
+        # should earn its keep in the low tercile and nowhere else.
+        levels = sorted(p[0]["vix"] for p in pairs)
+        low, high = levels[len(levels) // 3], levels[2 * len(levels) // 3]
+        print()
+        print(f"  split by VIX at entry (terciles at {low:.1f} and {high:.1f})")
+        print(f"  {'regime':22s} {'pairs':>6s} {'fails':>9s} {'passes':>9s} "
+              f"{'difference':>11s} {'t':>7s}")
+        report["by_regime"] = {}
+        for label, test in (("calm  (VIX low)", lambda v: v <= low),
+                            ("normal", lambda v: low < v <= high),
+                            ("fear  (VIX high)", lambda v: v > high)):
+            chunk = [p for p in pairs if test(p[0]["vix"])]
+            if len(chunk) < 30:
+                continue
+            for horizon in (20,):
+                a = np.array([p[0][f"fwd_{horizon}"] for p in chunk])
+                b = np.array([p[1][f"fwd_{horizon}"] for p in chunk])
+                d = a - b
+                t = d.mean() / (d.std(ddof=1) / math.sqrt(len(d)))
+                print(f"  {label:22s} {len(chunk):>6d} {a.mean():>+9.2%} "
+                      f"{b.mean():>+9.2%} {d.mean():>+11.2%} {t:>+7.2f}")
+                report["by_regime"][label.strip()] = {
+                    "pairs": len(chunk), "fails": float(a.mean()),
+                    "passes": float(b.mean()), "difference": float(d.mean()),
+                    "t": float(t)}
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=1, default=str), encoding="utf-8")
