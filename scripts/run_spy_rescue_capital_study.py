@@ -40,6 +40,8 @@ def simulate(asset_return: pd.Series, rates: pd.Series,
              rescue_multiple: float = 1.0,
              profit_sweep_frequency: str = "annual",
              rescue_threshold: float = 0.60,
+             rescue_external_only: bool = False,
+             repay_rescue_on_recovery: bool = False,
              ) -> tuple[pd.DataFrame, dict]:
     index = asset_return.index
     stamps = index.to_series()
@@ -66,6 +68,8 @@ def simulate(asset_return: pd.Series, rates: pd.Series,
     period_profit = 0.0
     rescue_calls = rescue_exits = 0
     total_rescue_external = 0.0
+    total_rescue_repaid = 0.0
+    total_rescue_profit_retained = 0.0
     cash_flows = [(index[0], -opening)]
     rows = []
 
@@ -91,7 +95,8 @@ def simulate(asset_return: pd.Series, rates: pd.Series,
 
         # The rescue tranche leaves market risk as soon as its own total return
         # reaches +10%; proceeds remain protected for a future fear episode.
-        if rescue_active > 0.0 and rescue_active >= rescue_basis * 1.10:
+        if (not repay_rescue_on_recovery and rescue_active > 0.0
+                and rescue_active >= rescue_basis * 1.10):
             rescue_savings += rescue_active
             rescue_active = 0.0
             rescue_basis = 0.0
@@ -104,6 +109,23 @@ def simulate(asset_return: pd.Series, rates: pd.Series,
 
         recovered = strategy_nav >= strategy_peak * (1.0 - 1e-12)
         if recovered:
+            if repay_rescue_on_recovery and rescue_active > 0.0:
+                repayment = rescue_basis * 1.10
+                proceeds = rescue_active
+                rescue_active = 0.0
+                rescue_basis = 0.0
+                main += proceeds
+                paid_from_main = min(main, repayment)
+                main -= paid_from_main
+                remaining_repayment = repayment - paid_from_main
+                paid_from_reserve = min(regular_reserve, remaining_repayment)
+                regular_reserve -= paid_from_reserve
+                actual_repayment = paid_from_main + paid_from_reserve
+                if actual_repayment:
+                    cash_flows.append((stamp, actual_repayment))
+                total_rescue_repaid += actual_repayment
+                total_rescue_profit_retained += proceeds - actual_repayment
+                rescue_exits += 1
             strategy_peak = max(strategy_peak, strategy_nav)
             leverage_rung = 0
             reserve_fired.clear()
@@ -131,12 +153,15 @@ def simulate(asset_return: pd.Series, rates: pd.Series,
             # protected rescue savings first; only the shortfall is new capital.
             required = ((main + regular_reserve + rescue_savings + rescue_active)
                         * rescue_multiple)
-            reused_protected = min(rescue_savings, required)
-            rescue_savings -= reused_protected
-            remaining = required - reused_protected
-            reused_regular = min(regular_reserve, remaining)
-            regular_reserve -= reused_regular
-            external = remaining - reused_regular
+            if rescue_external_only:
+                external = required
+            else:
+                reused_protected = min(rescue_savings, required)
+                rescue_savings -= reused_protected
+                remaining = required - reused_protected
+                reused_regular = min(regular_reserve, remaining)
+                regular_reserve -= reused_regular
+                external = remaining - reused_regular
             if external > 0.0:
                 cash_flows.append((stamp, -external))
                 total_rescue_external += external
@@ -177,6 +202,8 @@ def simulate(asset_return: pd.Series, rates: pd.Series,
         "max_drawdown": float(path["combined_drawdown"].min()),
         "total_scheduled_contributions": float(opening + contributions.sum()),
         "total_rescue_external": total_rescue_external,
+        "total_rescue_repaid": total_rescue_repaid,
+        "total_rescue_profit_retained": total_rescue_profit_retained,
         "total_external_capital": float(opening + contributions.sum() + total_rescue_external),
         "rescue_calls": rescue_calls,
         "rescue_exits": rescue_exits,
@@ -198,6 +225,9 @@ def summarize(frame: pd.DataFrame) -> dict:
         "max_drawdown": quantiles(frame["max_drawdown"]),
         "longest_underwater_years": quantiles(frame["longest_underwater_years"]),
         "total_rescue_external": quantiles(frame["total_rescue_external"]),
+        "total_rescue_repaid": quantiles(frame["total_rescue_repaid"]),
+        "total_rescue_profit_retained": quantiles(
+            frame["total_rescue_profit_retained"]),
         "rescue_calls": quantiles(frame["rescue_calls"]),
         "mean_applied_leverage": quantiles(frame["mean_applied_leverage"]),
         "rescue_exit_share": float(
@@ -273,12 +303,12 @@ def main() -> int:
             window_return, rates.loc[start:end], contribution_schedule,
             (3.0, 2.0, 1.0), (0.30, 0.50),
             (0.10, 0.20, 0.30, 0.40), (1 / 4, 1 / 3, 1 / 2, 1.0),
-            0.50, "annual", 0.50)
+            0.50, "annual", 0.50, True, True)
         _, stats_corrected_equal = simulate(
             window_return, rates.loc[start:end], contribution_schedule,
             (3.0, 2.0, 1.0), (0.30, 0.50),
             (0.10, 0.20, 0.30, 0.40), (1 / 4, 1 / 3, 1 / 2, 1.0),
-            1.0, "annual", 0.50)
+            1.0, "annual", 0.50, True, True)
         records.append({"start": start.date().isoformat(),
                         "end": end.date().isoformat(), **stats})
         records_5_2_1.append({"start": start.date().isoformat(),
@@ -307,13 +337,13 @@ def main() -> int:
         return_30, rates.loc[start_30:end_30], schedule,
         (3.0, 2.0, 1.0), (0.30, 0.50),
         (0.10, 0.20, 0.30, 0.40), (1 / 4, 1 / 3, 1 / 2, 1.0),
-        0.50, "annual", 0.50)
+        0.50, "annual", 0.50, True, True)
     add_drawdown_dates(path_30_corrected_half, stats_30_corrected_half)
     path_30_corrected_equal, stats_30_corrected_equal = simulate(
         return_30, rates.loc[start_30:end_30], schedule,
         (3.0, 2.0, 1.0), (0.30, 0.50),
         (0.10, 0.20, 0.30, 0.40), (1 / 4, 1 / 3, 1 / 2, 1.0),
-        1.0, "annual", 0.50)
+        1.0, "annual", 0.50, True, True)
     add_drawdown_dates(path_30_corrected_equal, stats_30_corrected_equal)
 
     result = {
@@ -322,8 +352,9 @@ def main() -> int:
             "new_rule": "5x at high, 2x at -20%, 1x at -50%; reset only at prior high",
             "corrected_rule": "3x at high, 2x at -30%, 1x at -50%; reset only at prior high",
             "profit_sweep": "10% of positive calendar-year trading P&L at year-end only",
-            "rescue": "at -50%, buy 1x SPY with outside capital equal to total account then remaining; exit entire tranche at +10% total return",
-            "rescue_funding": "reuse protected prior rescue proceeds, then record external top-up as a cash flow",
+            "rescue": "at -50%, temporarily add outside capital equal to the account then remaining; keep it at 1x until the old performance high is recovered",
+            "rescue_repayment": "on full recovery, withdraw rescue principal plus a fixed 10%; the excess rescue-tranche gain stays in the strategy",
+            "rescue_funding": "record the full bridge deposit and its 110% repayment as external XIRR cash flows",
             "regular_savings": "corrected variants sweep at year-end and deploy 25%/33%/50%/100% of remaining reserve at -10/-20/-30/-40%",
             "funding": "prior-known DGS3MO + 1% on borrowed base exposure",
         },
