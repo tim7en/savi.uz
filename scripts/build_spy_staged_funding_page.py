@@ -25,6 +25,8 @@ def parse_args(argv=None):
                         default=Path("out/strategy/spy_account_drawdown_5x/results.json"))
     parser.add_argument("--grid", type=Path,
                         default=Path("out/strategy/spy_grid_margin/results.json"))
+    parser.add_argument("--rescue", type=Path,
+                        default=Path("out/strategy/spy_rescue_capital/results.json"))
     parser.add_argument("--out", type=Path,
                         default=Path("docs/spy-drawdown-funding.html"))
     return parser.parse_args(argv)
@@ -188,7 +190,7 @@ def outcome_row(name: str, note: str, ending: float, supplied: float,
 
 def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
            twenty_year: dict | None, five_x: dict | None,
-           grid: dict | None) -> str:
+           grid: dict | None, rescue: dict | None) -> str:
     sample = result["sample"]
     stats = result["results"]
     frequency = result["threshold_history"]
@@ -247,6 +249,8 @@ def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
 
     growth = growth_svg(daily)
     drawdown = drawdown_svg(daily, frequency)
+    rescue_20 = rescue["rolling_20y"] if rescue else None
+    rescue_30 = rescue["matched_30y"] if rescue else None
     twenty_section = ""
     if twenty_year:
         roll = twenty_year["rolling_20y"]
@@ -264,12 +268,19 @@ def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
   </tbody></table></div>
   <p class="note warning"><strong>Do not read the median as a forecast.</strong> These windows overlap heavily and every complete 20-year cohort includes the 2008 crash. The leveraged strategy beat SPY 1x in only {pct(roll['beats_spy_terminal_share'], 1)} of cohorts. Its large upside tail came with a median {pct(roll['time_underwater_share']['median'], 1)} of trading days below the prior high.</p>
 </section>"""
+    rescue_30_row = ""
+    if rescue_30:
+        rescue_30_row = f"""<tr><td><strong>Equal-capital rescue</strong><small>1x tranche at −60%; exit at +10%</small></td><td>{money(rescue_30['terminal_wealth'])}</td><td>{pct(rescue_30['xirr'])}</td><td>{pct(rescue_30['max_drawdown'])}</td><td>1.00x rescue</td><td>—</td></tr>"""
+    rescue_20_row = ""
+    if rescue_20:
+        rescue_20_row = f"""<tr><td><strong>Equal-capital rescue</strong><small>external top-up counted in XIRR</small></td><td>{money(rescue_20['terminal_wealth']['median'])}</td><td>{pct(rescue_20['xirr']['median'])}</td><td>{pct(rescue_20['max_drawdown']['median'])}</td><td>{rescue_20['longest_underwater_years']['median']:.1f} years</td><td>1.00x rescue</td><td>—</td></tr>"""
     if grid:
         grid_base = grid["scenarios"]["base_OLHC"]
         grid_core = grid["scenarios"]["long_core_base_OLHC"]
         grid_neutral = grid["scenarios"]["neutral_base_OLHC"]
         grid_spy = grid["spy_x1"]
         grid_previous = grid["previous_5_3_3_1"]
+        grid_fear = grid["fear_relever_5_3_3_1_3"]
         twenty_section += f"""
 <section class="wide">
   <div class="eyebrow">V.B · The volatility grid</div><h2>The grid harvested movement but surrendered the trend.</h2>
@@ -277,6 +288,8 @@ def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
   <div class="scroll"><table><thead><tr><th>Inventory model</th><th>Ending wealth</th><th>XIRR</th><th>Max drawdown</th><th>Median effective leverage</th><th>Time at 1x cap</th></tr></thead><tbody>
     <tr><td><strong>SPY 1x</strong><small>all $300,000 invested</small></td><td>{money(grid_spy['terminal_wealth'])}</td><td>{pct(grid_spy['xirr'])}</td><td>{pct(grid_spy['max_drawdown_flow_adjusted'])}</td><td>1.00x</td><td>—</td></tr>
     <tr class="featured"><td><strong>Previous 5→3→3→1 rule</strong><small>profit sweep and reserve; no grid</small></td><td>{money(grid_previous['terminal_wealth'])}</td><td>{pct(grid_previous['xirr'])}</td><td>{pct(grid_previous['max_drawdown'])}</td><td>{grid_previous['mean_applied_leverage']:.2f}x</td><td>—</td></tr>
+    <tr><td><strong>Fear relever 5→3→3→1→3</strong><small>increase to 3x below 60%</small></td><td>{money(grid_fear['terminal_wealth'])}</td><td>{pct(grid_fear['xirr'])}</td><td>{pct(grid_fear['max_drawdown'])}</td><td>{grid_fear['mean_applied_leverage']:.2f}x</td><td>—</td></tr>
+    {rescue_30_row}
     <tr><td><strong>Long-core grid</strong><small>50–100% of active cap</small></td><td>{money(grid_core['terminal_wealth'])}</td><td>{pct(grid_core['xirr'])}</td><td>{pct(grid_core['max_drawdown'])}</td><td>{grid_core['median_effective_leverage']:.2f}x</td><td>{pct(grid_core['time_at_1x_cap'], 1)}</td></tr>
     <tr><td><strong>Long-only grid</strong><small>0–100% of active cap</small></td><td>{money(grid_base['terminal_wealth'])}</td><td>{pct(grid_base['xirr'])}</td><td>{pct(grid_base['max_drawdown'])}</td><td>{grid_base['median_effective_leverage']:.2f}x</td><td>{pct(grid_base['time_at_1x_cap'], 1)}</td></tr>
     <tr><td><strong>Neutral grid</strong><small>short above / long below average</small></td><td>{money(grid_neutral['terminal_wealth'])}</td><td>{pct(grid_neutral['xirr'])}</td><td>{pct(grid_neutral['max_drawdown'])}</td><td>{grid_neutral['median_effective_leverage']:.2f}x</td><td>{pct(grid_neutral['time_at_1x_cap'], 1)}</td></tr>
@@ -286,6 +299,7 @@ def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
     if five_x:
         literal = five_x["variants"]["literal_profit_reserve_5_3_3_1"]
         sensitivity = five_x["variants"]["sensitivity_profit_reserve_5_3_2_1"]
+        fear = five_x["variants"]["fear_relever_profit_reserve_5_3_3_1_3"]
         spy5 = five_x["spy_x1"]
         twenty_section += f"""
 <section class="wide">
@@ -295,6 +309,8 @@ def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
     <tr><td><strong>SPY 1x</strong><small>same $200,000 contributions</small></td><td>{money(spy5['terminal_wealth']['median'])}</td><td>{pct(spy5['xirr']['median'])}</td><td>{pct(spy5['max_drawdown']['median'])}</td><td>{spy5['longest_underwater_years']['median']:.1f} years</td><td>1.00x</td><td>benchmark</td></tr>
     <tr class="featured"><td><strong>5→3→3→1</strong><small>leveraged sleeve drawdown</small></td><td>{money(literal['terminal_wealth']['median'])}</td><td>{pct(literal['xirr']['median'])}</td><td>{pct(literal['max_drawdown']['median'])}</td><td>{literal['longest_underwater_years']['median']:.1f} years</td><td>{literal['mean_applied_leverage']['median']:.2f}x</td><td>{pct(literal['beats_spy_terminal_share'], 1)}</td></tr>
     <tr><td><strong>5→3→2→1</strong><small>30% rung sensitivity</small></td><td>{money(sensitivity['terminal_wealth']['median'])}</td><td>{pct(sensitivity['xirr']['median'])}</td><td>{pct(sensitivity['max_drawdown']['median'])}</td><td>{sensitivity['longest_underwater_years']['median']:.1f} years</td><td>{sensitivity['mean_applied_leverage']['median']:.2f}x</td><td>{pct(sensitivity['beats_spy_terminal_share'], 1)}</td></tr>
+    <tr><td><strong>5→3→3→1→3</strong><small>relever at 60% fear rung</small></td><td>{money(fear['terminal_wealth']['median'])}</td><td>{pct(fear['xirr']['median'])}</td><td>{pct(fear['max_drawdown']['median'])}</td><td>{fear['longest_underwater_years']['median']:.1f} years</td><td>{fear['mean_applied_leverage']['median']:.2f}x</td><td>{pct(fear['beats_spy_terminal_share'], 1)}</td></tr>
+    {rescue_20_row}
   </tbody></table></div>
   <p class="note warning"><strong>The higher wealth came with a much harder path.</strong> The literal rule beat SPY in {pct(literal['beats_spy_terminal_share'], 1)} of rolling cohorts, but its median maximum loss was {pct(literal['max_drawdown']['median'])} and its longest recovery lasted a median {literal['longest_underwater_years']['median']:.1f} years.</p>
 </section>"""

@@ -343,6 +343,17 @@ def previous_strategy_benchmark(source: pd.DataFrame) -> dict:
     return stats
 
 
+def fear_relever_benchmark(source: pd.DataFrame) -> dict:
+    asset_return = source["spy_hold"].pct_change().fillna(0.0).loc[START:END].copy()
+    asset_return.iloc[0] = 0.0
+    contributions = monthly_schedule(asset_return.index)
+    _, stats = simulate_account_rule(
+        asset_return, source["treasury_rate"].loc[START:END], contributions,
+        (5.0, 3.0, 3.0, 1.0, 3.0), "trading_sleeve", "trading_sleeve",
+        (0.10, 0.30, 0.50, 0.60))
+    return stats
+
+
 def main() -> int:
     prices = load_prices()
     rates_source = pd.read_csv(SOURCE_RATES, parse_dates=["date"], index_col="date")
@@ -378,6 +389,7 @@ def main() -> int:
         },
         "spy_x1": spy_benchmark(prices),
         "previous_5_3_3_1": previous_strategy_benchmark(rates_source),
+        "fear_relever_5_3_3_1_3": fear_relever_benchmark(rates_source),
         "scenarios": scenarios,
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
