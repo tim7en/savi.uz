@@ -37,12 +37,17 @@ def simulate(asset_return: pd.Series, rates: pd.Series,
              reserve_thresholds: tuple[float, ...] = THRESHOLDS,
              reserve_fractions: tuple[float, ...] = DEPLOY_FRACTIONS,
              rescue_multiple: float = 1.0,
+             profit_sweep_frequency: str = "annual",
              ) -> tuple[pd.DataFrame, dict]:
     index = asset_return.index
     stamps = index.to_series()
     days = stamps.diff().dt.days.fillna(0.0)
     known_rate = rates.shift(1).ffill().bfill()
     year_end = stamps.dt.year.ne(stamps.shift(-1).dt.year) & stamps.dt.month.eq(12)
+    quarter_end = stamps.dt.quarter.ne(stamps.shift(-1).dt.quarter)
+    if profit_sweep_frequency not in {"annual", "quarterly"}:
+        raise ValueError("profit_sweep_frequency must be annual or quarterly")
+    harvest_boundary = quarter_end if profit_sweep_frequency == "quarterly" else year_end
 
     opening = ANNUAL_CONTRIBUTION / 12.0
     main = opening
@@ -56,7 +61,7 @@ def simulate(asset_return: pd.Series, rates: pd.Series,
     leverage_rung = 0
     reserve_fired: set[float] = set()
     rescue_fired = False
-    annual_profit = 0.0
+    period_profit = 0.0
     rescue_calls = rescue_exits = 0
     total_rescue_external = 0.0
     cash_flows = [(index[0], -opening)]
@@ -75,7 +80,7 @@ def simulate(asset_return: pd.Series, rates: pd.Series,
             trading_return = leverage * float(asset_return.iloc[position]) - financing
             profit = main * trading_return
             main = max(main + profit, 0.0)
-            annual_profit += profit
+            period_profit += profit
             strategy_nav *= 1.0 + trading_return
 
             combined_before_flow = main + regular_reserve + rescue_savings + rescue_active
@@ -137,12 +142,12 @@ def simulate(asset_return: pd.Series, rates: pd.Series,
             rescue_basis += required
             rescue_calls += 1
 
-        if bool(year_end.iloc[position]):
-            harvest = min(max(annual_profit, 0.0) * 0.10, max(main, 0.0))
+        if bool(harvest_boundary.iloc[position]):
+            harvest = min(max(period_profit, 0.0) * 0.10, max(main, 0.0))
             if harvest:
                 main -= harvest
                 regular_reserve += harvest
-            annual_profit = 0.0
+            period_profit = 0.0
 
         combined_peak = max(combined_peak, combined_nav)
         combined_drawdown = combined_nav / combined_peak - 1.0
@@ -175,6 +180,10 @@ def simulate(asset_return: pd.Series, rates: pd.Series,
         "rescue_exits": rescue_exits,
         "ending_active_rescue": float(path["rescue_active"].iloc[-1]),
         "ending_rescue_savings": float(path["rescue_savings"].iloc[-1]),
+        "mean_applied_leverage": float(path["applied_leverage"].mean()),
+        "time_at_3x": float(path["applied_leverage"].eq(3.0).mean()),
+        "time_at_2x": float(path["applied_leverage"].eq(2.0).mean()),
+        "time_at_1x": float(path["applied_leverage"].eq(1.0).mean()),
         **water,
     }
     return path, stats
@@ -188,6 +197,7 @@ def summarize(frame: pd.DataFrame) -> dict:
         "longest_underwater_years": quantiles(frame["longest_underwater_years"]),
         "total_rescue_external": quantiles(frame["total_rescue_external"]),
         "rescue_calls": quantiles(frame["rescue_calls"]),
+        "mean_applied_leverage": quantiles(frame["mean_applied_leverage"]),
         "rescue_exit_share": float(
             (frame["rescue_exits"] >= frame["rescue_calls"]).mean()),
     }
@@ -217,8 +227,8 @@ def main() -> int:
 
     records = []
     records_5_2_1 = []
-    records_fixed_3_half = []
-    records_fixed_3_equal = []
+    records_corrected_half = []
+    records_corrected_equal = []
     starts = source.index.to_series().groupby(source.index.to_period("M")).first()
     for start in starts:
         target = start + pd.DateOffset(years=YEARS)
@@ -232,22 +242,24 @@ def main() -> int:
         _, stats_5_2_1 = simulate(
             window_return, rates.loc[start:end], contribution_schedule,
             (5.0, 2.0, 1.0), (0.20, 0.50))
-        _, stats_fixed_3_half = simulate(
+        _, stats_corrected_half = simulate(
             window_return, rates.loc[start:end], contribution_schedule,
-            (3.0,), (), (0.10, 0.20, 0.30), (1 / 3, 1 / 2, 1.0), 0.50)
-        _, stats_fixed_3_equal = simulate(
+            (3.0, 2.0, 1.0), (0.30, 0.50),
+            (0.10, 0.20, 0.30), (1 / 3, 1 / 2, 1.0), 0.50, "quarterly")
+        _, stats_corrected_equal = simulate(
             window_return, rates.loc[start:end], contribution_schedule,
-            (3.0,), (), (0.10, 0.20, 0.30), (1 / 3, 1 / 2, 1.0), 1.0)
+            (3.0, 2.0, 1.0), (0.30, 0.50),
+            (0.10, 0.20, 0.30), (1 / 3, 1 / 2, 1.0), 1.0, "quarterly")
         records.append({"start": start.date().isoformat(),
                         "end": end.date().isoformat(), **stats})
         records_5_2_1.append({"start": start.date().isoformat(),
                               "end": end.date().isoformat(), **stats_5_2_1})
-        records_fixed_3_half.append({"start": start.date().isoformat(),
-                                     "end": end.date().isoformat(),
-                                     **stats_fixed_3_half})
-        records_fixed_3_equal.append({"start": start.date().isoformat(),
-                                      "end": end.date().isoformat(),
-                                      **stats_fixed_3_equal})
+        records_corrected_half.append({"start": start.date().isoformat(),
+                                       "end": end.date().isoformat(),
+                                       **stats_corrected_half})
+        records_corrected_equal.append({"start": start.date().isoformat(),
+                                        "end": end.date().isoformat(),
+                                        **stats_corrected_equal})
 
     start_30, end_30 = pd.Timestamp("1996-08-21"), pd.Timestamp("2026-08-21")
     return_30 = returns.loc[start_30:end_30].copy()
@@ -262,39 +274,42 @@ def main() -> int:
     add_drawdown_dates(path_30_5_2_1, stats_30_5_2_1)
 
     schedule = schedule_30y(return_30.index)
-    path_30_fixed_3_half, stats_30_fixed_3_half = simulate(
+    path_30_corrected_half, stats_30_corrected_half = simulate(
         return_30, rates.loc[start_30:end_30], schedule,
-        (3.0,), (), (0.10, 0.20, 0.30), (1 / 3, 1 / 2, 1.0), 0.50)
-    add_drawdown_dates(path_30_fixed_3_half, stats_30_fixed_3_half)
-    path_30_fixed_3_equal, stats_30_fixed_3_equal = simulate(
+        (3.0, 2.0, 1.0), (0.30, 0.50),
+        (0.10, 0.20, 0.30), (1 / 3, 1 / 2, 1.0), 0.50, "quarterly")
+    add_drawdown_dates(path_30_corrected_half, stats_30_corrected_half)
+    path_30_corrected_equal, stats_30_corrected_equal = simulate(
         return_30, rates.loc[start_30:end_30], schedule,
-        (3.0,), (), (0.10, 0.20, 0.30), (1 / 3, 1 / 2, 1.0), 1.0)
-    add_drawdown_dates(path_30_fixed_3_equal, stats_30_fixed_3_equal)
+        (3.0, 2.0, 1.0), (0.30, 0.50),
+        (0.10, 0.20, 0.30), (1 / 3, 1 / 2, 1.0), 1.0, "quarterly")
+    add_drawdown_dates(path_30_corrected_equal, stats_30_corrected_equal)
 
     result = {
         "method": {
             "base_rule": "5x at high, 3x at -10/-30%, 1x at -50%; reset only at prior high",
             "new_rule": "5x at high, 2x at -20%, 1x at -50%; reset only at prior high",
-            "fixed_3_rule": "constant 3x; savings deployed equally at -10/-20/-30%; unlevered rescue at -60%",
+            "corrected_rule": "3x at high, 2x at -30%, 1x at -50%; reset only at prior high",
+            "profit_sweep": "10% of positive trading P&L at quarter-end only",
             "rescue": "at -60%, buy 1x SPY with capital equal to total account then remaining; exit entire tranche at +10% total return",
             "rescue_funding": "reuse protected prior rescue proceeds, then record external top-up as a cash flow",
-            "regular_savings": "10% positive calendar-year trading P&L; regular 20/30/50/80 deployment ladder",
+            "regular_savings": "corrected variants sweep quarterly and deploy in thirds at -10/-20/-30%",
             "funding": "prior-known DGS3MO + 1% on borrowed base exposure",
         },
         "rolling_20y": summarize(pd.DataFrame(records)),
         "matched_30y": stats_30,
         "new_5_2_1_rolling_20y": summarize(pd.DataFrame(records_5_2_1)),
         "new_5_2_1_matched_30y": stats_30_5_2_1,
-        "fixed_3_half_balance_rolling_20y": summarize(
-            pd.DataFrame(records_fixed_3_half)),
-        "fixed_3_half_balance_matched_30y": stats_30_fixed_3_half,
-        "fixed_3_equal_balance_rolling_20y": summarize(
-            pd.DataFrame(records_fixed_3_equal)),
-        "fixed_3_equal_balance_matched_30y": stats_30_fixed_3_equal,
+        "corrected_3_2_1_half_balance_rolling_20y": summarize(
+            pd.DataFrame(records_corrected_half)),
+        "corrected_3_2_1_half_balance_matched_30y": stats_30_corrected_half,
+        "corrected_3_2_1_equal_balance_rolling_20y": summarize(
+            pd.DataFrame(records_corrected_equal)),
+        "corrected_3_2_1_equal_balance_matched_30y": stats_30_corrected_equal,
         "cohorts": records,
         "new_5_2_1_cohorts": records_5_2_1,
-        "fixed_3_half_balance_cohorts": records_fixed_3_half,
-        "fixed_3_equal_balance_cohorts": records_fixed_3_equal,
+        "corrected_3_2_1_half_balance_cohorts": records_corrected_half,
+        "corrected_3_2_1_equal_balance_cohorts": records_corrected_equal,
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(result, indent=2), encoding="utf-8")
