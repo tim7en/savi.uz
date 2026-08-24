@@ -1,0 +1,538 @@
+<title>The Median Was the Signal</title>
+<style>
+  :root{
+    color-scheme:light;
+    --ground:#EFF1F3; --surface:#FFFFFF; --sunken:#E3E7EB; --rule:#CFD6DD;
+    --rule-soft:#E1E6EB;
+    --ink:#101519; --ink-2:#414B55; --ink-3:#76818C;
+    --lo:#A24A38; --mid:#B5883A; --hi:#1C7A62;
+    --accent:#1D4E6B; --accent-soft:#E0EAF0;
+    --display:"Helvetica Neue",Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --body:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0C1013; --surface:#151A1F; --sunken:#1C2229; --rule:#293139;
+    --rule-soft:#222831;
+    --ink:#E5EAEF; --ink-2:#ADB7C1; --ink-3:#7B8691;
+    --lo:#DB8571; --mid:#D7B466; --hi:#4CBF9C;
+    --accent:#7EB2D0; --accent-soft:#14242E;
+  }}
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --ground:#0C1013; --surface:#151A1F; --sunken:#1C2229; --rule:#293139;
+    --rule-soft:#222831;
+    --ink:#E5EAEF; --ink-2:#ADB7C1; --ink-3:#7B8691;
+    --lo:#DB8571; --mid:#D7B466; --hi:#4CBF9C;
+    --accent:#7EB2D0; --accent-soft:#14242E;
+  }
+  :root[data-theme="light"]{
+    color-scheme:light;
+    --ground:#EFF1F3; --surface:#FFFFFF; --sunken:#E3E7EB; --rule:#CFD6DD;
+    --rule-soft:#E1E6EB;
+    --ink:#101519; --ink-2:#414B55; --ink-3:#76818C;
+    --lo:#A24A38; --mid:#B5883A; --hi:#1C7A62;
+    --accent:#1D4E6B; --accent-soft:#E0EAF0;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;padding:0 20px 88px;background:var(--ground);color:var(--ink);
+       font-family:var(--body);font-size:16px;line-height:1.62;
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:940px;margin:0 auto}
+
+  header{padding:58px 0 30px;border-bottom:3px solid var(--ink);
+         display:flex;flex-direction:column;gap:14px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+           text-transform:uppercase;color:var(--ink-3);margin:0}
+  h1{font-family:var(--display);font-weight:800;font-size:clamp(2.3rem,6.6vw,3.9rem);
+     line-height:.99;letter-spacing:-.035em;margin:0;text-wrap:balance}
+  .standfirst{font-size:1.14rem;line-height:1.55;color:var(--ink-2);
+              max-width:62ch;margin:0}
+
+  .tallies{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));
+           gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:20px}
+  .tally{background:var(--surface);padding:15px 17px;display:flex;
+         flex-direction:column;gap:3px}
+  .tally b{font-family:var(--mono);font-size:1.6rem;font-weight:700;
+           letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1}
+  .tally span{font-size:12px;color:var(--ink-3);line-height:1.36}
+  .t-hi{color:var(--hi)} .t-lo{color:var(--lo)} .t-mid{color:var(--mid)}
+
+  section{padding-top:48px;display:flex;flex-direction:column;gap:15px}
+  h2{font-family:var(--display);font-size:1.72rem;font-weight:750;margin:0;
+     letter-spacing:-.025em;text-wrap:balance}
+  h3{font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+     text-transform:uppercase;color:var(--ink-3);margin:0 0 7px;font-weight:600}
+  p{margin:0;max-width:68ch}
+  .lede{color:var(--ink-2)}
+
+  .card{background:var(--surface);border:1px solid var(--rule);padding:21px 23px;
+        display:flex;flex-direction:column;gap:11px}
+  .k-hi{border-left:3px solid var(--hi)}
+  .k-lo{border-left:3px solid var(--lo)}
+  .k-mid{border-left:3px solid var(--mid)}
+  .split{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px}
+
+  .scroll{overflow-x:auto;border:1px solid var(--rule);background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;
+        font-variant-numeric:tabular-nums}
+  caption{text-align:left;padding:14px 17px 2px;font-size:12.5px;color:var(--ink-3)}
+  th{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+     color:var(--ink-3);font-weight:600;text-align:right;padding:10px 13px;
+     border-bottom:1px solid var(--rule);white-space:nowrap}
+  td{padding:9px 13px;text-align:right;border-bottom:1px solid var(--rule-soft);
+     white-space:nowrap;font-family:var(--mono);font-size:12.5px}
+  th:first-child,td:first-child{text-align:left;font-family:var(--body);
+     font-size:13.5px;white-space:normal;min-width:180px}
+  tbody tr:last-child td{border-bottom:0}
+  tr.hi td{background:var(--sunken);font-weight:600}
+  td.up{color:var(--hi)} td.down{color:var(--lo)} td.dim{color:var(--ink-3)}
+  td.indent:first-child{padding-left:30px;color:var(--ink-3);font-style:italic}
+
+  .verdict{display:inline-block;font-family:var(--mono);font-size:10px;
+           letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;
+           font-weight:700;border-radius:2px}
+  .v-pass{background:color-mix(in srgb,var(--hi) 16%,transparent);color:var(--hi)}
+  .v-fail{background:color-mix(in srgb,var(--lo) 16%,transparent);color:var(--lo)}
+  .v-open{background:var(--accent-soft);color:var(--accent)}
+
+  ul,ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:9px;
+        max-width:70ch}
+  li::marker{color:var(--ink-3)}
+  code{font-family:var(--mono);font-size:.87em;background:var(--sunken);
+       padding:1px 5px;border-radius:2px}
+  .note{font-size:14px;color:var(--ink-2);border-top:1px solid var(--rule);
+        padding-top:16px;max-width:76ch}
+  footer{margin-top:54px;padding-top:20px;border-top:1px solid var(--rule);
+         font-size:12.5px;color:var(--ink-3);max-width:78ch;line-height:1.6}
+  a{color:var(--accent)}
+  a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+  figure{margin:0;display:flex;flex-direction:column;gap:11px}
+  figcaption{font-size:13px;color:var(--ink-3);max-width:74ch}
+  .plate{background:var(--surface);border:1px solid var(--rule);padding:22px;
+         overflow-x:auto}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .axis{font-family:var(--mono);font-size:10.5px;fill:var(--ink-3);
+        font-variant-numeric:tabular-nums}
+  .gridline{stroke:var(--rule);stroke-width:1}
+  .zero{stroke:var(--ink-3);stroke-width:1.4}
+
+  /* Chart palette. Validated with the dataviz six checks against both surfaces
+     (#FFFFFF and #151A1F). The worst adjacent CVD pair sits in the 6-8 band, so
+     every series carries a direct label as well as a hue. */
+  :root{--c1:#1A6FA8;--c2:#C0503A;--c3:#0E8A66}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --c1:#3D93DB;--c2:#E06E52;--c3:#10A87F}}
+  :root[data-theme="dark"]{--c1:#3D93DB;--c2:#E06E52;--c3:#10A87F}
+  :root[data-theme="light"]{--c1:#1A6FA8;--c2:#C0503A;--c3:#0E8A66}
+
+  .axis.dim{fill:var(--ink-3)}
+  .axis.strong{fill:var(--ink);font-weight:700}
+  .val{fill:var(--ink-2);font-family:var(--mono);font-size:11px;
+       font-variant-numeric:tabular-nums}
+  .dot-null{fill:var(--ink-3);opacity:.55}
+  .dot-over{fill:var(--c2)}
+  .mark-book{stroke:var(--c1);stroke-width:2.5}
+  .lab-book{fill:var(--c1);font-family:var(--mono);font-size:12.5px;font-weight:700}
+  .lab-null{fill:var(--ink-3);font-family:var(--mono);font-size:11px}
+  .bar-up{fill:var(--c1)}
+  .bar-dn{fill:var(--c2)}
+  .mark-drift{stroke:var(--c3);stroke-width:2;stroke-dasharray:5 4}
+  .lab-drift{fill:var(--c3);font-family:var(--mono);font-size:11px;font-weight:600}
+  .line-taker{fill:none;stroke:var(--c2);stroke-width:2}
+  .line-maker{fill:none;stroke:var(--c1);stroke-width:2}
+  .lab-taker{fill:var(--c2);font-family:var(--mono);font-size:12.5px;font-weight:700}
+  .lab-maker{fill:var(--c1);font-family:var(--mono);font-size:12.5px;font-weight:700}
+  .pin{fill:var(--surface);stroke:var(--ink);stroke-width:2}
+  .pin-lab{fill:var(--ink-2);font-family:var(--mono);font-size:10.5px}
+  .bar-hold{fill:var(--c1)}
+  .bar-ruin{fill:var(--c2)}
+  section h3{font-family:var(--display);font-size:1.12rem;
+     letter-spacing:-.01em;text-transform:none;color:var(--ink);
+     margin:6px 0 0;font-weight:700}
+  .card h3{font-family:var(--mono);font-size:11px;
+     letter-spacing:.1em;text-transform:uppercase;
+     color:var(--ink-3);margin:0 0 7px;font-weight:600}
+  .bar-mid{fill:var(--ink-3);opacity:.55}
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Margin of safety &middot; 118 US names &middot; 2010&ndash;2025 &middot; SEC company facts, 90-day reporting lag</p>
+  <h1>The Median Was the Signal</h1>
+  <p class="standfirst">Nine tests of a single idea: buy good businesses when they
+  fall. Price drawdown alone failed, and failed backwards &mdash; deeper was
+  worse. Quality screens did not rescue it. Then the horizon changed from two
+  months to three years and the same screens started working, for a reason the
+  averages had been hiding the whole time.</p>
+
+  <div class="tallies">
+    <div class="tally"><b class="t-hi">+9.6%</b>
+      <span>median 3-year excess: top-quality bought down 30%+</span></div>
+    <div class="tally"><b class="t-hi">54%</b>
+      <span>its win rate &mdash; the only cell here above a coin flip</span></div>
+    <div class="tally"><b class="t-lo">&minus;56.8%</b>
+      <span>median 3-year excess of the lowest quality decile</span></div>
+    <div class="tally"><b class="t-mid">3.72</b>
+      <span>t-statistic on VIX &mdash; the strongest short-horizon predictor</span></div>
+  </div>
+</header>
+
+<section>
+  <h2>Drawdown alone fails, and it fails backwards</h2>
+  <p class="lede">The first version was the plain idea: buy a discount to the
+  rolling high. The prediction registered before running it was monotonicity
+  &mdash; deeper discount, better outcome. That is a claim that can fail cleanly,
+  and it did.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>Forward move after crossing below the 200-session high, in the
+      name&rsquo;s own daily deviations. Unconditional baseline at +40 sessions is
+      +1.215.</caption>
+      <thead>
+        <tr><th>Depth below the high at entry</th><th>n</th><th>+10</th>
+          <th>+20</th><th>+40</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>5% to 15%</td><td>1,515</td><td>+0.464</td><td>+0.824</td>
+          <td class="up">+1.524</td></tr>
+        <tr class="hi"><td>15% to 25%</td><td>83</td><td>+0.038</td><td>+0.020</td>
+          <td class="down">&minus;0.121</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>A shallow pullback beat the baseline; a real drawdown collapsed to nothing.
+  And the sweep agreed without being asked &mdash; handed depths from 10% to 30%,
+  every one of the top six in-sample configurations chose <b>10%, the shallowest
+  available</b>. Out of sample the whole thing scored 2.64 against a drift null of
+  2.38, p = 0.37, and buying <em>new highs</em> instead scored 2.32. Three ways of
+  saying the same thing: the discount was not the signal.</p>
+</section>
+
+<section>
+  <h2>The screens did not rescue it</h2>
+  <p>The obvious fix is that a discount is only safe if the business behind it is.
+  Survival, quality and valuation gates were built from the SEC company-facts
+  store and put in front of the same trigger.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>Out of sample, 2016&ndash;2026. Every arm carries a Sharpe standard
+      error near 0.6 at this horizon, which is the number that matters most in
+      this table.</caption>
+      <thead>
+        <tr><th>Arm</th><th>Trades</th><th>Sharpe</th><th>95% interval</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>drawdown alone, no gates</td><td>2,349</td><td>2.35</td>
+          <td class="dim">[1.18, 3.52]</td></tr>
+        <tr><td>drawdown + gates (2 of 3)</td><td>658</td><td>2.11</td>
+          <td class="dim">[1.03, 3.19]</td></tr>
+        <tr><td>drawdown + gates <b>inverted</b></td><td>773</td><td>2.59</td>
+          <td class="dim">[1.33, 3.85]</td></tr>
+        <tr><td>gates without the drawdown</td><td>7,311</td><td>1.65</td>
+          <td class="dim">&mdash;</td></tr>
+        <tr class="hi"><td>random days (drift null)</td><td class="dim">&mdash;</td>
+          <td>2.00</td><td class="dim">[0.96, 3.04]</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="split">
+    <div class="card k-lo">
+      <h3>Every interval overlaps every other one</h3>
+      <p>The screens scored 2.11 and their exact inverse scored 2.59, which is
+      tempting to read as &ldquo;junk wins&rdquo;. It is not readable at all: the
+      gap is 0.48 and one standard error is 0.6. All four arms contain the null.
+      Worse, the 658 trades sit in only 112 distinct months and cluster into a
+      handful of regimes, so the true error is larger still.</p>
+    </div>
+    <div class="card k-mid">
+      <h3>What the screens were really selecting</h3>
+      <p>Matched 368 pairs on month, drawdown depth, beta and volatility, so
+      fundamentals were the only thing left differing. At <b>60 sessions the gap
+      vanished</b> &mdash; +0.26%, t = 0.26. The accounting screen had been a
+      convexity proxy wearing an accounting costume.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>What actually moves a two-month rebound</h2>
+  <p>With the screen question settled, the useful thing was to ask what does
+  predict a rebound. A regression on 1,817 crossings, standardised so magnitudes
+  compare, with market state and stock convexity fitted alongside the accounting
+  variables.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>Forward return 60 sessions after a drawdown crossing.
+      R&sup2; = 0.061 &mdash; weak in absolute terms, as return regressions always
+      are.</caption>
+      <thead><tr><th>Feature</th><th>Standardised &beta;</th><th>t</th></tr></thead>
+      <tbody>
+        <tr class="hi"><td>VIX at entry</td><td class="up">+0.264</td>
+          <td class="up">+3.72</td></tr>
+        <tr><td>idiosyncratic volatility</td><td>+0.184</td><td>+2.13</td></tr>
+        <tr><td>market beta</td><td>+0.214</td><td>+2.01</td></tr>
+        <tr><td>leverage</td><td>+0.155</td><td>+2.13</td></tr>
+        <tr><td>return on equity</td><td class="dim">+0.244</td>
+          <td class="dim">+1.67</td></tr>
+        <tr><td>book yield (cheapness)</td><td class="dim">&minus;0.016</td>
+          <td class="dim">&minus;0.72</td></tr>
+        <tr><td><b>drawdown depth itself</b></td><td class="dim">+0.020</td>
+          <td class="dim">+0.36</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><b>Market fear is the strongest variable in the study</b>, and it is a timing
+  input rather than a screening one &mdash; you are paid for supplying liquidity
+  when liquidity is scarce. Volatility, beta and leverage carry the stock-level
+  signal; leverage at 60 days is the Merton effect showing up directly, since a
+  levered firm&rsquo;s equity is a call option on its assets and rebounds
+  multiplicatively. Valuation and profitability say nothing, and the drawdown
+  depth says nothing at all.</p>
+
+  <p class="note">One caution about my own output: fitting valuation against VIX
+  produced coefficients of +271.8 and &minus;271.8 on the main and interaction
+  terms. That is a collinearity blow-up, not a finding, and the regression cannot
+  answer whether fundamentals are priced differently in calm markets. The tercile
+  split could, and showed no advantage to the screens in any regime.</p>
+</section>
+
+<section>
+  <h2>The horizon was the mistake</h2>
+  <p class="lede">Everything above measures a rebound over twenty to sixty
+  sessions. That is a real finding about rebounds and a worthless one about
+  investing, because nobody buying a good business at a discount expects to be
+  judged in two months. Changing the horizon to three years, and the benchmark to
+  an equal-weight hold of the same names in the same month, changes the answer.</p>
+
+  <figure>
+    <div class="plate">
+<svg viewBox="0 0 1000 330" role="img" aria-label="Median three-year excess return by quality decile">
+<line class="gridline" x1="66" y1="52.7" x2="974" y2="52.7"/>
+<text class="axis" x="56" y="56.7" text-anchor="end">+0%</text>
+<line class="gridline" x1="66" y1="99.5" x2="974" y2="99.5"/>
+<text class="axis" x="56" y="103.5" text-anchor="end">-15%</text>
+<line class="gridline" x1="66" y1="146.2" x2="974" y2="146.2"/>
+<text class="axis" x="56" y="150.2" text-anchor="end">-30%</text>
+<line class="gridline" x1="66" y1="193.0" x2="974" y2="193.0"/>
+<text class="axis" x="56" y="197.0" text-anchor="end">-45%</text>
+<line class="gridline" x1="66" y1="239.8" x2="974" y2="239.8"/>
+<text class="axis" x="56" y="243.8" text-anchor="end">-60%</text>
+<line class="zero" x1="66" y1="52.7" x2="974" y2="52.7"/>
+<rect class="bar-dn" x="84.4" y="52.7" width="54" height="177.1" rx="4"><title>D1: median three-year excess -56.8%, wins 32% of the time</title></rect>
+<text class="val" x="111.4" y="245.8" text-anchor="middle">-57</text>
+<text class="axis strong" x="111.4" y="272.0" text-anchor="middle">D1</text>
+<text class="axis dim" x="111.4" y="289.0" text-anchor="middle">32% win</text>
+<rect class="bar-mid" x="175.2" y="52.7" width="54" height="84.5" rx="4"><title>D2: median three-year excess -27.1%, wins 39% of the time</title></rect>
+<text class="val" x="202.2" y="153.2" text-anchor="middle">-27</text>
+<text class="axis strong" x="202.2" y="272.0" text-anchor="middle">D2</text>
+<text class="axis dim" x="202.2" y="289.0" text-anchor="middle">39% win</text>
+<rect class="bar-mid" x="266.0" y="52.7" width="54" height="55.2" rx="4"><title>D3: median three-year excess -17.7%, wins 38% of the time</title></rect>
+<text class="val" x="293.0" y="123.9" text-anchor="middle">-18</text>
+<text class="axis strong" x="293.0" y="272.0" text-anchor="middle">D3</text>
+<text class="axis dim" x="293.0" y="289.0" text-anchor="middle">38% win</text>
+<rect class="bar-mid" x="356.8" y="52.7" width="54" height="82.0" rx="4"><title>D4: median three-year excess -26.3%, wins 34% of the time</title></rect>
+<text class="val" x="383.8" y="150.7" text-anchor="middle">-26</text>
+<text class="axis strong" x="383.8" y="272.0" text-anchor="middle">D4</text>
+<text class="axis dim" x="383.8" y="289.0" text-anchor="middle">34% win</text>
+<rect class="bar-mid" x="447.6" y="52.7" width="54" height="97.9" rx="4"><title>D5: median three-year excess -31.4%, wins 27% of the time</title></rect>
+<text class="val" x="474.6" y="166.6" text-anchor="middle">-31</text>
+<text class="axis strong" x="474.6" y="272.0" text-anchor="middle">D5</text>
+<text class="axis dim" x="474.6" y="289.0" text-anchor="middle">27% win</text>
+<rect class="bar-mid" x="538.4" y="52.7" width="54" height="110.1" rx="4"><title>D6: median three-year excess -35.3%, wins 27% of the time</title></rect>
+<text class="val" x="565.4" y="178.8" text-anchor="middle">-35</text>
+<text class="axis strong" x="565.4" y="272.0" text-anchor="middle">D6</text>
+<text class="axis dim" x="565.4" y="289.0" text-anchor="middle">27% win</text>
+<rect class="bar-mid" x="629.2" y="52.7" width="54" height="77.0" rx="4"><title>D7: median three-year excess -24.7%, wins 34% of the time</title></rect>
+<text class="val" x="656.2" y="145.7" text-anchor="middle">-25</text>
+<text class="axis strong" x="656.2" y="272.0" text-anchor="middle">D7</text>
+<text class="axis dim" x="656.2" y="289.0" text-anchor="middle">34% win</text>
+<rect class="bar-mid" x="720.0" y="52.7" width="54" height="68.9" rx="4"><title>D8: median three-year excess -22.1%, wins 33% of the time</title></rect>
+<text class="val" x="747.0" y="137.6" text-anchor="middle">-22</text>
+<text class="axis strong" x="747.0" y="272.0" text-anchor="middle">D8</text>
+<text class="axis dim" x="747.0" y="289.0" text-anchor="middle">33% win</text>
+<rect class="bar-mid" x="810.8" y="52.7" width="54" height="66.4" rx="4"><title>D9: median three-year excess -21.3%, wins 36% of the time</title></rect>
+<text class="val" x="837.8" y="135.1" text-anchor="middle">-21</text>
+<text class="axis strong" x="837.8" y="272.0" text-anchor="middle">D9</text>
+<text class="axis dim" x="837.8" y="289.0" text-anchor="middle">36% win</text>
+<rect class="bar-up" x="901.6" y="52.7" width="54" height="22.4" rx="4"><title>D10: median three-year excess -7.2%, wins 45% of the time</title></rect>
+<text class="val" x="928.6" y="91.2" text-anchor="middle">-7</text>
+<text class="axis strong" x="928.6" y="272.0" text-anchor="middle">D10</text>
+<text class="axis dim" x="928.6" y="289.0" text-anchor="middle">45% win</text>
+<text class="axis dim" x="66" y="308.0">lowest quality</text>
+<text class="axis dim" x="974" y="308.0" text-anchor="end">highest quality</text>
+<text class="axis" x="66" y="322">median 3-year return against the same names in the same month &#183; 11,233 observations</text>
+</svg>
+
+    </div>
+    <figcaption>Median three-year return against the same cross-section, by
+    quality decile. The middle of the ranking is noise &mdash; the median rises
+    across only 6 of 9 steps. The extremes are not: a 49.6-point gap between the
+    lowest and highest decile, and win rates of 32% against 45%.</figcaption>
+  </figure>
+
+  <div class="card k-hi">
+    <h3>Why the median and not the mean</h3>
+    <p>On an earlier, narrower cut the lowest-quality decile showed a mean excess
+    of <b>+58.9%</b> and a median of <b>&minus;47.4%</b>. Both are correct. The
+    typical low-quality business loses roughly half its value against its peers,
+    and the positive average is carried entirely by a few multi-baggers buried in
+    the bucket.</p>
+    <p>That distinction decides which statistic to use. A strategy holding nine
+    hundred names collects the mean. A strategy holding fifteen collects something
+    much closer to the median. <b>Mean reversion is paid by the tail; compounding
+    is paid by the median</b> &mdash; and quality only looks good under the second,
+    which is the correct one for owning businesses.</p>
+  </div>
+</section>
+
+<section>
+  <h2>And then the drawdown earns its place</h2>
+  <p>Restricting to top-quintile quality and splitting by how far the name had
+  fallen produces the only positive cell in the entire study.</p>
+
+  <figure>
+    <div class="plate">
+<svg viewBox="0 0 1000 290" role="img" aria-label="Top-quintile quality by drawdown depth at entry">
+<line class="gridline" x1="66" y1="61.2" x2="974" y2="61.2"/>
+<text class="axis" x="56" y="65.2" text-anchor="end">+10%</text>
+<line class="gridline" x1="66" y1="103.7" x2="974" y2="103.7"/>
+<text class="axis" x="56" y="107.7" text-anchor="end">+0%</text>
+<line class="gridline" x1="66" y1="146.1" x2="974" y2="146.1"/>
+<text class="axis" x="56" y="150.1" text-anchor="end">-10%</text>
+<line class="gridline" x1="66" y1="188.5" x2="974" y2="188.5"/>
+<text class="axis" x="56" y="192.5" text-anchor="end">-20%</text>
+<line class="zero" x1="66" y1="103.7" x2="974" y2="103.7"/>
+<rect class="bar-dn" x="124.5" y="103.7" width="110" height="37.3" rx="4"><title>bought at the high: median -8.8% over three years, wins 43%, n=867</title></rect>
+<text class="val" x="179.5" y="158.0" text-anchor="middle">-8.8%</text>
+<text class="axis strong" x="179.5" y="240.0" text-anchor="middle">bought at the high</text>
+<text class="axis dim" x="179.5" y="257.0" text-anchor="middle">43% win &#183; n=867</text>
+<rect class="bar-dn" x="351.5" y="103.7" width="110" height="83.2" rx="4"><title>down 5-15%: median -19.6% over three years, wins 37%, n=741</title></rect>
+<text class="val" x="406.5" y="203.8" text-anchor="middle">-19.6%</text>
+<text class="axis strong" x="406.5" y="240.0" text-anchor="middle">down 5-15%</text>
+<text class="axis dim" x="406.5" y="257.0" text-anchor="middle">37% win &#183; n=741</text>
+<rect class="bar-dn" x="578.5" y="103.7" width="110" height="89.5" rx="4"><title>down 15-30%: median -21.1% over three years, wins 36%, n=430</title></rect>
+<text class="val" x="633.5" y="210.2" text-anchor="middle">-21.1%</text>
+<text class="axis strong" x="633.5" y="240.0" text-anchor="middle">down 15-30%</text>
+<text class="axis dim" x="633.5" y="257.0" text-anchor="middle">36% win &#183; n=430</text>
+<rect class="bar-up" x="805.5" y="62.9" width="110" height="40.7" rx="4"><title>down more than 30%: median +9.6% over three years, wins 54%, n=245</title></rect>
+<text class="val" x="860.5" y="53.9" text-anchor="middle">+9.6%</text>
+<text class="axis strong" x="860.5" y="240.0" text-anchor="middle">down more than 30%</text>
+<text class="axis dim" x="860.5" y="257.0" text-anchor="middle">54% win &#183; n=245</text>
+<text class="axis" x="66" y="282">top-quintile quality only &#183; median three-year excess over same-month peers</text>
+</svg>
+
+    </div>
+    <figcaption>The effect needs a <em>deep</em> discount. &ldquo;Down 15%+&rdquo;
+    gives &minus;13.6%, essentially identical to buying quality at any price
+    (&minus;13.2%). Only beyond 30% does the median turn positive, and it is the
+    single cell here that wins more often than it loses.</figcaption>
+  </figure>
+
+  <div class="scroll">
+    <table>
+      <caption>Median three-year excess over same-month peers, with the value trap
+      for contrast.</caption>
+      <thead><tr><th>Arm</th><th>n</th><th>Median 3y</th><th>Win rate</th></tr></thead>
+      <tbody>
+        <tr class="hi"><td>top quality, down 30%+</td><td>245</td>
+          <td class="up">+9.6%</td><td class="up">54%</td></tr>
+        <tr><td>top quality, any entry</td><td>2,283</td><td>&minus;13.2%</td>
+          <td>41%</td></tr>
+        <tr><td>the whole cross-section</td><td>11,233</td><td>&minus;24.8%</td>
+          <td>35%</td></tr>
+        <tr><td><b>bottom quality, down 15%+</b></td><td>1,203</td>
+          <td class="down">&minus;44.4%</td><td class="down">36%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The last row is the value trap in one number. The same drawdown that helps a
+  good business by 9.6 points hurts a bad one by 44.4. <b>The discount is not the
+  signal; the discount is a multiplier on whatever the business already was.</b></p>
+</section>
+
+<section>
+  <h2>Two things wrong with the quality score</h2>
+  <div class="split">
+    <div class="card k-lo">
+      <h3>It disqualifies banks rather than judging them</h3>
+      <p>Citigroup, Bank of America and Baker Hughes sit in the top quintile
+      <b>0% of the time</b>, because solvency is scored as one minus liabilities
+      over assets and that is near zero for any bank by construction. The score is
+      not measuring their quality, it is excluding their business model. Real
+      sector-specific metrics are required and the store does not carry them.</p>
+    </div>
+    <div class="card k-lo">
+      <h3>Its winners are this era&rsquo;s winners</h3>
+      <p>The names most often ranked highest are GOOGL 100%, MSFT 97%, AAPL 87%,
+      UNP 84%, SPGI 83%, META 73%. A quality score that ranks mega-cap technology
+      top through 2010&ndash;2025 will look prescient whether or not it measures
+      quality, and this data cannot separate those two possibilities.</p>
+    </div>
+  </div>
+
+  <p class="note">Nor is the score the one the framework wanted. The SEC
+  company-facts store carries ten concepts. <b>Free cash flow, EBITDA, net debt,
+  interest coverage and analyst revisions are all absent</b> &mdash; so a
+  net-debt/EBITDA threshold cannot be tested, ROIC becomes ROE, and a discount to
+  appraised fair value becomes a cross-sectional book-yield rank. What is measured
+  here is a reduced proxy, and the reduction is severe enough to name.</p>
+</section>
+
+<section>
+  <h2>What this adds up to</h2>
+  <ol>
+    <li><b>A falling price is not a margin of safety.</b> Measured three separate
+    ways: deeper was worse, the sweep chose the shallowest discount offered, and
+    drawdown depth carried a t-statistic of 0.36 in the regression.</li>
+    <li><b>Over two months, rebounds are convexity and market fear.</b>
+    Volatility, beta and leverage predict; valuation and profitability do not. VIX
+    at entry is the strongest variable anywhere in the study.</li>
+    <li><b>Over three years, quality orders the median and the win rate.</b> Only
+    at the extremes of the ranking &mdash; the middle six deciles carry no
+    information.</li>
+    <li><b>The two combine, but only deep.</b> Top-quality bought more than 30%
+    down is the one positive median and the one win rate above 50%. A 15% discount
+    adds nothing.</li>
+    <li><b>The same discount destroys a bad business.</b> Bottom quality bought
+    down 15%+ returns &minus;44.4%.</li>
+  </ol>
+
+  <p>The specification that survives is narrower than the one it started from:
+  <b>rank on quality, take the top decile rather than the top half, wait for a
+  drawdown beyond 30% rather than beyond 10%, and hold for three years.</b> It is
+  also the only result in this research that grew stronger when a benchmark error
+  was corrected rather than collapsing.</p>
+</section>
+
+<footer>
+  118 US-listed names on split-adjusted daily bars, ranked monthly from October
+  2010 to August 2025; 13,866 name-months, of which 11,233 support a three-year
+  forward window. Quality is a monthly cross-sectional rank of return on equity,
+  operating margin, one minus liabilities over assets, and negative share-count
+  growth, gated on positive net income; at least three of the four components must
+  be present. Company facts come from SEC XBRL filings and are held unreadable for
+  90 days after the period they describe, because the store records a period end
+  and no filing date. Excess return is measured against an equal-weight hold of
+  exactly the names ranked that month, so the full cross-section sums to zero and
+  what remains is selection rather than survivorship. Medians are reported ahead
+  of means throughout because the excess distribution is strongly right-skewed and
+  every mean here is carried by a small number of extreme winners. Three-year
+  windows over fifteen years give roughly five independent periods, and the
+  short-horizon tests draw on events that cluster into far fewer distinct months
+  than their trade counts suggest.
+</footer>
+
+</div>
