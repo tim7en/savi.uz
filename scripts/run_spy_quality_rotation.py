@@ -375,6 +375,8 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
                 shares = min(lot.original_shares * 0.10, lot.remaining_shares)
                 proceeds = shares * float(stock_price) * (1.0 - cost_rate)
                 lot.remaining_shares -= shares
+                if lot.remaining_shares <= lot.original_shares * 1e-10:
+                    lot.remaining_shares = 0.0
                 reserve += proceeds
                 events.append(Event(
                     stamp.date().isoformat(), name, "quality_sale", proceeds,
@@ -522,6 +524,29 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
         for lot in lots if lot.exit_date is not None
     ]
     open_lots = [lot for lot in lots if lot.remaining_shares > 0.0]
+    open_positions = []
+    for ticker in sorted({lot.ticker for lot in open_lots}):
+        ticker_lots = [lot for lot in open_lots if lot.ticker == ticker]
+        final_price = prices[ticker].iloc[-1]
+        market_value = sum(lot.remaining_shares for lot in ticker_lots) * final_price
+        remaining_cost = sum(
+            lot.cost * lot.remaining_shares / lot.original_shares
+            for lot in ticker_lots
+        )
+        open_positions.append({
+            "ticker": ticker,
+            "market_value": float(market_value),
+            "remaining_allocated_cost": float(remaining_cost),
+            "unrealized_multiple": (
+                float(market_value / remaining_cost) if remaining_cost > 0.0 else None
+            ),
+            "portfolio_weight": float(market_value / frame["wealth"].iloc[-1]),
+            "open_lots": len(ticker_lots),
+            "entry_dates": sorted({
+                lot.entry_date.date().isoformat() for lot in ticker_lots
+            }),
+        })
+    open_positions.sort(key=lambda row: row["market_value"], reverse=True)
     frame.attrs["quality_lots"] = {
         "purchased_lots": len(lots),
         "closed_lots": len(closed_days),
@@ -538,6 +563,7 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
             if open_lots else None
         ),
         "open_tickers": sorted({lot.ticker for lot in open_lots}),
+        "open_positions": open_positions,
     }
     return frame, events
 
