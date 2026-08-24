@@ -23,6 +23,8 @@ def parse_args(argv=None):
                         default=Path("out/strategy/spy_20y_contributions/results.json"))
     parser.add_argument("--five-x", type=Path,
                         default=Path("out/strategy/spy_account_drawdown_5x/results.json"))
+    parser.add_argument("--grid", type=Path,
+                        default=Path("out/strategy/spy_grid_margin/results.json"))
     parser.add_argument("--out", type=Path,
                         default=Path("docs/spy-drawdown-funding.html"))
     return parser.parse_args(argv)
@@ -185,7 +187,8 @@ def outcome_row(name: str, note: str, ending: float, supplied: float,
 
 
 def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
-           twenty_year: dict | None, five_x: dict | None) -> str:
+           twenty_year: dict | None, five_x: dict | None,
+           grid: dict | None) -> str:
     sample = result["sample"]
     stats = result["results"]
     frequency = result["threshold_history"]
@@ -261,22 +264,37 @@ def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
   </tbody></table></div>
   <p class="note warning"><strong>Do not read the median as a forecast.</strong> These windows overlap heavily and every complete 20-year cohort includes the 2008 crash. The leveraged strategy beat SPY 1x in only {pct(roll['beats_spy_terminal_share'], 1)} of cohorts. Its large upside tail came with a median {pct(roll['time_underwater_share']['median'], 1)} of trading days below the prior high.</p>
 </section>"""
+    if grid:
+        grid_base = grid["scenarios"]["base_OLHC"]
+        grid_core = grid["scenarios"]["long_core_base_OLHC"]
+        grid_neutral = grid["scenarios"]["neutral_base_OLHC"]
+        grid_spy = grid["spy_x1"]
+        twenty_section += f"""
+<section class="wide">
+  <div class="eyebrow">V.B · The volatility grid</div><h2>The grid harvested movement but surrendered the trend.</h2>
+  <p class="lead">This 30-year daily-OHLC proxy used 12 levels on each side at 0.4%, a prior-known 20-session EMA center, one basis point per fill, and a 5x cap reduced to 2x at a 20% account loss and 1x at 60%. Of each $10,000 annual contribution, 70% entered trading and 30% savings.</p>
+  <div class="scroll"><table><thead><tr><th>Inventory model</th><th>Ending wealth</th><th>XIRR</th><th>Max drawdown</th><th>Median effective leverage</th><th>Time at 1x cap</th></tr></thead><tbody>
+    <tr><td><strong>SPY 1x</strong><small>all $300,000 invested</small></td><td>{money(grid_spy['terminal_wealth'])}</td><td>{pct(grid_spy['xirr'])}</td><td>{pct(grid_spy['max_drawdown_flow_adjusted'])}</td><td>1.00x</td><td>—</td></tr>
+    <tr class="featured"><td><strong>Long-core grid</strong><small>50–100% of active cap</small></td><td>{money(grid_core['terminal_wealth'])}</td><td>{pct(grid_core['xirr'])}</td><td>{pct(grid_core['max_drawdown'])}</td><td>{grid_core['median_effective_leverage']:.2f}x</td><td>{pct(grid_core['time_at_1x_cap'], 1)}</td></tr>
+    <tr><td><strong>Long-only grid</strong><small>0–100% of active cap</small></td><td>{money(grid_base['terminal_wealth'])}</td><td>{pct(grid_base['xirr'])}</td><td>{pct(grid_base['max_drawdown'])}</td><td>{grid_base['median_effective_leverage']:.2f}x</td><td>{pct(grid_base['time_at_1x_cap'], 1)}</td></tr>
+    <tr><td><strong>Neutral grid</strong><small>short above / long below average</small></td><td>{money(grid_neutral['terminal_wealth'])}</td><td>{pct(grid_neutral['xirr'])}</td><td>{pct(grid_neutral['max_drawdown'])}</td><td>{grid_neutral['median_effective_leverage']:.2f}x</td><td>{pct(grid_neutral['time_at_1x_cap'], 1)}</td></tr>
+  </tbody></table></div>
+  <p class="note warning"><strong>Daily bars are not execution data.</strong> The high/low order, queue position, partial fills and spread are unknowable over 30 years. Open-low-high-close and open-high-low-close produced similar estimates here, but neither establishes an executable expected return. The base rule reached its 1x cap in 2002 and never recovered the old performance high.</p>
+</section>"""
     if five_x:
-        literal = five_x["variants"]["literal_trading_sleeve_5_3_3_1"]
-        sensitivity = five_x["variants"]["sensitivity_trading_sleeve_5_3_2_1"]
-        combined = five_x["variants"]["literal_combined_account_5_3_3_1"]
+        literal = five_x["variants"]["literal_profit_reserve_5_3_3_1"]
+        sensitivity = five_x["variants"]["sensitivity_profit_reserve_5_3_2_1"]
         spy5 = five_x["spy_x1"]
         twenty_section += f"""
 <section class="wide">
-  <div class="eyebrow">V.B · The 5x account rule</div><h2>Five-times leverage did not produce five-times wealth.</h2>
-  <p class="lead">The literal rule starts at 5x, latches at 3x after a 10% investment-sleeve loss, remains 3x at 30%, and falls to 1x after 50%. It returns to 5x only after the sleeve regains its old high.</p>
+  <div class="eyebrow">V.C · The 5x account rule</div><h2>Five-times leverage did not produce five-times wealth.</h2>
+  <p class="lead">The literal rule starts at 5x, latches at 3x after a 10% investment-sleeve loss, remains 3x at 30%, and falls to 1x after 50%. New contributions enter the trading sleeve; only 10% of positive annual trading profit moves to savings.</p>
   <div class="scroll"><table><thead><tr><th>Rule and signal</th><th>Median wealth</th><th>Median XIRR</th><th>Median drawdown</th><th>Longest recovery</th><th>Average leverage</th><th>Beat SPY</th></tr></thead><tbody>
     <tr><td><strong>SPY 1x</strong><small>same $200,000 contributions</small></td><td>{money(spy5['terminal_wealth']['median'])}</td><td>{pct(spy5['xirr']['median'])}</td><td>{pct(spy5['max_drawdown']['median'])}</td><td>{spy5['longest_underwater_years']['median']:.1f} years</td><td>1.00x</td><td>benchmark</td></tr>
     <tr class="featured"><td><strong>5→3→3→1</strong><small>leveraged sleeve drawdown</small></td><td>{money(literal['terminal_wealth']['median'])}</td><td>{pct(literal['xirr']['median'])}</td><td>{pct(literal['max_drawdown']['median'])}</td><td>{literal['longest_underwater_years']['median']:.1f} years</td><td>{literal['mean_applied_leverage']['median']:.2f}x</td><td>{pct(literal['beats_spy_terminal_share'], 1)}</td></tr>
     <tr><td><strong>5→3→2→1</strong><small>30% rung sensitivity</small></td><td>{money(sensitivity['terminal_wealth']['median'])}</td><td>{pct(sensitivity['xirr']['median'])}</td><td>{pct(sensitivity['max_drawdown']['median'])}</td><td>{sensitivity['longest_underwater_years']['median']:.1f} years</td><td>{sensitivity['mean_applied_leverage']['median']:.2f}x</td><td>{pct(sensitivity['beats_spy_terminal_share'], 1)}</td></tr>
-    <tr><td><strong>5→3→3→1</strong><small>combined account including reserve</small></td><td>{money(combined['terminal_wealth']['median'])}</td><td>{pct(combined['xirr']['median'])}</td><td>{pct(combined['max_drawdown']['median'])}</td><td>{combined['longest_underwater_years']['median']:.1f} years</td><td>{combined['mean_applied_leverage']['median']:.2f}x</td><td>{pct(combined['beats_spy_terminal_share'], 1)}</td></tr>
   </tbody></table></div>
-  <p class="note warning"><strong>The signal definition dominates.</strong> When Treasury cash is included in the drawdown calculation, it masks trading losses and prevents new contributions from being mobilized. Using the leveraged sleeve is more responsive, but the literal rule still beat SPY in only {pct(literal['beats_spy_terminal_share'], 1)} of rolling cohorts and spent a median {literal['longest_underwater_years']['median']:.1f} years in its longest recovery.</p>
+  <p class="note warning"><strong>The higher wealth came with a much harder path.</strong> The literal rule beat SPY in {pct(literal['beats_spy_terminal_share'], 1)} of rolling cohorts, but its median maximum loss was {pct(literal['max_drawdown']['median'])} and its longest recovery lasted a median {literal['longest_underwater_years']['median']:.1f} years.</p>
 </section>"""
     return f"""<!doctype html>
 <html lang="en">
@@ -363,7 +381,9 @@ def main(argv=None) -> int:
                    if args.twenty_year.exists() else None)
     five_x = (json.loads(args.five_x.read_text(encoding="utf-8"))
               if args.five_x.exists() else None)
-    page = render(result, daily, all_at_50, twenty_year, five_x)
+    grid = (json.loads(args.grid.read_text(encoding="utf-8"))
+            if args.grid.exists() else None)
+    page = render(result, daily, all_at_50, twenty_year, five_x, grid)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(page, encoding="utf-8")
     print(f"Wrote {args.out} ({len(page):,} chars)")
