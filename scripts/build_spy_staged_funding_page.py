@@ -21,6 +21,8 @@ def parse_args(argv=None):
                         default=Path("out/strategy/spy_reverse_vault/results.json"))
     parser.add_argument("--twenty-year", type=Path,
                         default=Path("out/strategy/spy_20y_contributions/results.json"))
+    parser.add_argument("--five-x", type=Path,
+                        default=Path("out/strategy/spy_account_drawdown_5x/results.json"))
     parser.add_argument("--out", type=Path,
                         default=Path("docs/spy-drawdown-funding.html"))
     return parser.parse_args(argv)
@@ -183,7 +185,7 @@ def outcome_row(name: str, note: str, ending: float, supplied: float,
 
 
 def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
-           twenty_year: dict | None) -> str:
+           twenty_year: dict | None, five_x: dict | None) -> str:
     sample = result["sample"]
     stats = result["results"]
     frequency = result["threshold_history"]
@@ -258,6 +260,23 @@ def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
     <tr><td><strong>SPY 1x</strong><small>dividends reinvested</small></td><td>{money(spy20['terminal_wealth']['min'])}</td><td>{money(spy20['terminal_wealth']['p10'])}</td><td>{money(spy20['terminal_wealth']['median'])}</td><td>{money(spy20['terminal_wealth']['p90'])}</td><td>{money(spy20['terminal_wealth']['max'])}</td></tr>
   </tbody></table></div>
   <p class="note warning"><strong>Do not read the median as a forecast.</strong> These windows overlap heavily and every complete 20-year cohort includes the 2008 crash. The leveraged strategy beat SPY 1x in only {pct(roll['beats_spy_terminal_share'], 1)} of cohorts. Its large upside tail came with a median {pct(roll['time_underwater_share']['median'], 1)} of trading days below the prior high.</p>
+</section>"""
+    if five_x:
+        literal = five_x["variants"]["literal_trading_sleeve_5_3_3_1"]
+        sensitivity = five_x["variants"]["sensitivity_trading_sleeve_5_3_2_1"]
+        combined = five_x["variants"]["literal_combined_account_5_3_3_1"]
+        spy5 = five_x["spy_x1"]
+        twenty_section += f"""
+<section class="wide">
+  <div class="eyebrow">V.B · The 5x account rule</div><h2>Five-times leverage did not produce five-times wealth.</h2>
+  <p class="lead">The literal rule starts at 5x, latches at 3x after a 10% investment-sleeve loss, remains 3x at 30%, and falls to 1x after 50%. It returns to 5x only after the sleeve regains its old high.</p>
+  <div class="scroll"><table><thead><tr><th>Rule and signal</th><th>Median wealth</th><th>Median XIRR</th><th>Median drawdown</th><th>Longest recovery</th><th>Average leverage</th><th>Beat SPY</th></tr></thead><tbody>
+    <tr><td><strong>SPY 1x</strong><small>same $200,000 contributions</small></td><td>{money(spy5['terminal_wealth']['median'])}</td><td>{pct(spy5['xirr']['median'])}</td><td>{pct(spy5['max_drawdown']['median'])}</td><td>{spy5['longest_underwater_years']['median']:.1f} years</td><td>1.00x</td><td>benchmark</td></tr>
+    <tr class="featured"><td><strong>5→3→3→1</strong><small>leveraged sleeve drawdown</small></td><td>{money(literal['terminal_wealth']['median'])}</td><td>{pct(literal['xirr']['median'])}</td><td>{pct(literal['max_drawdown']['median'])}</td><td>{literal['longest_underwater_years']['median']:.1f} years</td><td>{literal['mean_applied_leverage']['median']:.2f}x</td><td>{pct(literal['beats_spy_terminal_share'], 1)}</td></tr>
+    <tr><td><strong>5→3→2→1</strong><small>30% rung sensitivity</small></td><td>{money(sensitivity['terminal_wealth']['median'])}</td><td>{pct(sensitivity['xirr']['median'])}</td><td>{pct(sensitivity['max_drawdown']['median'])}</td><td>{sensitivity['longest_underwater_years']['median']:.1f} years</td><td>{sensitivity['mean_applied_leverage']['median']:.2f}x</td><td>{pct(sensitivity['beats_spy_terminal_share'], 1)}</td></tr>
+    <tr><td><strong>5→3→3→1</strong><small>combined account including reserve</small></td><td>{money(combined['terminal_wealth']['median'])}</td><td>{pct(combined['xirr']['median'])}</td><td>{pct(combined['max_drawdown']['median'])}</td><td>{combined['longest_underwater_years']['median']:.1f} years</td><td>{combined['mean_applied_leverage']['median']:.2f}x</td><td>{pct(combined['beats_spy_terminal_share'], 1)}</td></tr>
+  </tbody></table></div>
+  <p class="note warning"><strong>The signal definition dominates.</strong> When Treasury cash is included in the drawdown calculation, it masks trading losses and prevents new contributions from being mobilized. Using the leveraged sleeve is more responsive, but the literal rule still beat SPY in only {pct(literal['beats_spy_terminal_share'], 1)} of rolling cohorts and spent a median {literal['longest_underwater_years']['median']:.1f} years in its longest recovery.</p>
 </section>"""
     return f"""<!doctype html>
 <html lang="en">
@@ -342,7 +361,9 @@ def main(argv=None) -> int:
                  if args.all_at_50.exists() else None)
     twenty_year = (json.loads(args.twenty_year.read_text(encoding="utf-8"))
                    if args.twenty_year.exists() else None)
-    page = render(result, daily, all_at_50, twenty_year)
+    five_x = (json.loads(args.five_x.read_text(encoding="utf-8"))
+              if args.five_x.exists() else None)
+    page = render(result, daily, all_at_50, twenty_year, five_x)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(page, encoding="utf-8")
     print(f"Wrote {args.out} ({len(page):,} chars)")
