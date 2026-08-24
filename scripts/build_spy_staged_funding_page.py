@@ -19,6 +19,8 @@ def parse_args(argv=None):
                         default=Path("out/strategy/spy_staged_funding/comparison.csv"))
     parser.add_argument("--all-at-50", type=Path,
                         default=Path("out/strategy/spy_reverse_vault/results.json"))
+    parser.add_argument("--twenty-year", type=Path,
+                        default=Path("out/strategy/spy_20y_contributions/results.json"))
     parser.add_argument("--out", type=Path,
                         default=Path("docs/spy-drawdown-funding.html"))
     return parser.parse_args(argv)
@@ -180,7 +182,8 @@ def outcome_row(name: str, note: str, ending: float, supplied: float,
       <td>{pct(drawdown)}</td></tr>"""
 
 
-def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None) -> str:
+def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
+           twenty_year: dict | None) -> str:
     sample = result["sample"]
     stats = result["results"]
     frequency = result["threshold_history"]
@@ -239,6 +242,23 @@ def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None) -> str:
 
     growth = growth_svg(daily)
     drawdown = drawdown_svg(daily, frequency)
+    twenty_section = ""
+    if twenty_year:
+        roll = twenty_year["rolling_20y"]
+        spy20 = twenty_year["spy_x1_rolling_20y"]
+        terminal = roll["terminal_wealth"]
+        recovery = roll["longest_underwater_years"]
+        twenty_section = f"""
+<section class="wide">
+  <div class="eyebrow">V · A twenty-year savings plan</div><h2>The typical result was modest; the range was enormous.</h2>
+  <p class="lead">With $833.33 contributed monthly for 20 years, total cash supplied was $200,000. Across 164 overlapping historical start months, the strategy's median ending wealth was {money(terminal['median'])}; the middle 80% ran from {money(terminal['p10'])} to {money(terminal['p90'])}.</p>
+  <div class="split"><div class="metric"><b>{recovery['median']:.1f} years</b><span>median longest continuous wait to regain a prior performance high</span></div><div class="metric"><b>{pct(roll['max_drawdown']['median'])}</b><span>median worst flow-adjusted drawdown inside a 20-year window</span></div></div>
+  <div class="scroll"><table><thead><tr><th>Plan</th><th>Worst</th><th>10th percentile</th><th>Median</th><th>90th percentile</th><th>Best</th></tr></thead><tbody>
+    <tr class="featured"><td><strong>Reverse + staged reserve</strong><small>funding cost included</small></td><td>{money(terminal['min'])}</td><td>{money(terminal['p10'])}</td><td>{money(terminal['median'])}</td><td>{money(terminal['p90'])}</td><td>{money(terminal['max'])}</td></tr>
+    <tr><td><strong>SPY 1x</strong><small>dividends reinvested</small></td><td>{money(spy20['terminal_wealth']['min'])}</td><td>{money(spy20['terminal_wealth']['p10'])}</td><td>{money(spy20['terminal_wealth']['median'])}</td><td>{money(spy20['terminal_wealth']['p90'])}</td><td>{money(spy20['terminal_wealth']['max'])}</td></tr>
+  </tbody></table></div>
+  <p class="note warning"><strong>Do not read the median as a forecast.</strong> These windows overlap heavily and every complete 20-year cohort includes the 2008 crash. The leveraged strategy beat SPY 1x in only {pct(roll['beats_spy_terminal_share'], 1)} of cohorts. Its large upside tail came with a median {pct(roll['time_underwater_share']['median'], 1)} of trading days below the prior high.</p>
+</section>"""
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -287,22 +307,24 @@ def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None) -> str:
   <p class="note warning"><strong>These are not independent samples.</strong> The −30%, −50% and −80% marks can belong to the same long drawdown. There are only three −50% observations and one −80% observation. Their forward returns describe history; they do not estimate a stable probability.</p>
 </section>
 
+{twenty_section}
+
 <section>
-  <div class="eyebrow">V · Monthly or every two months?</div><h2>The cadence was nearly irrelevant.</h2>
+  <div class="eyebrow">VI · Monthly or every two months?</div><h2>The cadence was nearly irrelevant.</h2>
   <p>Both contribution cases supplied exactly {money(monthly['total_external_contributions'])} after the initial $10,000. Monthly contributions finished at {money(monthly['terminal'])}; the equal-budget bimonthly schedule finished at {money(bimonthly['terminal'])}. Their XIRRs differed by only {abs(monthly['xirr']-bimonthly['xirr']):.2%}.</p>
   <div class="split"><div class="metric"><b>{money(monthly['ending_reserve'])}</b><span>ending reserve with $100 monthly contributions</span></div><div class="metric"><b>{pct(monthly['max_combined_drawdown_flow_adjusted'])}</b><span>flow-adjusted combined drawdown; deposits are removed from performance</span></div></div>
   <p>The useful discipline is therefore simple: contribute on a schedule into the reserve, let it earn yield, and make mobilization conditional on drawdown. Trying to optimize the difference between one and two months did not matter in this sample.</p>
 </section>
 
 <section>
-  <div class="eyebrow">VI · What the reserve cannot do</div><h2>Cash deployment is not risk reduction.</h2>
+  <div class="eyebrow">VII · What the reserve cannot do</div><h2>Cash deployment is not risk reduction.</h2>
   <p>Once reserve cash moves into the trading sleeve, it takes the same market risk as the rest of the account. The reserve improves the combined path while it remains safe and adds recovery participation after deployment, but it does not change the leverage engine that created the loss.</p>
   <ol><li>A 3× daily position can be wiped out by a one-day 33⅓% loss before costs.</li><li>The worst modeled combined drawdown remains above 84% without outside contributions.</li><li>Regular contributions improve the path partly because more capital enters later; XIRR, not the ending balance, is the fair return measure.</li><li>Materially lower volatility requires a lower leverage cap or leverage tied to account drawdown—not only more cash mobilization.</li></ol>
   <p class="note warning"><strong>The next clean test:</strong> cap the trading sleeve at 2× after a 20% account drawdown and 1× after 40–50%, then apply the same reserve ladder. That changes risk itself rather than only recapitalizing losses.</p>
 </section>
 
 <section>
-  <div class="eyebrow">VII · Audit trail</div><h2>What is in—and what is absent.</h2>
+  <div class="eyebrow">VIII · Audit trail</div><h2>What is in—and what is absent.</h2>
   <p>SPY returns use adjusted close, so distributions are reinvested. Leverage is reset daily. Borrowed exposure pays the prior-known 3-month Treasury yield plus 1% over calendar days; parked reserves earn the Treasury yield. Taxes, bid/ask spread, leveraged-product fees, tracking error and forced liquidation are absent.</p>
   <p>SPY's sponsor dates the fund to January 1993 and describes it as tracking the price and yield performance of the S&amp;P 500. The rate series is the Federal Reserve's daily DGS3MO series. Leveraged and inverse products may reset daily and compound differently over longer periods.</p>
   <p><a href="https://www.ssga.com/us/en/individual/etfs/state-street-spdr-sp-500-etf-trust-spy">State Street: SPY</a> · <a href="https://fred.stlouisfed.org/series/DGS3MO">FRED: DGS3MO</a> · <a href="https://www.finra.org/investors/insights/lowdown-leveraged-and-inverse-exchange-traded-products">FINRA: leveraged and inverse products</a></p>
@@ -318,7 +340,9 @@ def main(argv=None) -> int:
     daily = pd.read_csv(args.daily, parse_dates=["date"]).set_index("date")
     all_at_50 = (json.loads(args.all_at_50.read_text(encoding="utf-8"))
                  if args.all_at_50.exists() else None)
-    page = render(result, daily, all_at_50)
+    twenty_year = (json.loads(args.twenty_year.read_text(encoding="utf-8"))
+                   if args.twenty_year.exists() else None)
+    page = render(result, daily, all_at_50, twenty_year)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(page, encoding="utf-8")
     print(f"Wrote {args.out} ({len(page):,} chars)")

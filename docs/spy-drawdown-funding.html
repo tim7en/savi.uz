@@ -95,22 +95,34 @@
   <p class="note warning"><strong>These are not independent samples.</strong> The −30%, −50% and −80% marks can belong to the same long drawdown. There are only three −50% observations and one −80% observation. Their forward returns describe history; they do not estimate a stable probability.</p>
 </section>
 
+
+<section class="wide">
+  <div class="eyebrow">V · A twenty-year savings plan</div><h2>The typical result was modest; the range was enormous.</h2>
+  <p class="lead">With $833.33 contributed monthly for 20 years, total cash supplied was $200,000. Across 164 overlapping historical start months, the strategy's median ending wealth was $391,504; the middle 80% ran from $283,625 to $1,841,948.</p>
+  <div class="split"><div class="metric"><b>7.4 years</b><span>median longest continuous wait to regain a prior performance high</span></div><div class="metric"><b>-60.08%</b><span>median worst flow-adjusted drawdown inside a 20-year window</span></div></div>
+  <div class="scroll"><table><thead><tr><th>Plan</th><th>Worst</th><th>10th percentile</th><th>Median</th><th>90th percentile</th><th>Best</th></tr></thead><tbody>
+    <tr class="featured"><td><strong>Reverse + staged reserve</strong><small>funding cost included</small></td><td>$229,719</td><td>$283,625</td><td>$391,504</td><td>$1,841,948</td><td>$2,552,547</td></tr>
+    <tr><td><strong>SPY 1x</strong><small>dividends reinvested</small></td><td>$406,136</td><td>$431,437</td><td>$537,347</td><td>$821,783</td><td>$961,229</td></tr>
+  </tbody></table></div>
+  <p class="note warning"><strong>Do not read the median as a forecast.</strong> These windows overlap heavily and every complete 20-year cohort includes the 2008 crash. The leveraged strategy beat SPY 1x in only 46.3% of cohorts. Its large upside tail came with a median 95.2% of trading days below the prior high.</p>
+</section>
+
 <section>
-  <div class="eyebrow">V · Monthly or every two months?</div><h2>The cadence was nearly irrelevant.</h2>
+  <div class="eyebrow">VI · Monthly or every two months?</div><h2>The cadence was nearly irrelevant.</h2>
   <p>Both contribution cases supplied exactly $40,400 after the initial $10,000. Monthly contributions finished at $1,661,962; the equal-budget bimonthly schedule finished at $1,661,613. Their XIRRs differed by only 0.01%.</p>
   <div class="split"><div class="metric"><b>$49,353</b><span>ending reserve with $100 monthly contributions</span></div><div class="metric"><b>-79.42%</b><span>flow-adjusted combined drawdown; deposits are removed from performance</span></div></div>
   <p>The useful discipline is therefore simple: contribute on a schedule into the reserve, let it earn yield, and make mobilization conditional on drawdown. Trying to optimize the difference between one and two months did not matter in this sample.</p>
 </section>
 
 <section>
-  <div class="eyebrow">VI · What the reserve cannot do</div><h2>Cash deployment is not risk reduction.</h2>
+  <div class="eyebrow">VII · What the reserve cannot do</div><h2>Cash deployment is not risk reduction.</h2>
   <p>Once reserve cash moves into the trading sleeve, it takes the same market risk as the rest of the account. The reserve improves the combined path while it remains safe and adds recovery participation after deployment, but it does not change the leverage engine that created the loss.</p>
   <ol><li>A 3× daily position can be wiped out by a one-day 33⅓% loss before costs.</li><li>The worst modeled combined drawdown remains above 84% without outside contributions.</li><li>Regular contributions improve the path partly because more capital enters later; XIRR, not the ending balance, is the fair return measure.</li><li>Materially lower volatility requires a lower leverage cap or leverage tied to account drawdown—not only more cash mobilization.</li></ol>
   <p class="note warning"><strong>The next clean test:</strong> cap the trading sleeve at 2× after a 20% account drawdown and 1× after 40–50%, then apply the same reserve ladder. That changes risk itself rather than only recapitalizing losses.</p>
 </section>
 
 <section>
-  <div class="eyebrow">VII · Audit trail</div><h2>What is in—and what is absent.</h2>
+  <div class="eyebrow">VIII · Audit trail</div><h2>What is in—and what is absent.</h2>
   <p>SPY returns use adjusted close, so distributions are reinvested. Leverage is reset daily. Borrowed exposure pays the prior-known 3-month Treasury yield plus 1% over calendar days; parked reserves earn the Treasury yield. Taxes, bid/ask spread, leveraged-product fees, tracking error and forced liquidation are absent.</p>
   <p>SPY's sponsor dates the fund to January 1993 and describes it as tracking the price and yield performance of the S&amp;P 500. The rate series is the Federal Reserve's daily DGS3MO series. Leveraged and inverse products may reset daily and compound differently over longer periods.</p>
   <p><a href="https://www.ssga.com/us/en/individual/etfs/state-street-spdr-sp-500-etf-trust-spy">State Street: SPY</a> · <a href="https://fred.stlouisfed.org/series/DGS3MO">FRED: DGS3MO</a> · <a href="https://www.finra.org/investors/insights/lowdown-leveraged-and-inverse-exchange-traded-products">FINRA: leveraged and inverse products</a></p>
