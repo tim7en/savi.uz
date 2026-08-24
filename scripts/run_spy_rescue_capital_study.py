@@ -1,4 +1,4 @@
-"""Test an unlevered rescue tranche at a 60% strategy drawdown."""
+"""Test an unlevered rescue tranche at a configurable strategy drawdown."""
 
 from __future__ import annotations
 
@@ -39,6 +39,7 @@ def simulate(asset_return: pd.Series, rates: pd.Series,
              reserve_fractions: tuple[float, ...] = DEPLOY_FRACTIONS,
              rescue_multiple: float = 1.0,
              profit_sweep_frequency: str = "annual",
+             rescue_threshold: float = 0.60,
              ) -> tuple[pd.DataFrame, dict]:
     index = asset_return.index
     stamps = index.to_series()
@@ -124,7 +125,7 @@ def simulate(asset_return: pd.Series, rates: pd.Series,
             regular_reserve -= amount
             main += amount
 
-        if signal_drawdown <= -0.60 and not rescue_fired:
+        if signal_drawdown <= -rescue_threshold and not rescue_fired:
             rescue_fired = True
             # Match the capital currently left in the complete account.  Reuse
             # protected rescue savings first; only the shortfall is new capital.
@@ -271,11 +272,13 @@ def main() -> int:
         _, stats_corrected_half = simulate(
             window_return, rates.loc[start:end], contribution_schedule,
             (3.0, 2.0, 1.0), (0.30, 0.50),
-            (0.10, 0.20, 0.30), (1 / 3, 1 / 2, 1.0), 0.50, "annual")
+            (0.10, 0.20, 0.30, 0.40), (1 / 4, 1 / 3, 1 / 2, 1.0),
+            0.50, "annual", 0.50)
         _, stats_corrected_equal = simulate(
             window_return, rates.loc[start:end], contribution_schedule,
             (3.0, 2.0, 1.0), (0.30, 0.50),
-            (0.10, 0.20, 0.30), (1 / 3, 1 / 2, 1.0), 1.0, "annual")
+            (0.10, 0.20, 0.30, 0.40), (1 / 4, 1 / 3, 1 / 2, 1.0),
+            1.0, "annual", 0.50)
         records.append({"start": start.date().isoformat(),
                         "end": end.date().isoformat(), **stats})
         records_5_2_1.append({"start": start.date().isoformat(),
@@ -303,12 +306,14 @@ def main() -> int:
     path_30_corrected_half, stats_30_corrected_half = simulate(
         return_30, rates.loc[start_30:end_30], schedule,
         (3.0, 2.0, 1.0), (0.30, 0.50),
-        (0.10, 0.20, 0.30), (1 / 3, 1 / 2, 1.0), 0.50, "annual")
+        (0.10, 0.20, 0.30, 0.40), (1 / 4, 1 / 3, 1 / 2, 1.0),
+        0.50, "annual", 0.50)
     add_drawdown_dates(path_30_corrected_half, stats_30_corrected_half)
     path_30_corrected_equal, stats_30_corrected_equal = simulate(
         return_30, rates.loc[start_30:end_30], schedule,
         (3.0, 2.0, 1.0), (0.30, 0.50),
-        (0.10, 0.20, 0.30), (1 / 3, 1 / 2, 1.0), 1.0, "annual")
+        (0.10, 0.20, 0.30, 0.40), (1 / 4, 1 / 3, 1 / 2, 1.0),
+        1.0, "annual", 0.50)
     add_drawdown_dates(path_30_corrected_equal, stats_30_corrected_equal)
 
     result = {
@@ -317,9 +322,9 @@ def main() -> int:
             "new_rule": "5x at high, 2x at -20%, 1x at -50%; reset only at prior high",
             "corrected_rule": "3x at high, 2x at -30%, 1x at -50%; reset only at prior high",
             "profit_sweep": "10% of positive calendar-year trading P&L at year-end only",
-            "rescue": "at -60%, buy 1x SPY with capital equal to total account then remaining; exit entire tranche at +10% total return",
+            "rescue": "at -50%, buy 1x SPY with outside capital equal to total account then remaining; exit entire tranche at +10% total return",
             "rescue_funding": "reuse protected prior rescue proceeds, then record external top-up as a cash flow",
-            "regular_savings": "corrected variants sweep at year-end and deploy in thirds at -10/-20/-30%",
+            "regular_savings": "corrected variants sweep at year-end and deploy 25%/33%/50%/100% of remaining reserve at -10/-20/-30/-40%",
             "funding": "prior-known DGS3MO + 1% on borrowed base exposure",
         },
         "rolling_20y": summarize(pd.DataFrame(records)),
@@ -343,14 +348,14 @@ def main() -> int:
     comparison = pd.DataFrame(index=return_30.index)
     comparison.index.name = "date"
     comparison["spy_wealth"] = spy_path["spy_wealth"]
-    comparison["strategy_wealth"] = path_30_corrected_half["combined_wealth"]
+    comparison["strategy_wealth"] = path_30_corrected_equal["combined_wealth"]
     comparison["spy_flow_adjusted_nav"] = spy_path["spy_flow_adjusted_nav"]
-    comparison["strategy_flow_adjusted_nav"] = path_30_corrected_half["combined_flow_adjusted_nav"]
+    comparison["strategy_flow_adjusted_nav"] = path_30_corrected_equal["combined_flow_adjusted_nav"]
     comparison["spy_drawdown"] = spy_path["spy_drawdown"]
-    comparison["strategy_drawdown"] = path_30_corrected_half["combined_drawdown"]
-    comparison["strategy_leverage"] = path_30_corrected_half["applied_leverage"]
-    comparison["strategy_reserve"] = path_30_corrected_half["regular_reserve"]
-    comparison["strategy_rescue"] = path_30_corrected_half["rescue_active"]
+    comparison["strategy_drawdown"] = path_30_corrected_equal["combined_drawdown"]
+    comparison["strategy_leverage"] = path_30_corrected_equal["applied_leverage"]
+    comparison["strategy_reserve"] = path_30_corrected_equal["regular_reserve"]
+    comparison["strategy_rescue"] = path_30_corrected_equal["rescue_active"]
     comparison.to_csv(OUTPUT_DAILY)
     print(json.dumps({key: value for key, value in result.items()
                       if not key.endswith("cohorts")}, indent=2))
