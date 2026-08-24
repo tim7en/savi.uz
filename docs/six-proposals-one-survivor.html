@@ -162,7 +162,7 @@
 <div class="wrap">
 
 <header>
-  <p class="eyebrow">Session ledger &middot; 42 US names intraday, 143 daily &middot; 2017&ndash;2026 &middot; per-leg execution costs</p>
+  <p class="eyebrow">Session ledger &middot; 42 names intraday 2017&ndash;2026 &middot; 142 names daily 1999&ndash;2026 &middot; the S&amp;P index to 1871 &middot; per-leg execution costs</p>
   <h1>Seven Proposals, One Replication</h1>
   <p class="standfirst">Seven ideas were tested in one sitting: a
   machine-learned trade filter, a leveraged 3:1 scalp, support and resistance
@@ -1501,16 +1501,15 @@
 
 <footer>
   42 US-listed names on split-adjusted five-minute bars, 2017&ndash;2026, resampled
-  session-anchored; 143 names on split-adjusted daily bars, 1999&ndash;2026, for the
-  model's wide cut. Option features are end-of-day chain snapshots read one session
+  session-anchored; the wide daily set on split-adjusted bars, 1999&ndash;2026. Option features are end-of-day chain snapshots read one session
   in arrears. Long only except where a short arm is named. Costs are per leg &mdash; 5bp taker, 2.5bp maker &mdash; charged by the order
   type that actually fills each leg, so a strategy whose entry can only be a
   market order pays taker twice and there is no cheaper version of it. Every arm is matched to an 18% median drawdown before its return is read, and
   Sharpe bands are the 5th to 95th percentile over twenty capacity orderings, so an
   unpaired difference inside a band settles nothing. Where both stop and target are
-  touched inside one bar the order is unknowable and the stop is charged. The 42-name
+  touched inside one bar the order is unknowable and the stop is charged. Three counts appear for the daily set because each study sets its own minimum-history bar: <b>143</b> names clear the trade-level model's 400-session floor, <b>142</b> clear the 750-session floor the earnings and surprise work uses, and <b>141</b> of those also have earnings data. The tables name the count they used. The 42-name
   universe was selected with hindsight and inflates mean R by roughly four times
-  against the 143-name set; no result here has an out-of-sample split.
+  against the 143-name set. Studies that name a split &mdash; the leak-free surprise rerun, the earnings book, the pyramid and cap sweep &mdash; choose every parameter on the first half and touch the second only once frozen; the event studies and the trade-level model do not, and say so where it matters.
 </footer>
 
 </div>
