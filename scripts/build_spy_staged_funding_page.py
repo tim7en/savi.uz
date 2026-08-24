@@ -493,6 +493,61 @@ def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
 </main></body></html>"""
 
 
+def render_bridge_page(rescue: dict, rescue_daily: pd.DataFrame,
+                       five_x: dict, grid: dict) -> str:
+    """Render the current temporary-capital-bridge study without legacy rules."""
+    exact_30 = rescue["corrected_3_2_1_equal_balance_matched_30y"]
+    half_30 = rescue["corrected_3_2_1_half_balance_matched_30y"]
+    exact_20 = rescue["corrected_3_2_1_equal_balance_rolling_20y"]
+    half_20 = rescue["corrected_3_2_1_half_balance_rolling_20y"]
+    spy_30 = grid["spy_x1"]
+    spy_20 = five_x["spy_x1"]
+    cohorts = len(rescue["corrected_3_2_1_equal_balance_cohorts"])
+    plots = rescue_comparison_svg(rescue_daily)
+    open_share = 1.0 - exact_20["rescue_exit_share"]
+    return f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="A 30-year SPY study of a 3x-to-2x-to-1x drawdown rule, staged savings, and a temporary equal-capital recovery bridge.">
+<title>The Recovery Bridge - SPY drawdown study</title>
+<style>
+:root{{--bg:#eef2f0;--paper:#fbfcfb;--ink:#12201d;--muted:#52625e;--faint:#7d8b87;--line:#ccd7d3;--teal:#087f72;--teal2:#dcefea;--brick:#b84138;--brick2:#f4dedb;--amber:#c88d08;--mono:"Cascadia Mono",Consolas,monospace;--serif:Georgia,"Times New Roman",serif;--sans:system-ui,-apple-system,"Segoe UI",sans-serif}}
+@media(prefers-color-scheme:dark){{:root{{--bg:#101715;--paper:#17201e;--ink:#e7eeeb;--muted:#bcc9c5;--faint:#8b9995;--line:#2c3935;--teal:#4ab7a8;--teal2:#15302b;--brick:#e17468;--brick2:#3a211f;--amber:#efc64b}}}}
+*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:17px/1.65 var(--serif)}}main{{width:min(1060px,calc(100% - 34px));margin:auto;padding:58px 0 90px}}header{{max-width:900px;border-bottom:2px solid var(--ink);padding-bottom:34px}}.eyebrow{{font:700 11px/1.3 var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--teal)}}h1{{font:650 clamp(43px,7vw,78px)/.98 var(--serif);letter-spacing:-.04em;margin:13px 0 20px;max-width:12ch}}h1 em{{color:var(--teal)}}.standfirst{{font-size:22px;line-height:1.45;color:var(--muted);max-width:48ch;margin:0}}section{{padding-top:54px;max-width:820px}}section.wide{{max-width:none}}h2{{font:650 32px/1.15 var(--serif);letter-spacing:-.02em;margin:0 0 13px}}p{{margin:0 0 18px}}.lead{{font-size:19px;color:var(--muted);max-width:50ch}}.cards{{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);margin-top:30px}}.card{{background:var(--paper);padding:17px;border-right:1px solid var(--line)}}.card:last-child{{border:0}}.card b{{display:block;font:700 24px/1.1 var(--mono)}}.card span{{display:block;font:12px/1.4 var(--sans);color:var(--faint);margin-top:8px}}.rule{{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:24px 0}}.step{{background:var(--paper);border-top:3px solid var(--teal);padding:16px}}.step:nth-child(2){{border-color:var(--amber)}}.step:nth-child(3),.step:nth-child(4){{border-color:var(--brick)}}.step b{{display:block;font:700 19px var(--mono)}}.step span{{font:12px/1.45 var(--sans);color:var(--faint)}}.note{{background:var(--teal2);border-left:3px solid var(--teal);padding:18px 20px;color:var(--muted)}}.warning{{background:var(--brick2);border-left-color:var(--brick)}}.scroll{{overflow:auto;border:1px solid var(--line);background:var(--paper);margin-top:24px}}table{{border-collapse:collapse;width:100%;font:13px/1.4 var(--sans);font-variant-numeric:tabular-nums}}th,td{{padding:12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}}th{{font:700 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}}th:first-child,td:first-child{{text-align:left}}td:first-child{{white-space:normal;min-width:230px}}td strong,td small{{display:block}}td small{{color:var(--faint);margin-top:3px}}tr.featured td{{background:var(--teal2)}}tr:last-child td{{border-bottom:0}}figure{{margin:32px 0}}.figure-head{{display:flex;justify-content:space-between;gap:18px;padding-bottom:9px;border-bottom:1px solid var(--line);font:13px var(--sans);color:var(--muted)}}.figure-head span{{font:10px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--faint)}}.plate{{background:var(--paper);border:1px solid var(--line);padding:14px;margin-top:14px;overflow:auto}}svg{{display:block;width:100%;min-width:700px;height:auto}}.chart-axis{{font:10px var(--mono);fill:var(--faint)}}.gridline{{stroke:var(--line);stroke-width:1}}.legend{{display:flex;gap:18px;flex-wrap:wrap;padding:8px 4px 0;font:11px var(--sans);color:var(--muted)}}.legend span{{display:flex;align-items:center;gap:7px}}.legend i{{display:inline-block;width:22px;border-top:2px solid var(--swatch)}}figcaption{{font:13px/1.5 var(--sans);color:var(--faint);margin-top:9px;max-width:82ch}}.equation{{font:15px/1.7 var(--mono);background:var(--paper);border:1px solid var(--line);padding:18px;margin:22px 0}}ol{{padding-left:23px}}footer{{max-width:820px;border-top:1px solid var(--line);margin-top:58px;padding-top:20px;font:12px/1.55 var(--sans);color:var(--faint)}}a{{color:var(--teal)}}
+@media(max-width:760px){{.cards,.rule{{grid-template-columns:1fr 1fr}}.card:nth-child(2){{border-right:0}}.card{{border-bottom:1px solid var(--line)}}}}
+</style></head><body><main>
+<header><div class="eyebrow">SPY daily data - August 1996 to August 2026</div><h1>The <em>recovery bridge</em></h1><p class="standfirst">A drawdown-controlled leveraged account, a reserve exhausted before the deepest loss, and temporary outside capital that is repaid with a fixed 10% premium only after the old performance high returns.</p>
+<div class="cards"><div class="card"><b>{money(exact_30['terminal_wealth'])}</b><span>ending strategy wealth after all bridge repayments</span></div><div class="card"><b>{pct(exact_30['xirr'])}</b><span>XIRR including bridge deposits and repayments</span></div><div class="card"><b>{pct(exact_30['max_drawdown'])}</b><span>worst flow-adjusted account drawdown</span></div><div class="card"><b>{money(exact_30['total_rescue_repaid'])}</b><span>principal plus premium returned outside</span></div></div></header>
+
+<section><div class="eyebrow">I - The exact rule</div><h2>Capital enters temporarily, then leaves.</h2><p class="lead">Scheduled contributions remain $10,000 per year. The bridge is separate: it is supplied at a crisis threshold and removed from the strategy after recovery.</p>
+<div class="rule"><div class="step"><b>3x</b><span>At the high and above a 30% performance drawdown.</span></div><div class="step"><b>2x at -30%</b><span>Leverage latches lower until the old high is recovered.</span></div><div class="step"><b>1x at -50%</b><span>The account reaches its lowest leverage before bridge capital enters.</span></div><div class="step"><b>Reset at high</b><span>Repay the bridge, then make 3x available for the next episode.</span></div></div>
+<ol><li>At each profitable year-end, move 10% of that calendar year's net trading profit to the Treasury reserve.</li><li>Deploy 25%, one-third, one-half and then all remaining reserve at -10%, -20%, -30% and -40%.</li><li>At -50%, contribute outside capital equal to the total account then remaining.</li><li>Keep that bridge invested at 1x until the strategy performance NAV regains its pre-drawdown high.</li><li>Withdraw exactly 110% of bridge principal. Any rescue-tranche gain above that amount remains in the strategy.</li></ol>
+<p class="note"><strong>Interest convention:</strong> the premium is a fixed 10% for the entire recovery spell, not 10% per year. Deposit and repayment are both dated external cash flows in XIRR.</p></section>
+
+<section class="wide"><div class="eyebrow">II - Matched thirty-year result</div><h2>The bridge improved return, but required real liquidity.</h2>
+<div class="scroll"><table><thead><tr><th>Plan</th><th>Ending wealth</th><th>XIRR</th><th>Max drawdown</th><th>Bridge deposits</th><th>Bridge repayments</th></tr></thead><tbody>
+<tr><td><strong>SPY 1x</strong><small>$10,000 yearly; dividends reinvested</small></td><td>{money(spy_30['terminal_wealth'])}</td><td>{pct(spy_30['xirr'])}</td><td>{pct(spy_30['max_drawdown_flow_adjusted'])}</td><td>-</td><td>-</td></tr>
+<tr><td><strong>Half-balance bridge</strong><small>sensitivity test; otherwise identical</small></td><td>{money(half_30['terminal_wealth'])}</td><td>{pct(half_30['xirr'])}</td><td>{pct(half_30['max_drawdown'])}</td><td>{money(half_30['total_rescue_external'])}</td><td>{money(half_30['total_rescue_repaid'])}</td></tr>
+<tr class="featured"><td><strong>Equal-balance recovery bridge</strong><small>the requested rule; two completed bridge episodes</small></td><td>{money(exact_30['terminal_wealth'])}</td><td>{pct(exact_30['xirr'])}</td><td>{pct(exact_30['max_drawdown'])}</td><td>{money(exact_30['total_rescue_external'])}</td><td>{money(exact_30['total_rescue_repaid'])}</td></tr>
+</tbody></table></div>
+<div class="equation">Bridge deposits: {money(exact_30['total_rescue_external'])}<br>Returned outside: {money(exact_30['total_rescue_repaid'])}<br>Rescue-tranche gain retained inside: {money(exact_30['total_rescue_profit_retained'])}<br>Scheduled long-term contributions: {money(exact_30['total_scheduled_contributions'])}</div>
+<p>The account finished with {money(exact_30['terminal_wealth'])} still inside after paying {money(exact_30['total_rescue_repaid'])} back outside. Those repayments are not included in ending account wealth, but they are included in the {pct(exact_30['xirr'])} money-weighted return.</p>
+{plots}</section>
+
+<section class="wide"><div class="eyebrow">III - Rolling twenty-year evidence</div><h2>Recovery timing remains the central risk.</h2><p class="lead">The table summarizes {cohorts} overlapping historical start months. These are scenario windows, not independent observations or a forecast.</p>
+<div class="scroll"><table><thead><tr><th>Plan</th><th>Median wealth</th><th>Median XIRR</th><th>Median drawdown</th><th>Median bridge deposit</th><th>Longest recovery</th></tr></thead><tbody>
+<tr><td><strong>SPY 1x</strong></td><td>{money(spy_20['terminal_wealth']['median'])}</td><td>{pct(spy_20['xirr']['median'])}</td><td>{pct(spy_20['max_drawdown']['median'])}</td><td>-</td><td>{spy_20['longest_underwater_years']['median']:.1f} years</td></tr>
+<tr><td><strong>Half-balance bridge</strong></td><td>{money(half_20['terminal_wealth']['median'])}</td><td>{pct(half_20['xirr']['median'])}</td><td>{pct(half_20['max_drawdown']['median'])}</td><td>{money(half_20['total_rescue_external']['median'])}</td><td>{half_20['longest_underwater_years']['median']:.1f} years</td></tr>
+<tr class="featured"><td><strong>Equal-balance bridge</strong></td><td>{money(exact_20['terminal_wealth']['median'])}</td><td>{pct(exact_20['xirr']['median'])}</td><td>{pct(exact_20['max_drawdown']['median'])}</td><td>{money(exact_20['total_rescue_external']['median'])}</td><td>{exact_20['longest_underwater_years']['median']:.1f} years</td></tr>
+</tbody></table></div>
+<p class="note warning"><strong>An unfinished bridge is not rare.</strong> In {pct(open_share, 1)} of rolling 20-year windows, at least one bridge had not yet reached the old performance high and been repaid by the ending date. The 90th-percentile total bridge requirement was {money(exact_20['total_rescue_external']['p90'])}; the observed maximum was {money(exact_20['total_rescue_external']['max'])}.</p></section>
+
+<section><div class="eyebrow">IV - What creates the excess return</div><h2>The bridge buys the recovery at 1x.</h2><p>The fixed premium matters. Bridge capital enters after a 50% strategy loss and participates in the recovery. The provider receives principal plus 10%, while the strategy retains market gains above that hurdle. In the matched period, retained rescue gains totaled {money(exact_30['total_rescue_profit_retained'])}.</p><p>This is economically attractive only if equal capital is genuinely available during crises and a fixed 10% total repayment is an honest opportunity cost. A 10% annual or compounded charge would be a different strategy and should be modeled separately.</p><p class="note warning">The leverage model does not simulate broker liquidation, changing house-margin requirements, taxes, spreads, tracking error or the impossibility of rebalancing through a market gap. A backtest reaching a threshold does not prove the position could survive to execute it.</p></section>
+
+<section><div class="eyebrow">V - Audit trail</div><h2>Inputs and accounting.</h2><p>SPY uses adjusted daily prices, so distributions are reinvested. Borrowed exposure pays the prior-known 3-month Treasury yield plus 1% over actual calendar days. The reserve earns the Treasury rate. Scheduled contributions and bridge deposits are negative XIRR cash flows; bridge repayments and terminal account wealth are positive cash flows. Drawdowns use a flow-adjusted combined NAV, so deposits cannot erase investment losses.</p><p><a href="https://www.ssga.com/us/en/individual/etfs/state-street-spdr-sp-500-etf-trust-spy">State Street: SPY</a> - <a href="https://fred.stlouisfed.org/series/DGS3MO">FRED: DGS3MO</a> - <a href="https://www.finra.org/investors/insights/margin-calls">FINRA: margin calls</a></p></section>
+<footer>Historical simulation, not investment advice. Generated by <code>scripts/run_spy_rescue_capital_study.py</code> and <code>scripts/build_spy_staged_funding_page.py</code>. Results use daily observations through August 21, 2026.</footer>
+</main></body></html>"""
+
+
 def main(argv=None) -> int:
     args = parse_args(argv)
     result = json.loads(args.result.read_text(encoding="utf-8"))
@@ -509,8 +564,11 @@ def main(argv=None) -> int:
               if args.rescue.exists() else None)
     rescue_daily = (pd.read_csv(args.rescue_daily, parse_dates=["date"]).set_index("date")
                     if args.rescue_daily.exists() else None)
-    page = render(result, daily, all_at_50, twenty_year, five_x, grid, rescue,
-                  rescue_daily)
+    if rescue is not None and rescue_daily is not None and five_x is not None and grid is not None:
+        page = render_bridge_page(rescue, rescue_daily, five_x, grid)
+    else:
+        page = render(result, daily, all_at_50, twenty_year, five_x, grid, rescue,
+                      rescue_daily)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(page, encoding="utf-8")
     print(f"Wrote {args.out} ({len(page):,} chars)")
