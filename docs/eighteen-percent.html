@@ -158,17 +158,21 @@
      letter-spacing:.1em;text-transform:uppercase;
      color:var(--ink-3);margin:0 0 7px;font-weight:600}
   .bar-mid{fill:var(--ink-3);opacity:.55}
+  .band{fill:var(--ink-3);opacity:.17}
+  .nullmed{stroke:var(--ink-3);stroke-width:1.6;stroke-dasharray:3 3}
 </style>
 
 <div class="wrap">
 
 <header>
-  <p class="eyebrow">Drawdown rule &middot; 18 equity ETFs &middot; 1999&ndash;2026 &middot; financing charged, fills off the close</p>
+  <p class="eyebrow">Drawdown rule &middot; 18 ETFs, 1999&ndash;2026 &middot; 134 companies, 2010&ndash;2026 &middot; financing charged, fills off the close</p>
   <h1>Eighteen Percent</h1>
   <p class="standfirst">A discount below eighteen percent buys nothing: the same
   forward return, the same downside, just later. Above it the arithmetic changes.
-  This is the rule that follows from that, what it risks, what it returns at each
-  risk budget &mdash; and why it still does not beat holding the index.</p>
+  That is true of index funds. Carried to a hundred and thirty-four individual
+  companies it stops being true &mdash; the depth threshold does nothing, and the
+  gate meant to keep you out of expensive quality turns out to have been keeping
+  you out of the better half.</p>
 
   <div class="tallies">
     <div class="tally"><b class="t-hi">1.04&rarr;2.23</b>
@@ -176,9 +180,9 @@
     <div class="tally"><b class="t-lo">&minus;69.6%</b>
       <span>worst mark after entry at the 1st percentile</span></div>
     <div class="tally"><b class="t-mid">+2.5%</b>
-      <span>CAGR at 3% risk per trade, against the index&rsquo;s +6.2%</span></div>
-    <div class="tally"><b class="t-lo">10%</b>
-      <span>median gross exposure &mdash; it is mostly in cash</span></div>
+      <span>ETF CAGR at 3% risk, against the index&rsquo;s +6.2%</span></div>
+    <div class="tally"><b class="t-lo">28th</b>
+      <span>percentile of its own null: where the cheap gate landed</span></div>
   </div>
 </header>
 
@@ -450,6 +454,181 @@
   all qualify at once. The two-position median hides that in 2008 and 2020 every
   slot held the same trade. A portfolio limit is not optional here, and this
   simulation does not impose one.</p>
+</section>
+
+<section>
+  <h2>The whole market, and the price you pay</h2>
+  <p class="lede">The ETF rule failed on frequency, so the fix was obvious: run
+  it on every company instead of eighteen funds. That works &mdash; 964 crossings
+  instead of 81, gross exposure of 19&ndash;57% instead of 3&ndash;10%. Then two
+  gates go in front of it, quality because a company need not recover the way an
+  index does, and price because a quality screen with no valuation cut just buys
+  whatever has already been bid up.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>134 companies, October 2010 to August 2026. SEC facts held
+      unreadable for 90 days after period end. Gates are cuts against the
+      universe median that month.</caption>
+      <thead>
+        <tr><th>Arm</th><th>Signals</th><th>CAGR at 3% risk</th>
+          <th>Max drawdown</th><th>Gross median</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>drawdown only</td><td>951</td><td class="up">+8.3%</td>
+          <td class="down">&minus;35.1%</td><td>57%</td></tr>
+        <tr><td>+ quality</td><td>177</td><td>+6.2%</td>
+          <td>&minus;16.0%</td><td>27%</td></tr>
+        <tr><td>+ quality + cheap</td><td>125</td><td>+4.6%</td>
+          <td>&minus;13.8%</td><td>23%</td></tr>
+        <tr><td>+ quality + expensive</td><td>52</td><td>+2.1%</td>
+          <td>&minus;4.8%</td><td>8%</td></tr>
+        <tr><td>5% pullback + quality + cheap</td><td>339</td><td>+4.5%</td>
+          <td>&minus;11.0%</td><td>23%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Read straight down that column and the gates look like they are destroying
+  value. They are not &mdash; they are shrinking the book. An arm passing 52
+  signals holds fewer positions than one passing 951 and earns less for that
+  reason alone, which says nothing about whether it picked better names. So every
+  arm is re-run with its risk budget solved to put all of them at the same 25%
+  gross exposure, and each is set against the only null that matters: the same
+  number of entries drawn at random from the drawdown pool.</p>
+
+  <figure>
+    <div class="plate">
+<svg viewBox="0 0 1000 340" role="img" aria-label="Return at matched exposure against a random-selection null">
+<line class="gridline" x1="250.0" y1="38" x2="250.0" y2="272"/>
+<text class="axis" x="250.0" y="290" text-anchor="middle">+0%</text>
+<line class="gridline" x1="359.6" y1="38" x2="359.6" y2="272"/>
+<text class="axis" x="359.6" y="290" text-anchor="middle">+2%</text>
+<line class="gridline" x1="469.1" y1="38" x2="469.1" y2="272"/>
+<text class="axis" x="469.1" y="290" text-anchor="middle">+4%</text>
+<line class="gridline" x1="578.7" y1="38" x2="578.7" y2="272"/>
+<text class="axis" x="578.7" y="290" text-anchor="middle">+6%</text>
+<line class="gridline" x1="688.3" y1="38" x2="688.3" y2="272"/>
+<text class="axis" x="688.3" y="290" text-anchor="middle">+8%</text>
+<line class="gridline" x1="797.8" y1="38" x2="797.8" y2="272"/>
+<text class="axis" x="797.8" y="290" text-anchor="middle">+10%</text>
+<line class="mark-book" x1="830.7" y1="32" x2="830.7" y2="272"/>
+<text class="lab-book" x="830.7" y="26" text-anchor="middle">DIA held +10.6%</text>
+<rect class="bar-up" x="250.0" y="52.2" width="208.2" height="11.5" rx="3"><title>drawdown only: +3.8% a year at 25% gross exposure, 951 signals</title></rect>
+<text class="axis strong" x="234" y="62.0" text-anchor="end">drawdown only</text>
+<text class="axis" x="234" y="76.0" text-anchor="end">951 signals</text>
+<text class="val" x="467.2" y="62.0">+3.8%</text>
+<rect class="band" x="425.3" y="88.0" width="153.4" height="28.0" rx="3"><title>+ quality: random draws of 177 entries land between +3.2% and +6.0% nine times in ten</title></rect>
+<line class="nullmed" x1="496.5" y1="88.0" x2="496.5" y2="116.0"/>
+<rect class="bar-up" x="250.0" y="96.2" width="317.7" height="11.5" rx="3"><title>+ quality: +5.8% a year at 25% gross exposure, 177 signals</title></rect>
+<text class="axis strong" x="234" y="106.0" text-anchor="end">+ quality</text>
+<text class="axis" x="234" y="120.0" text-anchor="end">177 signals</text>
+<text class="val" x="576.7" y="106.0">+5.8%</text>
+<rect class="band" x="452.7" y="132.0" width="230.1" height="28.0" rx="3"><title>+ quality + cheap: random draws of 125 entries land between +3.7% and +7.9% nine times in ten</title></rect>
+<line class="nullmed" x1="567.7" y1="132.0" x2="567.7" y2="160.0"/>
+<rect class="bar-dn" x="250.0" y="140.2" width="273.9" height="11.5" rx="3"><title>+ quality + cheap: +5.0% a year at 25% gross exposure, 125 signals</title></rect>
+<text class="axis strong" x="234" y="150.0" text-anchor="end">+ quality + cheap</text>
+<text class="axis" x="234" y="164.0" text-anchor="end">125 signals</text>
+<text class="val" x="532.9" y="150.0">+5.0%</text>
+<rect class="band" x="414.3" y="176.0" width="372.5" height="28.0" rx="3"><title>+ quality + expensive: random draws of 52 entries land between +3.0% and +9.8% nine times in ten</title></rect>
+<line class="nullmed" x1="584.2" y1="176.0" x2="584.2" y2="204.0"/>
+<rect class="bar-up" x="250.0" y="184.2" width="367.0" height="11.5" rx="3"><title>+ quality + expensive: +6.7% a year at 25% gross exposure, 52 signals</title></rect>
+<text class="axis strong" x="234" y="194.0" text-anchor="end">+ quality + expensive</text>
+<text class="axis" x="234" y="208.0" text-anchor="end">52 signals</text>
+<text class="val" x="626.0" y="194.0">+6.7%</text>
+<rect class="bar-up" x="250.0" y="228.2" width="268.4" height="11.5" rx="3"><title>5% pullback + quality + cheap: +4.9% a year at 25% gross exposure, 339 signals</title></rect>
+<text class="axis strong" x="234" y="238.0" text-anchor="end">5% pullback + quality + cheap</text>
+<text class="axis" x="234" y="252.0" text-anchor="end">339 signals</text>
+<text class="val" x="527.4" y="238.0">+4.9%</text>
+<text class="axis" x="234" y="330" text-anchor="end">shaded: 90% of random draws</text>
+<text class="axis" x="250" y="330">annual return with every arm scaled to the same 25% gross exposure</text>
+</svg>
+
+    </div>
+    <figcaption>Bars are the annual return at matched exposure; the shaded band
+    is where nine out of ten random draws of the same size landed. A bar inside
+    its own band has selected nothing.</figcaption>
+  </figure>
+
+  <div class="split">
+    <div class="card k-lo">
+      <h3>The valuation gate fails, and fails backwards</h3>
+      <p>Cheap quality names returned <b>+5.0%</b> at matched exposure &mdash;
+      the <b>28th percentile</b> of its own random null. Picking the cheap half
+      did worse than picking at random from the same drawdowns. The expensive
+      half returned <b>+6.7%</b>.</p>
+      <p>The premise was to avoid overpaying for quality. On this universe and
+      this window, overpaying was the better half of the trade.</p>
+    </div>
+    <div class="card k-mid">
+      <h3>Quality is the only gate pointing the right way</h3>
+      <p>+5.8% against a null median of +4.5%, at the 88th percentile. That is
+      suggestive and it is not significant &mdash; one in eight random draws beat
+      it. It is the same direction the three-year quality work found, which is
+      the only reason to keep it.</p>
+    </div>
+  </div>
+
+  <div class="card k-lo">
+    <h3>And the eighteen percent itself does nothing here</h3>
+    <p>The identical gates run at a <b>5% pullback</b> return +4.9% at matched
+    exposure against the 18% version&rsquo;s +5.0%. On index funds the depth
+    threshold was the entire finding. On single companies it is worth nothing,
+    and the reason is not mysterious: an index is arithmetically obliged to
+    recover if its constituents do, and a company is obliged to nothing. The
+    tail says the same thing &mdash; the fifth-percentile further fall is
+    <b>&minus;79%</b> here against &minus;60% for ETFs, and the first percentile
+    is &minus;97%, which is a company going to zero.</p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <caption>Matched at 25% gross exposure, against the random-draw null.</caption>
+      <thead>
+        <tr><th>Arm</th><th>Signals</th><th>Risk solved</th><th>CAGR</th>
+          <th>Null median</th><th>90% band</th><th>Percentile</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>drawdown only</td><td>951</td><td>1.32%</td><td>+3.8%</td>
+          <td class="dim">&mdash;</td><td class="dim">the pool itself</td>
+          <td class="dim">&mdash;</td></tr>
+        <tr class="hi"><td>+ quality</td><td>177</td><td>2.82%</td>
+          <td class="up">+5.8%</td><td>+4.5%</td>
+          <td>+3.2% to +6.0%</td><td>88th</td></tr>
+        <tr><td>+ quality + cheap</td><td>125</td><td>3.29%</td><td>+5.0%</td>
+          <td>+5.8%</td><td>+3.7% to +7.9%</td><td class="down">28th</td></tr>
+        <tr><td>+ quality + expensive</td><td>52</td><td>9.87%</td><td>+6.7%</td>
+          <td>+6.1%</td><td>+3.0% to +9.8%</td><td>72nd</td></tr>
+        <tr><td>5% pullback + quality + cheap</td><td>339</td><td>3.29%</td>
+          <td>+4.9%</td><td class="dim">&mdash;</td>
+          <td class="dim">&mdash;</td><td class="dim">&mdash;</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="note">Two things that column of percentiles cannot carry. The
+  52-signal arm has a null band nine points wide, so its 72nd percentile is
+  noise, not a result &mdash; the honest reading is that neither valuation
+  direction separates from random, and cheap is the worse of the two.
+  And matching exposure across arms of very different signal counts makes the
+  sparse ones hugely concentrated: the expensive arm reaches 25% gross by holding
+  about two positions at 12.5% of the book each, which is not a risk profile
+  anyone should run even though its measured drawdown looks tame.</p>
+
+  <div class="card k-lo">
+    <h3>Nothing here beats owning the market</h3>
+    <p>Equal-weight buy-and-hold of the same 134 names returned <b>+18.1%</b> a
+    year over the window, 14.07&times; money. That figure is inflated &mdash; it
+    is a present-day membership list, so every name in it survived to be listed,
+    and DIA over the identical window returned +10.6%. Take the honest benchmark:
+    the best arm at matched exposure is +6.7%, the best at any exposure is +8.3%.
+    Every version loses.</p>
+    <p>The window matters too, and it cuts against the valuation result rather
+    than for it. October 2010 to August 2026 is precisely the stretch in which
+    expensive growth beat cheap value, so the failure of the cheap gate is at
+    least partly a regime and not a law. It is one path, and it is the path we
+    have.</p>
+  </div>
 </section>
 
 <section>
