@@ -159,6 +159,9 @@
      color:var(--ink-3);margin:0 0 7px;font-weight:600}
   .bar-mid{fill:var(--ink-3);opacity:.55}
   .band{fill:var(--ink-3);opacity:.17}
+  .dot-base{fill:var(--c1);stroke:var(--surface);stroke-width:2}
+  .dot-plain{fill:var(--ink-3);opacity:.75}
+  .dot-ruin{fill:var(--mid)}
   .nullmed{stroke:var(--ink-3);stroke-width:1.6;stroke-dasharray:3 3}
 </style>
 
@@ -174,7 +177,8 @@
   gate meant to keep you out of expensive quality turns out to have been keeping
   you out of the better half. And for a levered book the whole framing is wrong:
   what stops leverage paying is not the borrowing cost, which four entries in
-  five already beat, but being closed out before the recovery arrives.</p>
+  five already beat, but being closed out before the recovery arrives &mdash; and
+  levering deliberately into the fall loses to levering into the top.</p>
 
   <div class="tallies">
     <div class="tally"><b class="t-hi">1.04&rarr;2.23</b>
@@ -794,6 +798,205 @@
 </section>
 
 <section>
+  <h2>Holding always, and levering only into the fall</h2>
+  <p class="lede">A different animal from every rule above: no entry at all. The
+  book is invested the whole time and the only decision is how much leverage to
+  carry as a function of how far the index sits below its own high. Hold at
+  1&times;, step to 3&times; at 30% down. It is a martingale, and martingales fail
+  in a specific way, so survival gets measured before return does.</p>
+
+  <p>One thing has to be separated out first, because it is free and usually gets
+  credited to the strategy. <b>A fixed-notional hold levers itself.</b> Buy one
+  unit and never trade: as price falls, equity shrinks faster than notional and
+  leverage climbs on its own. Half of what &ldquo;ratchet into the drawdown&rdquo;
+  means is just &ldquo;do not rebalance&rdquo;, so that arm runs separately.</p>
+
+  <figure>
+    <div class="plate">
+<svg viewBox="0 0 1000 430" role="img" aria-label="Return against drawdown for every leverage schedule">
+<line class="gridline" x1="68" y1="304.0" x2="960" y2="304.0"/>
+<text class="axis" x="58" y="308.0" text-anchor="end">+7%</text>
+<line class="gridline" x1="68" y1="254.0" x2="960" y2="254.0"/>
+<text class="axis" x="58" y="258.0" text-anchor="end">+8%</text>
+<line class="gridline" x1="68" y1="204.0" x2="960" y2="204.0"/>
+<text class="axis" x="58" y="208.0" text-anchor="end">+9%</text>
+<line class="gridline" x1="68" y1="154.0" x2="960" y2="154.0"/>
+<text class="axis" x="58" y="158.0" text-anchor="end">+10%</text>
+<line class="gridline" x1="68" y1="104.0" x2="960" y2="104.0"/>
+<text class="axis" x="58" y="108.0" text-anchor="end">+11%</text>
+<line class="gridline" x1="68" y1="54.0" x2="960" y2="54.0"/>
+<text class="axis" x="58" y="58.0" text-anchor="end">+12%</text>
+<line class="gridline" x1="138.8" y1="26" x2="138.8" y2="358"/>
+<text class="axis" x="138.8" y="376" text-anchor="middle">-90%</text>
+<line class="gridline" x1="280.4" y1="26" x2="280.4" y2="358"/>
+<text class="axis" x="280.4" y="376" text-anchor="middle">-80%</text>
+<line class="gridline" x1="422.0" y1="26" x2="422.0" y2="358"/>
+<text class="axis" x="422.0" y="376" text-anchor="middle">-70%</text>
+<line class="gridline" x1="563.6" y1="26" x2="563.6" y2="358"/>
+<text class="axis" x="563.6" y="376" text-anchor="middle">-60%</text>
+<line class="gridline" x1="705.1" y1="26" x2="705.1" y2="358"/>
+<text class="axis" x="705.1" y="376" text-anchor="middle">-50%</text>
+<line class="gridline" x1="846.7" y1="26" x2="846.7" y2="358"/>
+<text class="axis" x="846.7" y="376" text-anchor="middle">-40%</text>
+<rect class="band" x="848.1" y="34.0" width="111.9" height="130.0"/>
+<text class="lab-drift" x="856.1" y="50">nothing lands here: more return AND less drawdown</text>
+<line class="mark-drift" x1="848.1" y1="26" x2="848.1" y2="358"/>
+<line class="mark-drift" x1="68" y1="164.0" x2="960" y2="164.0"/>
+<circle class="dot-base" cx="848.1" cy="164.0" r="9"><title>hold 1x: median +9.8% a year, median worst drawdown -39.9%</title></circle>
+<text class="pin-lab" x="848.1" y="150.0" text-anchor="middle">hold 1x</text>
+<circle class="dot-plain" cx="396.5" cy="194.0" r="6.5"><title>flat 2x: median +9.2% a year, median worst drawdown -71.8%</title></circle>
+<text class="pin-lab" x="396.5" y="214.0" text-anchor="middle">flat 2x</text>
+<circle class="dot-plain" cx="141.6" cy="319.0" r="6.5"><title>flat 3x: median +6.7% a year, median worst drawdown -89.8%</title></circle>
+<text class="pin-lab" x="141.6" y="339.0" text-anchor="middle">flat 3x</text>
+<circle class="dot-plain" cx="648.5" cy="184.0" r="6.5"><title>gentle 1>1.5>2: median +9.4% a year, median worst drawdown -54.0%</title></circle>
+<text class="pin-lab" x="648.5" y="204.0" text-anchor="middle">gentle 1>1.5>2</text>
+<circle class="dot-plain" cx="379.5" cy="244.0" r="6.5"><title>classic 1>2>3: median +8.2% a year, median worst drawdown -73.0%</title></circle>
+<text class="pin-lab" x="379.5" y="264.0" text-anchor="middle">classic 1>2>3</text>
+<circle class="dot-plain" cx="572.1" cy="154.0" r="6.5"><title>late 1>2>3: median +10.0% a year, median worst drawdown -59.4%</title></circle>
+<text class="pin-lab" x="572.1" y="140.0" text-anchor="middle">late 1>2>3</text>
+<circle class="dot-plain" cx="608.9" cy="194.0" r="6.5"><title>1x>3x at -30%: median +9.2% a year, median worst drawdown -56.8%</title></circle>
+<text class="pin-lab" x="608.9" y="214.0" text-anchor="middle">1x>3x at -30%</text>
+<circle class="dot-plain" cx="253.5" cy="224.0" r="6.5"><title>hot 2>3>4: median +8.6% a year, median worst drawdown -81.9%</title></circle>
+<text class="pin-lab" x="253.5" y="244.0" text-anchor="middle">hot 2>3>4</text>
+<circle class="dot-over" cx="307.3" cy="74.0" r="6.5"><title>INVERSE 3>2>1: median +11.6% a year, median worst drawdown -78.1%</title></circle>
+<text class="pin-lab" x="307.3" y="60.0" text-anchor="middle">INVERSE 3>2>1</text>
+<circle class="dot-ruin" cx="494.2" cy="114.0" r="6.5"><title>no rebalance 2x: median +10.8% a year, median worst drawdown -64.9%</title></circle>
+<text class="pin-lab" x="494.2" y="100.0" text-anchor="middle">no rebalance 2x</text>
+<text class="axis" x="68" y="420">median worst drawdown across 124 overlapping 30-year windows &#8594;</text>
+<text class="axis strong" x="58" y="20" text-anchor="end">CAGR</text>
+</svg>
+
+    </div>
+    <figcaption>Every schedule over 124 overlapping 30-year windows,
+    1871&ndash;2024, on nominal total return with financing at the actual short
+    rate plus 1.5%. The shaded quadrant is the only one that matters &mdash; more
+    return <em>and</em> less drawdown than simply holding. It is empty.</figcaption>
+  </figure>
+
+  <div class="scroll">
+    <table>
+      <caption>Median across 124 overlapping 30-year windows. &ldquo;Beat 1&times;&rdquo;
+      counts windows where the schedule returned more than holding.</caption>
+      <thead>
+        <tr><th>Schedule</th><th>Median CAGR</th><th>Worst window</th>
+          <th>Median max DD</th><th>Ruined</th><th>Beat 1&times;</th></tr>
+      </thead>
+      <tbody>
+        <tr class="hi"><td><b>hold 1&times;</b></td><td class="up">+9.8%</td>
+          <td class="up">+4.8%</td><td class="up">&minus;39.9%</td>
+          <td>0/124</td><td class="dim">&mdash;</td></tr>
+        <tr><td>flat 2&times;</td><td>+9.2%</td><td>&minus;0.4%</td>
+          <td>&minus;71.8%</td><td>0/124</td><td>60/124</td></tr>
+        <tr><td>flat 3&times;</td><td class="down">+6.7%</td><td>&minus;8.9%</td>
+          <td>&minus;89.8%</td><td>0/124</td><td>45/124</td></tr>
+        <tr><td>gentle 1&rarr;1.5&rarr;2</td><td>+9.4%</td><td>&minus;0.6%</td>
+          <td>&minus;54.0%</td><td>0/124</td><td>53/124</td></tr>
+        <tr><td>classic 1&rarr;2&rarr;3</td><td>+8.2%</td><td>&minus;9.6%</td>
+          <td>&minus;73.0%</td><td>0/124</td><td>31/124</td></tr>
+        <tr><td>late 1&rarr;2&rarr;3</td><td>+10.0%</td><td>&minus;6.4%</td>
+          <td>&minus;59.4%</td><td>0/124</td><td>90/124</td></tr>
+        <tr><td>1&times;&rarr;3&times; at &minus;30%</td><td>+9.2%</td>
+          <td>&minus;7.3%</td><td>&minus;56.8%</td><td>0/124</td><td>34/124</td></tr>
+        <tr><td>no rebalance 2&times;</td><td>+10.8%</td>
+          <td class="down">&minus;100.0%</td><td>&minus;64.9%</td>
+          <td class="down">10/124</td><td>112/124</td></tr>
+        <tr><td><b>INVERSE 3&rarr;2&rarr;1</b></td><td class="up">+11.6%</td>
+          <td class="up">+1.9%</td><td>&minus;78.1%</td><td>0/124</td>
+          <td class="up">85/124</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card k-lo">
+    <h3>The reversal control settles it: the ratchet runs backwards</h3>
+    <p>The last row is the same idea inverted &mdash; lever <em>up</em> near highs
+    and <em>down</em> into drawdowns. It returns <b>+11.6%</b> against the best
+    ratchet&rsquo;s +10.0% and holding&rsquo;s +9.8%, and its worst window stays
+    positive. Over 154 years, being levered at the top beat being levered at the
+    bottom.</p>
+    <p>The reason is not subtle. The market spends most of its time at or near a
+    high and trends up from there; drawdowns are where volatility is worst, and
+    volatility drag scales with the square of leverage. Buying the fall with
+    borrowed money puts maximum leverage into the maximum-drag regime.</p>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <caption>Where to put the deep rung, and how much to take there. Left: a
+      1&times;&rarr;3&times; ratchet, sweeping the trigger. Right: trigger fixed at
+      30% down, sweeping the leverage.</caption>
+      <thead>
+        <tr><th>3&times; triggers below</th><th>Median CAGR</th><th>Worst</th>
+          <th>Beat 1&times;</th><th>Leverage at &minus;30%</th>
+          <th>Median CAGR</th><th>Worst</th><th>Ruined</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>10%</td><td class="down">+6.8%</td><td>&minus;13.5%</td>
+          <td>16/124</td><td>1.5&times;</td><td>+9.5%</td>
+          <td class="up">+2.3%</td><td>0/124</td></tr>
+        <tr><td>20%</td><td>+9.5%</td><td>&minus;6.8%</td><td>70/124</td>
+          <td>2.0&times;</td><td>+9.5%</td><td>&minus;0.3%</td><td>0/124</td></tr>
+        <tr><td>30%</td><td>+9.2%</td><td>&minus;7.3%</td><td>34/124</td>
+          <td>2.5&times;</td><td>+9.5%</td><td>&minus;3.5%</td><td>0/124</td></tr>
+        <tr><td>40%</td><td>+9.7%</td><td>&minus;5.1%</td><td>28/124</td>
+          <td>3.0&times;</td><td>+9.2%</td><td>&minus;7.3%</td><td>0/124</td></tr>
+        <tr><td>50%</td><td>+9.7%</td><td>&minus;4.2%</td><td class="down">1/124</td>
+          <td>5.0&times;</td><td>+8.1%</td><td class="down">&minus;100.0%</td>
+          <td class="down">29/124</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><b>Both sweeps optimise to the boundary.</b> Deeper triggers are better than
+  shallow ones and lighter rungs are better than heavy ones, monotonically &mdash;
+  which is the shape you get when the honest answer is &ldquo;less of this&rdquo;.
+  Push the trigger to 50% and it converges on holding because it almost never
+  fires. The gentlest rung tested, 1.5&times; below 30%, is the only one whose
+  worst 30-year window stays positive, and it still returns +9.5% against
+  holding&rsquo;s +9.8%.</p>
+
+  <div class="split">
+    <div class="card k-lo">
+      <h3>Never let leverage drift above 1&times;</h3>
+      <p>&ldquo;No rebalance 2&times;&rdquo; looks like the best row in the table:
+      +10.8% and beating 1&times; in 112 of 124 windows. On daily ETF data with
+      intraday margin checks it ruins <b>15 of 18</b> paths, and DIA is closed out
+      in October 2008 after leverage runs to <b>34&times;</b>. The monthly series
+      cannot see the move that kills it.</p>
+    </div>
+    <div class="card k-mid">
+      <h3>Monthly marks flatter every levered arm</h3>
+      <p>Ruin needs a fall of 1/L, and October 1929 and October 1987 both moved
+      far more inside the month than the month-end print shows. Every ruin count
+      in this section is a <b>floor</b>. The daily ETF test, which checks each
+      session&rsquo;s low, is the conservative one and it is harsher throughout.</p>
+    </div>
+  </div>
+
+  <div class="card k-hi">
+    <h3>The answer to the question as asked</h3>
+    <p>Hold at <b>1&times;, not 2&times;</b>: flat 2&times; returns +9.2% against
+    +9.8% with drawdowns of &minus;71.8% against &minus;39.9%. Taking
+    <b>3&times; at 30&ndash;50% down</b> specifically returns +9.2% to +9.7%
+    against holding&rsquo;s +9.8%, and beats holding in only 28&ndash;34 windows
+    out of 124. It does not outperform.</p>
+    <p>If the ratchet is going in regardless, the least-bad version is the
+    gentlest and deepest: <b>1.5&times; triggered below 30%</b>. It costs about
+    0.3 points of annual return against holding, roughly doubles the drawdown to
+    &minus;44%, never ruins, and is the only levered arm whose worst 30-year
+    window is still positive.</p>
+  </div>
+
+  <p class="note">Two conventions worth stating, both of which run <em>toward</em>
+  leverage rather than against it. Returns are total, not price, so the levered
+  book collects the dividend on the full notional &mdash; the earlier ETF section
+  uses price returns and understates leverage by roughly (L&minus;1) times the
+  yield. And financing is the actual short rate plus 1.5%, median 5.2% but as low
+  as 1.5%, rather than a flat 5%. Even with both corrections made in
+  leverage&rsquo;s favour, nothing lands in the quadrant that beats holding.</p>
+</section>
+
+<section>
   <h2>The rule, stated</h2>
   <ol>
     <li><b>Universe.</b> Equity index and sector ETFs. Exclude futures-backed
@@ -827,6 +1030,13 @@
     drawdown entries recover by more than they accrue. Engineer against closeout
     instead: 22% of 3&times; positions in the best cell are wiped before the
     recovery lands.</li>
+    <li><b>Do not ratchet leverage into drawdowns.</b> Over 124 overlapping
+    30-year windows on total return at real financing rates, no schedule beats
+    holding on both return and drawdown, and the exact inverse &mdash; levering
+    near highs instead &mdash; returns +11.6% against the best ratchet&rsquo;s
+    +10.0%. If it goes in anyway, 1.5&times; below 30% is the least-bad version.
+    Never let leverage drift unrebalanced above 1&times;: that ruins 15 of 18 ETF
+    paths.</li>
     <li><b>Leverage.</b> The measured ceiling is under 2&times; on a plain hold.
     A centred grid roughly halves the closeout rate, but about half of that
     benefit is simply that a centred grid deploys half its capital at entry.</li>
