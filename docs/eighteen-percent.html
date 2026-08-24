@@ -638,28 +638,40 @@
     commodity and volatility products &mdash; they decay for reasons unrelated to
     drawdown and they were the entire source of an apparent cliff past 35% that
     turned out to be an artifact.</li>
-    <li><b>Entry.</b> 18% or more below the 252-day high. Below that threshold
-    the discount is illusory.</li>
+    <li><b>Entry.</b> 18% or more below the 252-day high &mdash; <em>on index
+    funds</em>. On individual companies the threshold does no work and a 5%
+    pullback performs identically, so there is no depth rule to state.</li>
     <li><b>Filter.</b> Skip it if the peak it fell from had itself risen more
     than about a third in the preceding two years. That is a bubble deflating,
     and its tail is fifteen points worse.</li>
     <li><b>Exit.</b> The prior high, or three years, whichever comes first.
     Never a trailing stop.</li>
-    <li><b>Size.</b> Risk budget divided by 60%, which is the fifth-percentile
-    further fall. At 1% risk that is 1.7% of the book per position.</li>
+    <li><b>Size.</b> Risk budget divided by the fifth-percentile further fall:
+    60% for ETFs, so 1.7% of the book per position at 1% risk. For single
+    companies that denominator is <b>79%</b> and the position is smaller still,
+    because the first percentile is &minus;97% and that is a company going to
+    zero.</li>
+    <li><b>Price paid.</b> No valuation gate. An earnings-yield cut against the
+    universe median landed at the 28th percentile of its own null &mdash; worse
+    than choosing at random from the same drawdowns. Keep the quality cut, which
+    is weakly positive; drop the cheapness cut, which is not.</li>
     <li><b>Leverage.</b> The measured ceiling is under 2&times; on a plain hold.
     A centred grid roughly halves the closeout rate, but about half of that
     benefit is simply that a centred grid deploys half its capital at entry.</li>
   </ol>
 
   <div class="card k-lo">
-    <h3>What would have to change for this to be worth running</h3>
-    <p>As measured it is a worse version of buying the index. The gap is
-    frequency, not signal quality: three trades a year at 5% of the book cannot
-    compound into anything, however good each one is. Either the universe grows
-    by an order of magnitude &mdash; hundreds of names rather than eighteen
-    &mdash; or the exposure rises, and the exposure cannot rise without the tail
-    rising with it.</p>
+    <h3>Where this leaves the rule</h3>
+    <p>Widening the universe fixed the thing it was supposed to fix. Exposure
+    went from 3&ndash;10% to 19&ndash;57% and the frequency objection is gone.
+    What the wider universe also did was remove the reason for the rule: the 18%
+    threshold that carried the whole ETF result is worth nothing on individual
+    companies, where a 5% pullback with the same gates returns the same. The
+    depth mattered because an index must recover if its constituents do. Nothing
+    obliges a company to.</p>
+    <p>So there are two findings and only one of them survives contact with a
+    null. Quality selects, weakly, at the 88th percentile. Valuation selects
+    backwards. And every arm loses to owning the market outright.</p>
     <p>The one honest measurement gap left is intraday. Fills here are taken off
     the close, so any grid harvest is a floor rather than an estimate, and a
     tight grid genuinely cannot be evaluated on daily bars.</p>
@@ -667,8 +679,22 @@
 </section>
 
 <footer>
-  18 US equity index and sector ETFs on split-adjusted daily bars,
-  1999&ndash;2026. Futures-backed commodity funds, volatility products,
+  Two universes. 18 US equity index and sector ETFs on split-adjusted daily bars,
+  1999&ndash;2026; and 134 US companies with both price history and readable SEC
+  facts, October 2010 to August 2026, the window being set by the first month the
+  fundamentals panel is dense enough to take a cross-sectional median. That
+  company list is present-day membership, so it is survivorship-biased upward, and
+  the equal-weight benchmark it is measured against carries the identical bias
+  &mdash; DIA over the same window returned +10.6% against the list&rsquo;s
+  +18.1%, which is roughly the size of the distortion. Company facts come from the
+  SEC store, whose ten concepts contain no free cash flow, EBITDA, net debt or
+  interest coverage, so the valuation gate is an earnings yield against the
+  cross-section and emphatically not a discount to appraised fair value; revenue
+  is read from both the pre- and post-ASC-606 tags, since most companies switched
+  in 2018 and never backfilled. Facts are unusable until 90 days after their
+  period closes because the store carries no filing date. Arms are compared at
+  matched gross exposure against 25 random draws of equal size from the same
+  drawdown pool. Futures-backed commodity funds, volatility products,
   currencies, bonds and physical metals are excluded: the first two decay
   independently of any drawdown, and the rest have no earnings against which a
   discount could be measured. Drawdown is measured against the trailing 252-session

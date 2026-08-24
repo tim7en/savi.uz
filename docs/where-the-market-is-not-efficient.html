@@ -127,18 +127,18 @@
 <div class="wrap">
 
 <header>
-  <p class="eyebrow">Research ledger &middot; consolidated &middot; 118&ndash;137 US equities &middot; 2015&ndash;2026 &middot; Binance costs</p>
+  <p class="eyebrow">Research ledger &middot; consolidated &middot; 118&ndash;137 US equities, 2015&ndash;2026 &middot; plus 18 ETFs and 134 companies on daily bars &middot; costs charged throughout</p>
   <h1>Where the Market Is Not Efficient</h1>
-  <p class="standfirst">Twenty-six things were tested against their own controls.
+  <p class="standfirst">Thirty-one things were tested against their own controls.
   Every one that tried to <em>predict</em> failed. Everything that survived was
   about execution, sizing or timeframe. That pattern is the finding &mdash; the
   market prices information efficiently and prices <em>frictions</em> badly, and
   the frictions are what a systematic book can actually harvest.</p>
 
   <div class="tallies">
-    <div class="tally"><b class="t-dead">17</b>
+    <div class="tally"><b class="t-dead">20</b>
       <span>proposals killed by a control</span></div>
-    <div class="tally"><b class="t-live">6</b>
+    <div class="tally"><b class="t-live">7</b>
       <span>that survived their reversal</span></div>
     <div class="tally"><b class="t-live">0.95</b>
       <span>best Sharpe at true taker cost, 4-hour bars</span></div>
@@ -157,8 +157,9 @@
       <p>Dealer gamma, CFTC positioning, macro regime, earnings deterioration,
       volume bursts, volume-profile location, theme strength, relative-strength
       ranking, MA crossovers, option-surface machine learning, pre-breakout volume,
-      range compression, single-name drawdown spillover.</p>
-      <p>Thirteen attempts to know something the price did not already say. All
+      range compression, single-name drawdown spillover, drawdown depth on single
+      stocks, the cheap half of quality names, the bubble run-up filter.</p>
+      <p>Sixteen attempts to know something the price did not already say. All
       failed a reversal test, a null, or a redundancy check. <strong>This is the
       efficient-market result, and it is the bulk of the evidence.</strong></p>
     </div>
@@ -166,7 +167,8 @@
       <h3>Everything structural survived</h3>
       <p>Choosing a slower bar. Sizing by volatility. Halving into an adverse
       regime. Stopping the pyramid at two units. Entering with a resting limit
-      rather than a stop. Not trading the short side.</p>
+      rather than a stop. Not trading the short side. Requiring a real discount
+      before buying an index fund.</p>
       <p>None of these forecast anything. They exploit that <strong>cost, capacity
       and volatility are mispriced by the participant, not by the market</strong>
       &mdash; a book that pays 10bp where it could pay 5, or trades a 30-minute bar
@@ -281,7 +283,15 @@
   orderings, because the random tie-break alone spans a [0.57&ndash;0.96] Sharpe band.
   Drawdowns are marked to market daily. Option features cover 2015&ndash;2026 only
   around events; the machine-learning study used the 2025&ndash;26 year, which contains
-  no crisis.
+  no crisis. The drawdown rows come from two separate universes on daily bars and
+  are not Binance-costed: 18 US equity index and sector ETFs, 1999&ndash;2026, and
+  134 US companies with readable SEC facts, October 2010 to August 2026. That
+  company list is present-day membership and so is biased upward by survivorship
+  &mdash; DIA returned +10.6% over the same window against the list&rsquo;s
+  +18.1%, which is roughly the size of the distortion. Their arms are compared at
+  matched gross exposure against 25 random draws from the same drawdown pool,
+  because a gate that passes fewer signals runs a smaller book and earns less for
+  that reason alone.
 </footer>
 </div>
 
@@ -301,6 +311,9 @@ const LEDGER=[
  {k:"Macro regime tilt",c:"Beaten by its own reversal",r:"2.24 vs 2.35 reversed",v:"dead"},
  {k:"Single-name drawdown → cross-asset",c:"1,793 de-overlapped events",r:"nothing moves",v:"dead"},
  {k:"Short side, unconditional",c:"Long-only at matched drawdown",r:"0.20 → −0.44",v:"dead"},
+ {k:"18% drawdown depth, single stocks",c:"Same gates at a 5% pullback",r:"+4.9% vs +5.0% at matched exposure",v:"dead"},
+ {k:"Cheap half of quality names in drawdowns",c:"25 random draws from the same pool",r:"28th percentile of its own null",v:"dead"},
+ {k:"Bubble run-up filter, single stocks",c:"Unfiltered arm at matched exposure",r:"+4.9% vs +5.0%, 32 signals left",v:"dead"},
  {g:"Structural — survived"},
  {k:"Choosing a 4-hour bar over 30-minute",c:"Seven-interval sweep at true cost",r:"0.20 → 0.95",v:"live"},
  {k:"Price momentum (21d return, MA distance)",c:"Shuffled-label null",r:"IC 0.042, p<0.001",v:"live"},
@@ -308,10 +321,13 @@ const LEDGER=[
  {k:"Stopping the pyramid at two units",c:"Sweep 1→8 units",r:"Sharpe 1.13 peak, tail peak",v:"live"},
  {k:"Dip entry at VWAP, 4-hour only",c:"Random entries in same regime",r:"1.28 vs 0.79 null, 15/15",v:"live"},
  {k:"Gold and miners as the crisis sleeve",c:"15 market drawdowns",r:"GDX +6.3%, 67% hit rate",v:"live"},
+ {k:"18% drawdown depth, index funds",c:"Gain over the further fall, by depth",r:"1.04 below the line, 1.72 above",v:"live"},
  {g:"Real but not usable as proposed"},
  {k:"VIX sizing tilt",c:"Redundancy against the MA tilt",r:"beats reversal, adds +0.02",v:"open"},
  {k:"Dip entry below 4-hour bars",c:"Same rule, faster intervals",r:"+1.28 → −3.24 at 5min",v:"open"},
  {k:"Pyramiding past two units",c:"Right-tail share",r:"tail thins 22.3% → 13.4%",v:"open"},
+ {k:"Quality gate on drawdown entries",c:"25 random draws, matched exposure",r:"88th percentile, band overlaps",v:"open"},
+ {k:"25% trailing stop as the exit",c:"Same entries held to the prior high",r:"+10.1% vs +23.4%, worse tail too",v:"dead"},
  {k:"Cash held for a drawdown trigger",c:"Invest-on-schedule",r:"17.1% vs 18.1% IRR",v:"dead"},
  {k:"Leverage as a return lever",c:"Matched drawdown",r:"70/85/100% identical",v:"dead"},
  {k:"Bonds as the equity hedge",c:"15 market drawdowns",r:"TLT −0.5%, 40% hit rate",v:"dead"},
