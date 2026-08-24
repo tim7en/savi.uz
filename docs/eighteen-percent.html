@@ -1,0 +1,510 @@
+<title>Eighteen Percent</title>
+<style>
+  :root{
+    color-scheme:light;
+    --ground:#EFF1F3; --surface:#FFFFFF; --sunken:#E3E7EB; --rule:#CFD6DD;
+    --rule-soft:#E1E6EB;
+    --ink:#101519; --ink-2:#414B55; --ink-3:#76818C;
+    --lo:#A24A38; --mid:#B5883A; --hi:#1C7A62;
+    --accent:#1D4E6B; --accent-soft:#E0EAF0;
+    --display:"Helvetica Neue",Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --body:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0C1013; --surface:#151A1F; --sunken:#1C2229; --rule:#293139;
+    --rule-soft:#222831;
+    --ink:#E5EAEF; --ink-2:#ADB7C1; --ink-3:#7B8691;
+    --lo:#DB8571; --mid:#D7B466; --hi:#4CBF9C;
+    --accent:#7EB2D0; --accent-soft:#14242E;
+  }}
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --ground:#0C1013; --surface:#151A1F; --sunken:#1C2229; --rule:#293139;
+    --rule-soft:#222831;
+    --ink:#E5EAEF; --ink-2:#ADB7C1; --ink-3:#7B8691;
+    --lo:#DB8571; --mid:#D7B466; --hi:#4CBF9C;
+    --accent:#7EB2D0; --accent-soft:#14242E;
+  }
+  :root[data-theme="light"]{
+    color-scheme:light;
+    --ground:#EFF1F3; --surface:#FFFFFF; --sunken:#E3E7EB; --rule:#CFD6DD;
+    --rule-soft:#E1E6EB;
+    --ink:#101519; --ink-2:#414B55; --ink-3:#76818C;
+    --lo:#A24A38; --mid:#B5883A; --hi:#1C7A62;
+    --accent:#1D4E6B; --accent-soft:#E0EAF0;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;padding:0 20px 88px;background:var(--ground);color:var(--ink);
+       font-family:var(--body);font-size:16px;line-height:1.62;
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:940px;margin:0 auto}
+
+  header{padding:58px 0 30px;border-bottom:3px solid var(--ink);
+         display:flex;flex-direction:column;gap:14px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+           text-transform:uppercase;color:var(--ink-3);margin:0}
+  h1{font-family:var(--display);font-weight:800;font-size:clamp(2.3rem,6.6vw,3.9rem);
+     line-height:.99;letter-spacing:-.035em;margin:0;text-wrap:balance}
+  .standfirst{font-size:1.14rem;line-height:1.55;color:var(--ink-2);
+              max-width:62ch;margin:0}
+
+  .tallies{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));
+           gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:20px}
+  .tally{background:var(--surface);padding:15px 17px;display:flex;
+         flex-direction:column;gap:3px}
+  .tally b{font-family:var(--mono);font-size:1.6rem;font-weight:700;
+           letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1}
+  .tally span{font-size:12px;color:var(--ink-3);line-height:1.36}
+  .t-hi{color:var(--hi)} .t-lo{color:var(--lo)} .t-mid{color:var(--mid)}
+
+  section{padding-top:48px;display:flex;flex-direction:column;gap:15px}
+  h2{font-family:var(--display);font-size:1.72rem;font-weight:750;margin:0;
+     letter-spacing:-.025em;text-wrap:balance}
+  h3{font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+     text-transform:uppercase;color:var(--ink-3);margin:0 0 7px;font-weight:600}
+  p{margin:0;max-width:68ch}
+  .lede{color:var(--ink-2)}
+
+  .card{background:var(--surface);border:1px solid var(--rule);padding:21px 23px;
+        display:flex;flex-direction:column;gap:11px}
+  .k-hi{border-left:3px solid var(--hi)}
+  .k-lo{border-left:3px solid var(--lo)}
+  .k-mid{border-left:3px solid var(--mid)}
+  .split{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:16px}
+
+  .scroll{overflow-x:auto;border:1px solid var(--rule);background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;
+        font-variant-numeric:tabular-nums}
+  caption{text-align:left;padding:14px 17px 2px;font-size:12.5px;color:var(--ink-3)}
+  th{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+     color:var(--ink-3);font-weight:600;text-align:right;padding:10px 13px;
+     border-bottom:1px solid var(--rule);white-space:nowrap}
+  td{padding:9px 13px;text-align:right;border-bottom:1px solid var(--rule-soft);
+     white-space:nowrap;font-family:var(--mono);font-size:12.5px}
+  th:first-child,td:first-child{text-align:left;font-family:var(--body);
+     font-size:13.5px;white-space:normal;min-width:180px}
+  tbody tr:last-child td{border-bottom:0}
+  tr.hi td{background:var(--sunken);font-weight:600}
+  td.up{color:var(--hi)} td.down{color:var(--lo)} td.dim{color:var(--ink-3)}
+  td.indent:first-child{padding-left:30px;color:var(--ink-3);font-style:italic}
+
+  .verdict{display:inline-block;font-family:var(--mono);font-size:10px;
+           letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;
+           font-weight:700;border-radius:2px}
+  .v-pass{background:color-mix(in srgb,var(--hi) 16%,transparent);color:var(--hi)}
+  .v-fail{background:color-mix(in srgb,var(--lo) 16%,transparent);color:var(--lo)}
+  .v-open{background:var(--accent-soft);color:var(--accent)}
+
+  ul,ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:9px;
+        max-width:70ch}
+  li::marker{color:var(--ink-3)}
+  code{font-family:var(--mono);font-size:.87em;background:var(--sunken);
+       padding:1px 5px;border-radius:2px}
+  .note{font-size:14px;color:var(--ink-2);border-top:1px solid var(--rule);
+        padding-top:16px;max-width:76ch}
+  footer{margin-top:54px;padding-top:20px;border-top:1px solid var(--rule);
+         font-size:12.5px;color:var(--ink-3);max-width:78ch;line-height:1.6}
+  a{color:var(--accent)}
+  a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+  figure{margin:0;display:flex;flex-direction:column;gap:11px}
+  figcaption{font-size:13px;color:var(--ink-3);max-width:74ch}
+  .plate{background:var(--surface);border:1px solid var(--rule);padding:22px;
+         overflow-x:auto}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .axis{font-family:var(--mono);font-size:10.5px;fill:var(--ink-3);
+        font-variant-numeric:tabular-nums}
+  .gridline{stroke:var(--rule);stroke-width:1}
+  .zero{stroke:var(--ink-3);stroke-width:1.4}
+
+  /* Chart palette. Validated with the dataviz six checks against both surfaces
+     (#FFFFFF and #151A1F). The worst adjacent CVD pair sits in the 6-8 band, so
+     every series carries a direct label as well as a hue. */
+  :root{--c1:#1A6FA8;--c2:#C0503A;--c3:#0E8A66}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --c1:#3D93DB;--c2:#E06E52;--c3:#10A87F}}
+  :root[data-theme="dark"]{--c1:#3D93DB;--c2:#E06E52;--c3:#10A87F}
+  :root[data-theme="light"]{--c1:#1A6FA8;--c2:#C0503A;--c3:#0E8A66}
+
+  .axis.dim{fill:var(--ink-3)}
+  .axis.strong{fill:var(--ink);font-weight:700}
+  .val{fill:var(--ink-2);font-family:var(--mono);font-size:11px;
+       font-variant-numeric:tabular-nums}
+  .dot-null{fill:var(--ink-3);opacity:.55}
+  .dot-over{fill:var(--c2)}
+  .mark-book{stroke:var(--c1);stroke-width:2.5}
+  .lab-book{fill:var(--c1);font-family:var(--mono);font-size:12.5px;font-weight:700}
+  .lab-null{fill:var(--ink-3);font-family:var(--mono);font-size:11px}
+  .bar-up{fill:var(--c1)}
+  .bar-dn{fill:var(--c2)}
+  .mark-drift{stroke:var(--c3);stroke-width:2;stroke-dasharray:5 4}
+  .lab-drift{fill:var(--c3);font-family:var(--mono);font-size:11px;font-weight:600}
+  .line-taker{fill:none;stroke:var(--c2);stroke-width:2}
+  .line-maker{fill:none;stroke:var(--c1);stroke-width:2}
+  .lab-taker{fill:var(--c2);font-family:var(--mono);font-size:12.5px;font-weight:700}
+  .lab-maker{fill:var(--c1);font-family:var(--mono);font-size:12.5px;font-weight:700}
+  .pin{fill:var(--surface);stroke:var(--ink);stroke-width:2}
+  .pin-lab{fill:var(--ink-2);font-family:var(--mono);font-size:10.5px}
+  .bar-hold{fill:var(--c1)}
+  .bar-ruin{fill:var(--c2)}
+  section h3{font-family:var(--display);font-size:1.12rem;
+     letter-spacing:-.01em;text-transform:none;color:var(--ink);
+     margin:6px 0 0;font-weight:700}
+  .card h3{font-family:var(--mono);font-size:11px;
+     letter-spacing:.1em;text-transform:uppercase;
+     color:var(--ink-3);margin:0 0 7px;font-weight:600}
+  .bar-mid{fill:var(--ink-3);opacity:.55}
+</style>
+
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Drawdown rule &middot; 18 equity ETFs &middot; 1999&ndash;2026 &middot; financing charged, fills off the close</p>
+  <h1>Eighteen Percent</h1>
+  <p class="standfirst">A discount below eighteen percent buys nothing: the same
+  forward return, the same downside, just later. Above it the arithmetic changes.
+  This is the rule that follows from that, what it risks, what it returns at each
+  risk budget &mdash; and why it still does not beat holding the index.</p>
+
+  <div class="tallies">
+    <div class="tally"><b class="t-hi">1.04&rarr;2.23</b>
+      <span>gain per unit of further fall, below and above the threshold</span></div>
+    <div class="tally"><b class="t-lo">&minus;69.6%</b>
+      <span>worst mark after entry at the 1st percentile</span></div>
+    <div class="tally"><b class="t-mid">+2.5%</b>
+      <span>CAGR at 3% risk per trade, against the index&rsquo;s +6.2%</span></div>
+    <div class="tally"><b class="t-lo">10%</b>
+      <span>median gross exposure &mdash; it is mostly in cash</span></div>
+  </div>
+</header>
+
+<section>
+  <h2>The threshold, and why it is the whole rule</h2>
+  <p class="lede">Margin of safety is measurable: what the three-year gain is
+  worth against the further fall you have to survive to collect it. Both halves
+  were measured on every entry, and only one of them moves with depth.</p>
+
+  <figure>
+    <div class="plate">
+<svg viewBox="0 0 1000 300" role="img" aria-label="Gain over further-fall risk by entry depth">
+<line class="gridline" x1="66" y1="222.0" x2="974" y2="222.0"/>
+<text class="axis" x="56" y="226.0" text-anchor="end">0.0x</text>
+<line class="gridline" x1="66" y1="173.8" x2="974" y2="173.8"/>
+<text class="axis" x="56" y="177.8" text-anchor="end">1.0x</text>
+<line class="gridline" x1="66" y1="125.6" x2="974" y2="125.6"/>
+<text class="axis" x="56" y="129.6" text-anchor="end">2.0x</text>
+<line class="gridline" x1="66" y1="77.4" x2="974" y2="77.4"/>
+<text class="axis" x="56" y="81.4" text-anchor="end">3.0x</text>
+<line class="mark-drift" x1="66" y1="173.8" x2="974" y2="173.8"/>
+<text class="lab-drift" x="970" y="164.8" text-anchor="end">break-even: gain equals the further fall</text>
+<rect class="bar-mid" x="90.8" y="169.5" width="64" height="52.5" rx="4"><title>0-3% below the high: three-year gain is 1.09 times the typical further fall</title></rect>
+<text class="val" x="122.8" y="161.5" text-anchor="middle">1.09</text>
+<text class="axis strong" x="122.8" y="248.0" text-anchor="middle">0-3%</text>
+<rect class="bar-mid" x="204.2" y="170.9" width="64" height="51.1" rx="4"><title>3-7% below the high: three-year gain is 1.06 times the typical further fall</title></rect>
+<text class="val" x="236.2" y="162.9" text-anchor="middle">1.06</text>
+<text class="axis strong" x="236.2" y="248.0" text-anchor="middle">3-7%</text>
+<rect class="bar-mid" x="317.8" y="171.4" width="64" height="50.6" rx="4"><title>7-12% below the high: three-year gain is 1.05 times the typical further fall</title></rect>
+<text class="val" x="349.8" y="163.4" text-anchor="middle">1.05</text>
+<text class="axis strong" x="349.8" y="248.0" text-anchor="middle">7-12%</text>
+<rect class="bar-mid" x="431.2" y="171.9" width="64" height="50.1" rx="4"><title>12-18% below the high: three-year gain is 1.04 times the typical further fall</title></rect>
+<text class="val" x="463.2" y="163.9" text-anchor="middle">1.04</text>
+<text class="axis strong" x="463.2" y="248.0" text-anchor="middle">12-18%</text>
+<rect class="bar-up" x="544.8" y="139.1" width="64" height="82.9" rx="4"><title>18-25% below the high: three-year gain is 1.72 times the typical further fall</title></rect>
+<text class="val" x="576.8" y="131.1" text-anchor="middle">1.72</text>
+<text class="axis strong" x="576.8" y="248.0" text-anchor="middle">18-25%</text>
+<rect class="bar-up" x="658.2" y="114.5" width="64" height="107.5" rx="4"><title>25-35% below the high: three-year gain is 2.23 times the typical further fall</title></rect>
+<text class="val" x="690.2" y="106.5" text-anchor="middle">2.23</text>
+<text class="axis strong" x="690.2" y="248.0" text-anchor="middle">25-35%</text>
+<rect class="bar-up" x="771.8" y="110.2" width="64" height="111.8" rx="4"><title>35-50% below the high: three-year gain is 2.32 times the typical further fall</title></rect>
+<text class="val" x="803.8" y="102.2" text-anchor="middle">2.32</text>
+<text class="axis strong" x="803.8" y="248.0" text-anchor="middle">35-50%</text>
+<rect class="bar-up" x="885.2" y="48.5" width="64" height="173.5" rx="4"><title>50%+ below the high: three-year gain is 3.60 times the typical further fall</title></rect>
+<text class="val" x="917.2" y="40.5" text-anchor="middle">3.60</text>
+<text class="axis strong" x="917.2" y="248.0" text-anchor="middle">50%+</text>
+<line class="mark-book" x1="423.2" y1="28" x2="423.2" y2="230"/>
+<text class="lab-book" x="417.2" y="40" text-anchor="end">18%</text>
+<text class="axis" x="66" y="292">three-year gain divided by the typical further fall, by drawdown at entry</text>
+</svg>
+
+    </div>
+    <figcaption>Below 18% the ratio is flat at 1.04&ndash;1.09 &mdash; a 12% dip
+    gives the same forward return as buying at the high while exposing you to the
+    same downside. Above it the ratio steps to 1.72, then 2.23. There is nothing
+    to buy in the first eighteen percent.</figcaption>
+  </figure>
+
+  <div class="scroll">
+    <table>
+      <caption>The two halves of the ratio. The denominator barely moves; the
+      numerator is what changes.</caption>
+      <thead>
+        <tr><th>Drawdown at entry</th><th>Further fall (median)</th>
+          <th>Worst 5%</th><th>Gain 3y</th><th>Gain / risk</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>0&ndash;3%</td><td>&minus;15.0%</td><td>&minus;53.6%</td>
+          <td>+16.2%</td><td>1.09</td></tr>
+        <tr><td>7&ndash;12%</td><td>&minus;16.9%</td><td>&minus;57.2%</td>
+          <td>+17.7%</td><td>1.05</td></tr>
+        <tr><td>12&ndash;18%</td><td>&minus;17.0%</td><td>&minus;62.3%</td>
+          <td>+17.7%</td><td class="down">1.04</td></tr>
+        <tr class="hi"><td>18&ndash;25%</td><td>&minus;14.8%</td>
+          <td>&minus;59.0%</td><td>+25.5%</td><td class="up">1.72</td></tr>
+        <tr><td>25&ndash;35%</td><td>&minus;15.0%</td><td>&minus;60.9%</td>
+          <td>+33.4%</td><td class="up">2.23</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><b>The further fall is constant at 15&ndash;17% however deep you buy.</b>
+  That is the fact the whole rule rests on: the risk does not grow with the
+  discount, so every point of extra depth is free margin. It also means depth
+  buys <em>return</em>, not leverage capacity &mdash; the tail stays the same
+  size, so the leverage ceiling never moves.</p>
+</section>
+
+<section>
+  <h2>Overcorrection or bubble</h2>
+  <p>Not every 20% fall is the same trade. Splitting entries by the run-up into
+  the peak they fell from separates a market giving back an ordinary advance from
+  one deflating an extraordinary one, and it is known before you buy.</p>
+
+  <div class="scroll">
+    <table>
+      <caption>Two-year run-up into the peak, against what followed the fall.</caption>
+      <thead>
+        <tr><th>Run-up before the peak</th><th>n</th><th>Median 3y</th>
+          <th>Worst 5%</th><th>Win</th></tr>
+      </thead>
+      <tbody>
+        <tr class="hi"><td>&minus;47% to +15%</td><td>41</td>
+          <td class="up">+40.5%</td><td class="up">&minus;45.3%</td><td>90%</td></tr>
+        <tr><td>+16% to +36%</td><td>41</td><td>+24.3%</td>
+          <td>&minus;51.9%</td><td>90%</td></tr>
+        <tr><td>+36% to +69%</td><td>41</td><td>+22.2%</td>
+          <td>&minus;55.2%</td><td>80%</td></tr>
+        <tr><td>+70% to +178%</td><td>41</td><td>+26.8%</td>
+          <td class="down">&minus;60.1%</td><td>83%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>An overcorrection returns <b>+40.5%</b>; a deflating bubble returns +26.8%
+  and its tail is fifteen points worse. The tail worsens monotonically across all
+  four buckets, which is the cleaner half of the finding &mdash; the return
+  ordering is not monotone, the risk ordering is.</p>
+</section>
+
+<section>
+  <h2>The exit, and the one that fails</h2>
+  <div class="scroll">
+    <table>
+      <caption>Same entries, same paths, three ways out.</caption>
+      <thead>
+        <tr><th>Exit</th><th>Median</th><th>Mean</th><th>5th percentile</th>
+          <th>Win</th></tr>
+      </thead>
+      <tbody>
+        <tr class="hi"><td>hold three years</td><td class="up">+29.2%</td>
+          <td class="up">+32.8%</td><td>&minus;15.8%</td><td>86%</td></tr>
+        <tr><td>sell at the prior high</td><td>+23.4%</td><td>+18.5%</td>
+          <td class="up">&minus;13.4%</td><td class="up">89%</td></tr>
+        <tr><td><b>25% trailing stop</b></td><td class="down">+10.1%</td>
+          <td>+15.2%</td><td class="down">&minus;25.3%</td>
+          <td class="down">56%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><b>The trailing stop is worse on both sides.</b> It cuts the return to a
+  third and makes the tail worse &mdash; it sells you out at bad prices without
+  protecting you from anything, because the fall that triggers it is the same
+  fall that was about to reverse. Seventy-five percent of entries regained the
+  prior high, median 234 sessions.</p>
+</section>
+
+<section>
+  <h2>The risk you are actually taking</h2>
+  <div class="scroll">
+    <table>
+      <caption>Full distribution across 167 entries. The worst mark is the
+      deepest point below entry before recovery, from daily lows.</caption>
+      <thead>
+        <tr><th></th><th>1st pct</th><th>5th</th><th>25th</th><th>Median</th>
+          <th>75th</th><th>95th</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>three-year outcome</td><td class="down">&minus;60.8%</td>
+          <td>&minus;15.8%</td><td>+10.1%</td><td>+29.2%</td><td>+53.4%</td>
+          <td>+95.7%</td></tr>
+        <tr><td>worst mark after entry</td><td class="down">&minus;69.6%</td>
+          <td class="down">&minus;59.9%</td><td>&minus;29.8%</td>
+          <td>&minus;17.1%</td><td>&minus;7.8%</td><td>&minus;1.4%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card k-lo">
+    <h3>The tail is real and no entry depth removes it</h3>
+    <p>One entry in twenty goes 60% against you before it recovers; one in a
+    hundred goes 70% against. <b>At 3&times; leverage that is &minus;180% and
+    &minus;209%</b> &mdash; a total loss, twice over. This is on equity index
+    funds, not single stocks, and after excluding futures-backed and volatility
+    products that decay for unrelated reasons.</p>
+    <p>Which fixes the sizing: a position that survives its own fifth percentile
+    is <b>risk &divide; 60%</b> of the book. At 1% risk that is 1.7% per
+    position. Not intuition &mdash; arithmetic.</p>
+  </div>
+</section>
+
+<section>
+  <h2>What it returns, and what it costs to hold</h2>
+  <p class="lede">A portfolio simulation rather than an average of episodes: open
+  on every qualifying signal, hold to the prior high or three years, size by
+  risk, pay 5% a year on any borrowed portion.</p>
+
+  <figure>
+    <div class="plate">
+<svg viewBox="0 0 1000 300" role="img" aria-label="Return against drawdown for each risk level, versus buy and hold">
+<text class="axis strong" x="200" y="24">maximum drawdown</text>
+<line class="gridline" x1="200.0" y1="34" x2="200.0" y2="232"/>
+<text class="axis" x="200.0" y="250" text-anchor="middle">-0%</text>
+<line class="gridline" x1="362.5" y1="34" x2="362.5" y2="232"/>
+<text class="axis" x="362.5" y="250" text-anchor="middle">-15%</text>
+<line class="gridline" x1="525.0" y1="34" x2="525.0" y2="232"/>
+<text class="axis" x="525.0" y="250" text-anchor="middle">-30%</text>
+<line class="gridline" x1="687.5" y1="34" x2="687.5" y2="232"/>
+<text class="axis" x="687.5" y="250" text-anchor="middle">-45%</text>
+<line class="gridline" x1="850.0" y1="34" x2="850.0" y2="232"/>
+<text class="axis" x="850.0" y="250" text-anchor="middle">-60%</text>
+<rect class="bar-up" x="200" y="46.0" width="63.9" height="33.0" rx="4"><title>1% risk: CAGR +0.9%, max drawdown -5.9%, median gross exposure 3%</title></rect>
+<text class="axis strong" x="186" y="66.5" text-anchor="end">1% risk</text>
+<text class="val" x="273.9" y="66.5">CAGR +0.9%  &#183;  3% invested</text>
+<rect class="bar-up" x="200" y="93.0" width="126.8" height="33.0" rx="4"><title>2% risk: CAGR +1.7%, max drawdown -11.7%, median gross exposure 7%</title></rect>
+<text class="axis strong" x="186" y="113.5" text-anchor="end">2% risk</text>
+<text class="val" x="336.8" y="113.5">CAGR +1.7%  &#183;  7% invested</text>
+<rect class="bar-up" x="200" y="140.0" width="187.4" height="33.0" rx="4"><title>3% risk: CAGR +2.5%, max drawdown -17.3%, median gross exposure 10%</title></rect>
+<text class="axis strong" x="186" y="160.5" text-anchor="end">3% risk</text>
+<text class="val" x="397.4" y="160.5">CAGR +2.5%  &#183;  10% invested</text>
+<rect class="bar-dn" x="200" y="187.0" width="582.8" height="33.0" rx="4"><title>DIA buy and hold: CAGR +6.2%, max drawdown -53.8%, median gross exposure 100%</title></rect>
+<text class="axis strong" x="186" y="207.5" text-anchor="end">DIA buy and hold</text>
+<text class="val" x="792.8" y="207.5">CAGR +6.2%  &#183;  100% invested</text>
+<text class="axis" x="200" y="292">bar length is the worst drawdown &#183; 18 equity ETFs, 1999&#8211;2026, financing charged</text>
+</svg>
+
+    </div>
+    <figcaption>Bar length is the worst drawdown. The rule delivers a third of
+    the index&rsquo;s return with a third of its drawdown &mdash; because it is
+    invested a tenth of the time.</figcaption>
+  </figure>
+
+  <div class="scroll">
+    <table>
+      <caption>81 signals over 27 years. Gross exposure is an output of the
+      sizing, not a setting.</caption>
+      <thead>
+        <tr><th>Risk per trade</th><th>Per position</th><th>CAGR</th>
+          <th>Max drawdown</th><th>&times; money</th><th>Gross median</th>
+          <th>Gross peak</th><th>Positions</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>1%</td><td>1.7%</td><td>+0.9%</td><td>&minus;5.9%</td>
+          <td>1.26&times;</td><td>3%</td><td>22%</td><td>2</td></tr>
+        <tr><td>2%</td><td>3.3%</td><td>+1.7%</td><td>&minus;11.7%</td>
+          <td>1.57&times;</td><td>7%</td><td>43%</td><td>2</td></tr>
+        <tr class="hi"><td>3%</td><td>5.0%</td><td>+2.5%</td>
+          <td>&minus;17.3%</td><td>1.95&times;</td><td>10%</td><td>65%</td>
+          <td>2</td></tr>
+        <tr><td><b>DIA bought and held</b></td><td class="dim">100%</td>
+          <td class="up">+6.2%</td><td class="down">&minus;53.8%</td>
+          <td class="up">5.02&times;</td><td class="dim">100%</td>
+          <td class="dim">100%</td><td class="dim">1</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="split">
+    <div class="card k-lo">
+      <h3>It does not beat holding the index</h3>
+      <p>+2.5% against +6.2%, 1.95&times; money against 5.02&times; over
+      twenty-seven years. The low drawdown is not risk management, it is
+      absence: median gross exposure is <b>10%</b> and it holds two positions.
+      Scaled up to match the index&rsquo;s return it would carry roughly the
+      index&rsquo;s drawdown.</p>
+    </div>
+    <div class="card k-mid">
+      <h3>The binding constraint is frequency</h3>
+      <p>Eighty-one signals in twenty-seven years &mdash; three a year across
+      eighteen ETFs. Dropping the run-up filter doubles that to 167 and lifts the
+      return to +3.8% at 3% risk, but the drawdown more than doubles too, to
+      &minus;40.8%. The filter is buying risk reduction, not return.</p>
+    </div>
+  </div>
+
+  <p class="note">And the correlation problem the numbers understate: these
+  eighteen ETFs fall together, because a broad 20% drawdown is what makes them
+  all qualify at once. The two-position median hides that in 2008 and 2020 every
+  slot held the same trade. A portfolio limit is not optional here, and this
+  simulation does not impose one.</p>
+</section>
+
+<section>
+  <h2>The rule, stated</h2>
+  <ol>
+    <li><b>Universe.</b> Equity index and sector ETFs. Exclude futures-backed
+    commodity and volatility products &mdash; they decay for reasons unrelated to
+    drawdown and they were the entire source of an apparent cliff past 35% that
+    turned out to be an artifact.</li>
+    <li><b>Entry.</b> 18% or more below the 252-day high. Below that threshold
+    the discount is illusory.</li>
+    <li><b>Filter.</b> Skip it if the peak it fell from had itself risen more
+    than about a third in the preceding two years. That is a bubble deflating,
+    and its tail is fifteen points worse.</li>
+    <li><b>Exit.</b> The prior high, or three years, whichever comes first.
+    Never a trailing stop.</li>
+    <li><b>Size.</b> Risk budget divided by 60%, which is the fifth-percentile
+    further fall. At 1% risk that is 1.7% of the book per position.</li>
+    <li><b>Leverage.</b> The measured ceiling is under 2&times; on a plain hold.
+    A centred grid roughly halves the closeout rate, but about half of that
+    benefit is simply that a centred grid deploys half its capital at entry.</li>
+  </ol>
+
+  <div class="card k-lo">
+    <h3>What would have to change for this to be worth running</h3>
+    <p>As measured it is a worse version of buying the index. The gap is
+    frequency, not signal quality: three trades a year at 5% of the book cannot
+    compound into anything, however good each one is. Either the universe grows
+    by an order of magnitude &mdash; hundreds of names rather than eighteen
+    &mdash; or the exposure rises, and the exposure cannot rise without the tail
+    rising with it.</p>
+    <p>The one honest measurement gap left is intraday. Fills here are taken off
+    the close, so any grid harvest is a floor rather than an estimate, and a
+    tight grid genuinely cannot be evaluated on daily bars.</p>
+  </div>
+</section>
+
+<footer>
+  18 US equity index and sector ETFs on split-adjusted daily bars,
+  1999&ndash;2026. Futures-backed commodity funds, volatility products,
+  currencies, bonds and physical metals are excluded: the first two decay
+  independently of any drawdown, and the rest have no earnings against which a
+  discount could be measured. Drawdown is measured against the trailing 252-session
+  high; entries are fresh crossings, re-armed only after recovering to within 60%
+  of the threshold. The further fall is the deepest point below entry over the
+  following three years, taken from daily lows so an intraday spike that would
+  trigger a margin call is counted. Portfolio returns charge 5% a year on any
+  borrowed portion; episode returns do not, and every grid figure quoted elsewhere
+  in this programme is gross of financing, which at 3&times; over three years is
+  worth more than the entire harvest. Fills are taken off the close, never off the
+  high and low of the same bar &mdash; crediting both would assume the price fell
+  and then rose on every single day, which is worth several hundred percent of
+  imaginary return over three years. Three-year windows over twenty-seven years
+  give roughly nine independent periods, and the deepest drawdown buckets are
+  dominated by 2008&ndash;09 and March 2020.
+</footer>
+
+</div>

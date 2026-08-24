@@ -34,6 +34,7 @@ strategy.
 | [`report-blueprint.html`](report-blueprint.html) | Chapter-by-chapter plan for the investor report. | [artifact](https://claude.ai/code/artifact/a8e1c677-b85c-4623-8a7c-c22bca8168e2) |
 | [`chapter-06-the-research-department.html`](chapter-06-the-research-department.html) | The full six-chapter cross-asset book; chapter VI is the 13F work. | Local draft |
 | [`chapter-07-when-six-slots-are-scarce.html`](chapter-07-when-six-slots-are-scarce.html) | 13F conviction as a six-slot allocation priority. | Local draft |
+| [`eighteen-percent.html`](eighteen-percent.html) | The drawdown rule measured end to end on 18 equity ETFs: the 18% threshold where gain-over-further-fall steps from 1.04 to 1.72, the −60% fifth-percentile tail that fixes position size, returns at 1%/2%/3% risk per trade — and why 10% median gross exposure leaves it behind buy-and-hold. | [artifact](https://claude.ai/code/artifact/d20037c8-0181-4a5f-bce3-9ae3043a12fc) |
 
 > **Superseded.** `research-agenda.html` still quotes Sharpe 2.64 for the banked
 > 30-minute book at 2bp. Both legs of that strategy are stop orders and therefore
