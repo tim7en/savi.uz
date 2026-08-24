@@ -31,7 +31,13 @@ OUTPUT = ROOT / "out/strategy/spy_rescue_capital/results.json"
 
 
 def simulate(asset_return: pd.Series, rates: pd.Series,
-             contributions: pd.Series) -> tuple[pd.DataFrame, dict]:
+             contributions: pd.Series,
+             levels: tuple[float, ...] = (5.0, 3.0, 3.0, 1.0),
+             leverage_thresholds: tuple[float, ...] = (0.10, 0.30, 0.50),
+             reserve_thresholds: tuple[float, ...] = THRESHOLDS,
+             reserve_fractions: tuple[float, ...] = DEPLOY_FRACTIONS,
+             rescue_multiple: float = 1.0,
+             ) -> tuple[pd.DataFrame, dict]:
     index = asset_return.index
     stamps = index.to_series()
     days = stamps.diff().dt.days.fillna(0.0)
@@ -46,7 +52,7 @@ def simulate(asset_return: pd.Series, rates: pd.Series,
     rescue_basis = 0.0
     strategy_nav = strategy_peak = 1.0
     combined_nav = combined_peak = 1.0
-    leverage = 5.0
+    leverage = levels[0]
     leverage_rung = 0
     reserve_fired: set[float] = set()
     rescue_fired = False
@@ -98,15 +104,13 @@ def simulate(asset_return: pd.Series, rates: pd.Series,
         signal_drawdown = strategy_nav / strategy_peak - 1.0
 
         if not recovered:
-            if signal_drawdown <= -0.50:
-                leverage_rung = max(leverage_rung, 3)
-            elif signal_drawdown <= -0.30:
-                leverage_rung = max(leverage_rung, 2)
-            elif signal_drawdown <= -0.10:
-                leverage_rung = max(leverage_rung, 1)
-        target_leverage = (5.0, 3.0, 3.0, 1.0)[leverage_rung]
+            for threshold_position in range(len(leverage_thresholds) - 1, -1, -1):
+                if signal_drawdown <= -leverage_thresholds[threshold_position]:
+                    leverage_rung = max(leverage_rung, threshold_position + 1)
+                    break
+        target_leverage = levels[leverage_rung]
 
-        for threshold, fraction in zip(THRESHOLDS, DEPLOY_FRACTIONS):
+        for threshold, fraction in zip(reserve_thresholds, reserve_fractions):
             if threshold in reserve_fired or signal_drawdown > -threshold:
                 continue
             reserve_fired.add(threshold)
@@ -118,7 +122,8 @@ def simulate(asset_return: pd.Series, rates: pd.Series,
             rescue_fired = True
             # Match the capital currently left in the complete account.  Reuse
             # protected rescue savings first; only the shortfall is new capital.
-            required = main + regular_reserve + rescue_savings + rescue_active
+            required = ((main + regular_reserve + rescue_savings + rescue_active)
+                        * rescue_multiple)
             reused_protected = min(rescue_savings, required)
             rescue_savings -= reused_protected
             remaining = required - reused_protected
@@ -196,12 +201,24 @@ def schedule_30y(index: pd.DatetimeIndex) -> pd.Series:
     return schedule
 
 
+def add_drawdown_dates(path: pd.DataFrame, stats: dict) -> None:
+    trough = path["combined_drawdown"].idxmin()
+    peak = path.loc[:trough, "combined_flow_adjusted_nav"].idxmax()
+    stats["max_drawdown_peak"] = peak.date().isoformat()
+    stats["max_drawdown_trough"] = trough.date().isoformat()
+    stats["wealth_at_peak"] = float(path.loc[peak, "combined_wealth"])
+    stats["wealth_at_trough"] = float(path.loc[trough, "combined_wealth"])
+
+
 def main() -> int:
     source = pd.read_csv(SOURCE, parse_dates=["date"], index_col="date")
     returns = source["spy_hold"].pct_change().fillna(0.0)
     rates = source["treasury_rate"]
 
     records = []
+    records_5_2_1 = []
+    records_fixed_3_half = []
+    records_fixed_3_equal = []
     starts = source.index.to_series().groupby(source.index.to_period("M")).first()
     for start in starts:
         target = start + pd.DateOffset(years=YEARS)
@@ -210,26 +227,55 @@ def main() -> int:
         end = source.index[source.index.searchsorted(target, side="right") - 1]
         window_return = returns.loc[start:end].copy()
         window_return.iloc[0] = 0.0
-        _, stats = simulate(
-            window_return, rates.loc[start:end], exact_monthly_schedule(window_return.index))
+        contribution_schedule = exact_monthly_schedule(window_return.index)
+        _, stats = simulate(window_return, rates.loc[start:end], contribution_schedule)
+        _, stats_5_2_1 = simulate(
+            window_return, rates.loc[start:end], contribution_schedule,
+            (5.0, 2.0, 1.0), (0.20, 0.50))
+        _, stats_fixed_3_half = simulate(
+            window_return, rates.loc[start:end], contribution_schedule,
+            (3.0,), (), (0.10, 0.20, 0.30), (1 / 3, 1 / 2, 1.0), 0.50)
+        _, stats_fixed_3_equal = simulate(
+            window_return, rates.loc[start:end], contribution_schedule,
+            (3.0,), (), (0.10, 0.20, 0.30), (1 / 3, 1 / 2, 1.0), 1.0)
         records.append({"start": start.date().isoformat(),
                         "end": end.date().isoformat(), **stats})
+        records_5_2_1.append({"start": start.date().isoformat(),
+                              "end": end.date().isoformat(), **stats_5_2_1})
+        records_fixed_3_half.append({"start": start.date().isoformat(),
+                                     "end": end.date().isoformat(),
+                                     **stats_fixed_3_half})
+        records_fixed_3_equal.append({"start": start.date().isoformat(),
+                                      "end": end.date().isoformat(),
+                                      **stats_fixed_3_equal})
 
     start_30, end_30 = pd.Timestamp("1996-08-21"), pd.Timestamp("2026-08-21")
     return_30 = returns.loc[start_30:end_30].copy()
     return_30.iloc[0] = 0.0
     path_30, stats_30 = simulate(
         return_30, rates.loc[start_30:end_30], schedule_30y(return_30.index))
-    trough = path_30["combined_drawdown"].idxmin()
-    peak = path_30.loc[:trough, "combined_flow_adjusted_nav"].idxmax()
-    stats_30["max_drawdown_peak"] = peak.date().isoformat()
-    stats_30["max_drawdown_trough"] = trough.date().isoformat()
-    stats_30["wealth_at_peak"] = float(path_30.loc[peak, "combined_wealth"])
-    stats_30["wealth_at_trough"] = float(path_30.loc[trough, "combined_wealth"])
+    add_drawdown_dates(path_30, stats_30)
+
+    path_30_5_2_1, stats_30_5_2_1 = simulate(
+        return_30, rates.loc[start_30:end_30], schedule_30y(return_30.index),
+        (5.0, 2.0, 1.0), (0.20, 0.50))
+    add_drawdown_dates(path_30_5_2_1, stats_30_5_2_1)
+
+    schedule = schedule_30y(return_30.index)
+    path_30_fixed_3_half, stats_30_fixed_3_half = simulate(
+        return_30, rates.loc[start_30:end_30], schedule,
+        (3.0,), (), (0.10, 0.20, 0.30), (1 / 3, 1 / 2, 1.0), 0.50)
+    add_drawdown_dates(path_30_fixed_3_half, stats_30_fixed_3_half)
+    path_30_fixed_3_equal, stats_30_fixed_3_equal = simulate(
+        return_30, rates.loc[start_30:end_30], schedule,
+        (3.0,), (), (0.10, 0.20, 0.30), (1 / 3, 1 / 2, 1.0), 1.0)
+    add_drawdown_dates(path_30_fixed_3_equal, stats_30_fixed_3_equal)
 
     result = {
         "method": {
             "base_rule": "5x at high, 3x at -10/-30%, 1x at -50%; reset only at prior high",
+            "new_rule": "5x at high, 2x at -20%, 1x at -50%; reset only at prior high",
+            "fixed_3_rule": "constant 3x; savings deployed equally at -10/-20/-30%; unlevered rescue at -60%",
             "rescue": "at -60%, buy 1x SPY with capital equal to total account then remaining; exit entire tranche at +10% total return",
             "rescue_funding": "reuse protected prior rescue proceeds, then record external top-up as a cash flow",
             "regular_savings": "10% positive calendar-year trading P&L; regular 20/30/50/80 deployment ladder",
@@ -237,11 +283,23 @@ def main() -> int:
         },
         "rolling_20y": summarize(pd.DataFrame(records)),
         "matched_30y": stats_30,
+        "new_5_2_1_rolling_20y": summarize(pd.DataFrame(records_5_2_1)),
+        "new_5_2_1_matched_30y": stats_30_5_2_1,
+        "fixed_3_half_balance_rolling_20y": summarize(
+            pd.DataFrame(records_fixed_3_half)),
+        "fixed_3_half_balance_matched_30y": stats_30_fixed_3_half,
+        "fixed_3_equal_balance_rolling_20y": summarize(
+            pd.DataFrame(records_fixed_3_equal)),
+        "fixed_3_equal_balance_matched_30y": stats_30_fixed_3_equal,
         "cohorts": records,
+        "new_5_2_1_cohorts": records_5_2_1,
+        "fixed_3_half_balance_cohorts": records_fixed_3_half,
+        "fixed_3_equal_balance_cohorts": records_fixed_3_equal,
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(json.dumps(result, indent=2), encoding="utf-8")
-    print(json.dumps({key: value for key, value in result.items() if key != "cohorts"}, indent=2))
+    print(json.dumps({key: value for key, value in result.items()
+                      if not key.endswith("cohorts")}, indent=2))
     return 0
 
 

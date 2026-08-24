@@ -251,6 +251,12 @@ def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
     drawdown = drawdown_svg(daily, frequency)
     rescue_20 = rescue["rolling_20y"] if rescue else None
     rescue_30 = rescue["matched_30y"] if rescue else None
+    rescue_new_20 = rescue["new_5_2_1_rolling_20y"] if rescue else None
+    rescue_new_30 = rescue["new_5_2_1_matched_30y"] if rescue else None
+    rescue_fixed3_half_20 = rescue.get("fixed_3_half_balance_rolling_20y") if rescue else None
+    rescue_fixed3_half_30 = rescue.get("fixed_3_half_balance_matched_30y") if rescue else None
+    rescue_fixed3_equal_20 = rescue.get("fixed_3_equal_balance_rolling_20y") if rescue else None
+    rescue_fixed3_equal_30 = rescue.get("fixed_3_equal_balance_matched_30y") if rescue else None
     twenty_section = ""
     if twenty_year:
         roll = twenty_year["rolling_20y"]
@@ -271,9 +277,19 @@ def render(result: dict, daily: pd.DataFrame, all_at_50: dict | None,
     rescue_30_row = ""
     if rescue_30:
         rescue_30_row = f"""<tr><td><strong>Equal-capital rescue</strong><small>1x tranche at −60%; exit at +10%</small></td><td>{money(rescue_30['terminal_wealth'])}</td><td>{pct(rescue_30['xirr'])}</td><td>{pct(rescue_30['max_drawdown'])}</td><td>1.00x rescue</td><td>—</td></tr>"""
+        rescue_30_row += f"""<tr><td><strong>5→2→1 plus rescue</strong><small>cut at −20/−50%; equal capital at −60%</small></td><td>{money(rescue_new_30['terminal_wealth'])}</td><td>{pct(rescue_new_30['xirr'])}</td><td>{pct(rescue_new_30['max_drawdown'])}</td><td>1.00x rescue</td><td>—</td></tr>"""
+        if rescue_fixed3_half_30:
+            rescue_30_row += f"""<tr class="featured"><td><strong>Constant 3x + half-balance rescue</strong><small>savings at -10/-20/-30%; rescue moves raw -60% to -40%</small></td><td>{money(rescue_fixed3_half_30['terminal_wealth'])}</td><td>{pct(rescue_fixed3_half_30['xirr'])}</td><td>{pct(rescue_fixed3_half_30['max_drawdown'])}</td><td>1.00x rescue</td><td>-</td></tr>"""
+        if rescue_fixed3_equal_30:
+            rescue_30_row += f"""<tr><td><strong>Constant 3x + equal-balance rescue</strong><small>literal equal leftover moves raw -60% to -20%</small></td><td>{money(rescue_fixed3_equal_30['terminal_wealth'])}</td><td>{pct(rescue_fixed3_equal_30['xirr'])}</td><td>{pct(rescue_fixed3_equal_30['max_drawdown'])}</td><td>1.00x rescue</td><td>-</td></tr>"""
     rescue_20_row = ""
     if rescue_20:
         rescue_20_row = f"""<tr><td><strong>Equal-capital rescue</strong><small>external top-up counted in XIRR</small></td><td>{money(rescue_20['terminal_wealth']['median'])}</td><td>{pct(rescue_20['xirr']['median'])}</td><td>{pct(rescue_20['max_drawdown']['median'])}</td><td>{rescue_20['longest_underwater_years']['median']:.1f} years</td><td>1.00x rescue</td><td>—</td></tr>"""
+        rescue_20_row += f"""<tr><td><strong>5→2→1 plus rescue</strong><small>median external rescue {money(rescue_new_20['total_rescue_external']['median'])}</small></td><td>{money(rescue_new_20['terminal_wealth']['median'])}</td><td>{pct(rescue_new_20['xirr']['median'])}</td><td>{pct(rescue_new_20['max_drawdown']['median'])}</td><td>{rescue_new_20['longest_underwater_years']['median']:.1f} years</td><td>1.00x rescue</td><td>—</td></tr>"""
+        if rescue_fixed3_half_20:
+            rescue_20_row += f"""<tr class="featured"><td><strong>Constant 3x + half-balance rescue</strong><small>median external rescue {money(rescue_fixed3_half_20['total_rescue_external']['median'])}</small></td><td>{money(rescue_fixed3_half_20['terminal_wealth']['median'])}</td><td>{pct(rescue_fixed3_half_20['xirr']['median'])}</td><td>{pct(rescue_fixed3_half_20['max_drawdown']['median'])}</td><td>{rescue_fixed3_half_20['longest_underwater_years']['median']:.1f} years</td><td>1.00x rescue</td><td>-</td></tr>"""
+        if rescue_fixed3_equal_20:
+            rescue_20_row += f"""<tr><td><strong>Constant 3x + equal-balance rescue</strong><small>median external rescue {money(rescue_fixed3_equal_20['total_rescue_external']['median'])}</small></td><td>{money(rescue_fixed3_equal_20['terminal_wealth']['median'])}</td><td>{pct(rescue_fixed3_equal_20['xirr']['median'])}</td><td>{pct(rescue_fixed3_equal_20['max_drawdown']['median'])}</td><td>{rescue_fixed3_equal_20['longest_underwater_years']['median']:.1f} years</td><td>1.00x rescue</td><td>-</td></tr>"""
     if grid:
         grid_base = grid["scenarios"]["base_OLHC"]
         grid_core = grid["scenarios"]["long_core_base_OLHC"]
@@ -401,7 +417,9 @@ def main(argv=None) -> int:
               if args.five_x.exists() else None)
     grid = (json.loads(args.grid.read_text(encoding="utf-8"))
             if args.grid.exists() else None)
-    page = render(result, daily, all_at_50, twenty_year, five_x, grid)
+    rescue = (json.loads(args.rescue.read_text(encoding="utf-8"))
+              if args.rescue.exists() else None)
+    page = render(result, daily, all_at_50, twenty_year, five_x, grid, rescue)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(page, encoding="utf-8")
     print(f"Wrote {args.out} ({len(page):,} chars)")

@@ -918,6 +918,11 @@
     high and trends up from there; drawdowns are where volatility is worst, and
     volatility drag scales with the square of leverage. Buying the fall with
     borrowed money puts maximum leverage into the maximum-drag regime.</p>
+    <p><b>How badly it runs backwards depends on where the triggers sit.</b> The
+    shallow version above &mdash; stepping at 10% and 25% &mdash; loses to its
+    inverse outright. Push the triggers to 30% and 50% and the ratchet does beat
+    its own inverse, +9.5% against +9.0%. Deep triggers are directionally right.
+    Neither version beats holding.</p>
   </div>
 
   <div class="scroll">
@@ -973,18 +978,115 @@
     </div>
   </div>
 
+<div class="card k-mid">
+  <h3>The specific schedule: 1&times;, then 2&times; at &minus;30%, then 3&times; at &minus;50%</h3>
+  <p>Deeper and lighter than anything in the sweep above, so it deserves its own
+  run. Across the 124 windows it returns <b>+9.5%</b> against holding&rsquo;s
+  +9.8%, with a median worst drawdown of &minus;48.5% against &minus;39.9%, and
+  it beats holding in <b>34 of 124</b> windows. Close, and on the wrong side.</p>
+  <p>It also <em>beats its own inverse</em> &mdash; +9.5% against +9.0% &mdash;
+  which the shallow-trigger version above does not. Deep triggers are
+  directionally right. They are still not right enough to beat doing nothing.</p>
+</div>
+
+<div class="scroll">
+  <table>
+    <caption>The whole difference, crisis by crisis. Equity multiple from just
+    before the peak to well after, 1&times; against the proposed schedule.</caption>
+    <thead>
+      <tr><th>Episode</th><th>Hold 1&times;</th><th>1 / 2@30 / 3@50</th>
+        <th>Its worst mark</th><th>Difference</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>1937 bear</td><td>0.93&times;</td><td>0.98&times;</td>
+        <td>&minus;53.4%</td><td class="up">better</td></tr>
+      <tr><td>1973&ndash;74</td><td>1.63&times;</td><td>1.62&times;</td>
+        <td>&minus;48.3%</td><td class="dim">a wash</td></tr>
+      <tr><td>dot-com</td><td>1.19&times;</td><td>1.15&times;</td>
+        <td>&minus;53.5%</td><td class="dim">a wash</td></tr>
+      <tr><td>2008 GFC</td><td>1.36&times;</td><td>1.37&times;</td>
+        <td>&minus;61.4%</td><td class="dim">a wash</td></tr>
+      <tr><td>COVID</td><td>1.47&times;</td><td>1.47&times;</td>
+        <td>&minus;19.0%</td><td class="dim">never fired</td></tr>
+      <tr class="hi"><td><b>1929&ndash;32</b></td><td>0.85&times;</td>
+        <td class="down"><b>0.08&times;</b></td><td class="down">&minus;99.5%</td>
+        <td class="down">everything</td></tr>
+      <tr><td><b>Full path 1871&ndash;2024</b></td><td class="up">823,939&times;</td>
+        <td>62,483&times;</td><td>&minus;99.5%</td>
+        <td class="down">13&times; less money</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p><b>Five of six crises are a coin flip and the sixth takes everything.</b> That
+is the martingale failure mode stated as a table. In 1937, 1974, 2000 and 2008
+the schedule lands within a couple of percent of simply holding &mdash; and in
+COVID it never fires at all, because a 30% drawdown on month-end closes is rarer
+than it feels. The entire 154-year gap between +9.3% and +7.4% is one event.</p>
+
+<div class="card k-lo">
+  <h3>Why 1929 specifically, and why it is not bad luck</h3>
+  <p>Follow the equity rather than the index. At &minus;30% you are at 0.70 and
+  you go to 2&times;. The index then falls from &minus;30% to &minus;50%, which is
+  a 28.6% further fall, and at 2&times; that costs 57% &mdash; so when the index
+  prints &minus;50%, <b>your equity is at 0.30, not 0.50</b>. Going to 3&times;
+  there means a further 33% index fall takes the account, and that is the index
+  at &minus;67%.</p>
+  <p>1929&ndash;32 fell further than that. The schedule is not unlucky in 1929;
+  it is <b>constructed to fail</b> at exactly the depth it is designed to exploit,
+  because levering an already-levered loss compounds the two.</p>
+</div>
+
+<div class="scroll">
+  <table>
+    <caption>The family around it. Same test, 124 windows, plus the 18-ETF daily
+    run with intraday margin checks.</caption>
+    <thead>
+      <tr><th>Schedule</th><th>Median CAGR</th><th>Worst window</th>
+        <th>Median max DD</th><th>Beat 1&times;</th><th>ETF CAGR</th>
+        <th>ETF beat 1&times;</th></tr>
+    </thead>
+    <tbody>
+      <tr class="hi"><td><b>hold 1&times;</b></td><td class="up">+9.8%</td>
+        <td class="up">+4.8%</td><td class="up">&minus;39.9%</td>
+        <td class="dim">&mdash;</td><td>+5.6%</td><td class="dim">&mdash;</td></tr>
+      <tr><td>1 / 2@30 / 3@50 &mdash; as proposed</td><td>+9.5%</td>
+        <td>&minus;5.6%</td><td>&minus;48.5%</td><td>34/124</td>
+        <td>+5.1%</td><td>9/18</td></tr>
+      <tr><td>1 / 2@25 / 3@45</td><td>+9.6%</td><td>&minus;5.6%</td>
+        <td>&minus;51.4%</td><td>58/124</td><td class="down">+3.7%</td>
+        <td>8/18</td></tr>
+      <tr><td>1 / 2@35 / 3@55</td><td>+9.7%</td><td>&minus;4.5%</td>
+        <td>&minus;41.5%</td><td>39/124</td><td class="up">+5.8%</td>
+        <td class="up">12/18</td></tr>
+      <tr class="hi"><td><b>1 / 1.5@30 / 2@50</b></td><td>+9.6%</td>
+        <td class="up">+0.5%</td><td>&minus;44.3%</td><td>61/124</td>
+        <td>+5.5%</td><td>11/18</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p><b>If this is going in, halve the rungs rather than moving the triggers.</b>
+The bottom row &mdash; 1.5&times; at &minus;30% and 2&times; at &minus;50% &mdash;
+is the only levered schedule anywhere in this study whose <em>worst</em> 30-year
+window is still positive, at +0.5%. It survives 1929 at 0.37&times; rather than
+0.08&times;, returns +9.6% against holding&rsquo;s +9.8%, and splits the windows
+almost evenly at 61 of 124. That is the closest thing here to a free option, and
+it is still not free.</p>
+
   <div class="card k-hi">
     <h3>The answer to the question as asked</h3>
     <p>Hold at <b>1&times;, not 2&times;</b>: flat 2&times; returns +9.2% against
-    +9.8% with drawdowns of &minus;71.8% against &minus;39.9%. Taking
-    <b>3&times; at 30&ndash;50% down</b> specifically returns +9.2% to +9.7%
-    against holding&rsquo;s +9.8%, and beats holding in only 28&ndash;34 windows
-    out of 124. It does not outperform.</p>
-    <p>If the ratchet is going in regardless, the least-bad version is the
-    gentlest and deepest: <b>1.5&times; triggered below 30%</b>. It costs about
-    0.3 points of annual return against holding, roughly doubles the drawdown to
-    &minus;44%, never ruins, and is the only levered arm whose worst 30-year
-    window is still positive.</p>
+    +9.8% with drawdowns of &minus;71.8% against &minus;39.9%. The proposed
+    <b>1&times; / 2&times; at &minus;30% / 3&times; at &minus;50%</b> returns
+    +9.5% against +9.8% and wins 34 windows of 124 &mdash; and loses 13&times;
+    the terminal money over the full path to a single event, 1929.</p>
+    <p>If the ratchet is going in regardless, <b>halve the rungs rather than
+    moving the triggers</b>: 1.5&times; at &minus;30% and 2&times; at &minus;50%.
+    It costs about 0.2 points of annual return, holds the drawdown near
+    &minus;44%, never ruins, survives 1929 at 0.37&times; rather than
+    0.08&times;, and is the only levered schedule in this study whose worst
+    30-year window is still positive.</p>
   </div>
 
   <p class="note">Two conventions worth stating, both of which run <em>toward</em>
