@@ -39,6 +39,7 @@ strategy.
 | [`quality-compounder-harvest.html`](quality-compounder-harvest.html) | The 5% / +20% quality-stock harvest, five-year compounder guardrail, six-setting parameter grid, SPY comparison, held-position ledger, and explicit timing/survivorship audit. | Local research page |
 | [`contribution-quality-strategy.html`](contribution-quality-strategy.html) | Cash-flow-matched SPY comparison for the 80/20 Treasury strategy with $10k annual plus $30k triennial deposits, staged drawdown deployment, strict quality gate, two-name sensitivity, holdings, and rolling 20-year results. | Local research page |
 | [`quality-compounder-v2.html`](quality-compounder-v2.html) | Revised monthly-funded Quality Compounder Harvest: gated quarterly and annual sweeps, historical market-cap-weighted mega-seven purchases, five-year relative-CAGR exits, 10/20/30% Treasury sensitivity, and parked-versus-immediate deposits. | Local research page |
+| [`simple-compounder-guide.html`](simple-compounder-guide.html) | Simple investor decision page: current SPY/NAV/CAPE state, exact Quality Compounder rules, strategy-versus-SPY plots, drawdown entry and recovery clocks, and a home-equity borrowing stress test. | Local decision guide |
 
 > **Superseded.** `research-agenda.html` still quotes Sharpe 2.64 for the banked
 > 30-minute book at 2bp. Both legs of that strategy are stop orders and therefore
