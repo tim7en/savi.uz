@@ -51,7 +51,8 @@ def line_chart(frame, columns, colors, *, performance=False):
         high = max(v.max() for v in data.values())
         log_low, log_high = math.log10(low), math.log10(high)
         y = lambda value: top + (log_high - math.log10(value)) / (log_high - log_low) * plot_h
-        ticks = [10_000, 30_000, 100_000, 300_000, 1_000_000, 3_000_000]
+        ticks = [10_000, 30_000, 100_000, 300_000, 1_000_000, 3_000_000,
+                 10_000_000, 30_000_000, 100_000_000]
         ticks = [value for value in ticks if low <= value <= high]
         label = money
     start, end = sampled.index[0], sampled.index[-1]
