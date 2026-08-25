@@ -626,6 +626,17 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
                     and prices[ticker].first_valid_index() is not None
                     and prices[ticker].first_valid_index() <= history_cutoff
                 ]
+                if exit_policy == "compounder_guardrail":
+                    signal_date = spy.index[signal_position]
+                    available = [
+                        ticker for ticker in available
+                        if len(earnings_histories.get(
+                            ticker, pd.DataFrame()
+                        ).loc[:signal_date]) >= 20
+                        and earnings_quality_as_of(
+                            earnings_histories[ticker], signal_date
+                        )["broken"] is False
+                    ]
                 if not available:
                     continue
                 account = main + reserve + lot_value(lots, current_row)
