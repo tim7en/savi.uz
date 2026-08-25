@@ -200,6 +200,16 @@ remain omitted, and maximum account exposure remained above 2x. Freeze the
 lookback before further testing, include switching costs, and combine it with
 an account-level gross-exposure cap.
 
+We separately tested withholding each scheduled $10,000 annual contribution in
+a DGS3MO waiting pool, then buying unlevered SPY in four equal episode-base
+rungs when the 60-session VIX percentile reached 70%, 80%, 90% and 95%. The
+ladder re-armed below 50%; the $30,000 triennial contribution kept its ordinary
+rule. This reduced 1993–2024 terminal wealth to $3,933,756 and XIRR to 10.020%,
+versus $4,119,424 and 10.245% when annual cash was deployed normally. Maximum
+drawdown worsened slightly, from -52.33% to -52.83%. The rule is rejected:
+contribute on schedule and use VIX to constrain leverage, not to time the whole
+annual deposit.
+
 ## 7. Leverage and funding
 
 Leverage applies to tranche equity, not to the entire account. An $8,000 SPY
