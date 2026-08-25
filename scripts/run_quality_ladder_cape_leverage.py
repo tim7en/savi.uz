@@ -185,6 +185,12 @@ def main(argv=None):
     contributions = contribution_schedule(
         prices.index, args.annual_contribution, args.triennial_contribution
     )
+    annual_contributions = contribution_schedule(
+        prices.index, args.annual_contribution, 0.0
+    )
+    triennial_contributions = contribution_schedule(
+        prices.index, 0.0, args.triennial_contribution
+    )
 
     variants = {
         "quality_cape": dict(
@@ -252,6 +258,17 @@ def main(argv=None):
             injection_vix_percentile=known_vix_monthly,
             injection_vix_mode="brake",
         ),
+        "quality_dual_guard_vix_sma60_deferred_annual": dict(
+            rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
+            cape_enabled=True, core_leverage=one,
+            injection_leverage=leverage,
+            injection_nav_drawdown=args.nav_deleverage_at,
+            injection_vix_percentile=known_vix_sma60,
+            injection_vix_mode="brake",
+            contribution_series=triennial_contributions,
+            deferred_contribution_series=annual_contributions,
+            deferred_deployment_percentile=known_vix_sma60,
+        ),
         "quality_cape_no_brake": dict(
             rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
             cape_enabled=True, core_leverage=leverage,
@@ -302,9 +319,13 @@ def main(argv=None):
     }
     paths, event_sets, holdings, metrics = {}, {}, {}, {}
     for name, settings in variants.items():
+        settings = dict(settings)
+        variant_contributions = settings.pop(
+            "contribution_series", contributions
+        )
         path, events, open_holdings = ladder.simulate(
             prices, raw, shares, rates, known_cape, args,
-            name=name, contribution_series=contributions, **settings,
+            name=name, contribution_series=variant_contributions, **settings,
         )
         paths[name] = path
         event_sets[name] = events
@@ -344,6 +365,9 @@ def main(argv=None):
                     "injection_weighted_leverage",
                 ].mean()
             ) if (path["injection_lot_count"] > 0).any() else 0.0,
+            "ending_pending_annual_cash": float(
+                path["pending_annual_cash"].iloc[-1]
+            ),
             "harvest_to_reserve": float(path.attrs["harvest_to_reserve"]),
             "harvest_to_spy": float(path.attrs["harvest_to_spy"]),
             "cape_incremental_reserve": float(path.attrs["cape_incremental_reserve"]),
@@ -376,6 +400,7 @@ def main(argv=None):
             "fresh_capital": "in the fresh-capital variants, the 80% core portion of a contribution made while the NAV brake is active follows CAPE leverage; it merges into the legacy core at NAV recovery",
             "dual_guard_injections": f"permanent core stays 1x; when prior-close account NAV DD is at least {args.nav_deleverage_at:.0%}, the SPY portion of a new contribution enters at the CAPE tier and resets to 1x when account NAV recovers",
             "vix_brake": "prior-close VIX trailing 252-session percentile dynamically caps injection leverage: CAPE ceiling below the 70th percentile, 2x from the 70th through 90th, and 1x at or above the 90th; smoothing tests use 5-, 20-, or 60-session trailing averages before ranking, plus a monthly-held raw signal",
+            "vix_timed_annual_contributions": "the annual $10,000 enters a DGS3MO waiting pool and deploys unlevered to SPY in four equal episode-base rungs at the 70th, 80th, 90th, and 95th percentiles of 60-session-smoothed VIX; re-arm below the 50th percentile; triennial $30,000 follows the ordinary rule",
             "financing": f"prior-known DGS3MO + {args.spread:.2%} on core exposure above 1x",
             "rungs": "20% Treasury to quality at -10% SPY DD; 30% to unlevered SPY at -20%; 30% to quality at -30%; 20% to unlevered SPY at -50%",
             "harvest": f"sell {args.harvest_share:.0%} original lot shares at every new {args.relative_step:.0%} relative-wealth band versus SPY",
@@ -424,7 +449,7 @@ def main(argv=None):
             "legacy_core_leverage", "fresh_core_leverage", "fresh_core_spy",
             "injection_core_spy", "injection_gross_exposure", "injection_lot_count",
             "injection_weighted_leverage", "vix_percentile",
-            "financing_cost",
+            "pending_annual_cash", "available_treasury", "financing_cost",
         ):
             daily[f"{name}_{column}"] = path[column]
         daily[f"{name}_pnl"] = path["wealth"] - daily["cumulative_contribution"]

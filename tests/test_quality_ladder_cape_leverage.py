@@ -172,6 +172,37 @@ class QualityLadderCapeLeverageTests(unittest.TestCase):
         path = MODULE.simulate_treasury(rates, contributions, initial=100.0)
         self.assertAlmostEqual(path["wealth"].iloc[-1], 110.0)
 
+    def test_deferred_annual_cash_deploys_in_four_vix_rungs(self):
+        index = pd.date_range("2020-01-02", periods=5, freq="B")
+        prices = pd.DataFrame({"SPY": [100.0] * 5}, index=index)
+        args = SimpleNamespace(
+            initial=100.0, spy_share=0.80, trade_bp=0.0, spread=0.0,
+            relative_step=0.20, harvest_share=0.05, cape_excessive=35.0,
+        )
+        path, events, _ = MODULE.ladder.simulate(
+            prices, pd.DataFrame(index=index), {},
+            pd.Series(0.0, index=index), pd.Series(20.0, index=index), args,
+            name="test", rungs_enabled=False, quality_enabled=False,
+            harvest_enabled=False, cape_enabled=False,
+            contribution_series=pd.Series(0.0, index=index),
+            core_leverage=pd.Series(1.0, index=index),
+            deferred_contribution_series=pd.Series(
+                [100.0, 0.0, 0.0, 0.0, 0.0], index=index
+            ),
+            deferred_deployment_percentile=pd.Series(
+                [0.40, 0.70, 0.80, 0.90, 0.95], index=index
+            ),
+        )
+        self.assertEqual(
+            path["pending_annual_cash"].tolist(),
+            [100.0, 75.0, 50.0, 25.0, 0.0],
+        )
+        self.assertEqual(
+            len([e for e in events if e.kind == "vix_annual_spy_deployment"]),
+            4,
+        )
+        self.assertAlmostEqual(path["wealth"].iloc[-1], 200.0)
+
 
 if __name__ == "__main__":
     unittest.main()

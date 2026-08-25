@@ -157,6 +157,10 @@ def simulate(
     injection_nav_drawdown: float | None = None,
     injection_vix_percentile: pd.Series | None = None,
     injection_vix_mode: str | None = None,
+    deferred_contribution_series: pd.Series | None = None,
+    deferred_deployment_percentile: pd.Series | None = None,
+    deferred_deployment_thresholds: tuple[float, ...] = (0.70, 0.80, 0.90, 0.95),
+    deferred_reset_below: float = 0.50,
 ) -> tuple[pd.DataFrame, list[Event], list[dict]]:
     spy = prices["SPY"].dropna()
     prices = prices.reindex(spy.index)
@@ -167,6 +171,16 @@ def simulate(
         market.monthly_schedule(spy.index, args.monthly_contribution)
         if contribution_series is None
         else contribution_series.reindex(spy.index).fillna(0.0)
+    )
+    deferred_contributions = (
+        pd.Series(0.0, index=spy.index)
+        if deferred_contribution_series is None
+        else deferred_contribution_series.reindex(spy.index).fillna(0.0)
+    )
+    deferred_signal = (
+        pd.Series(np.nan, index=spy.index)
+        if deferred_deployment_percentile is None
+        else deferred_deployment_percentile.reindex(spy.index).ffill().astype(float)
     )
     leverage = (
         pd.Series(1.0, index=spy.index)
@@ -196,6 +210,9 @@ def simulate(
     fresh_core_spy = 0.0
     rescue_spy_shares = 0.0
     reserve = args.initial * (1.0 - args.spy_share)
+    pending_annual_cash = 0.0
+    vix_deployment_fired: set[float] = set()
+    vix_episode_base = 0.0
     lots: list[QualityLot] = []
     injection_lots: list[InjectionLot] = []
     events: list[Event] = []
@@ -342,6 +359,7 @@ def simulate(
                     0.0,
                 )
             reserve *= 1.0 + known_rate * elapsed
+            pending_annual_cash *= 1.0 + known_rate * elapsed
         else:
             financing_cost = 0.0
 
@@ -351,12 +369,15 @@ def simulate(
             + sum(lot.equity for lot in injection_lots)
             + rescue_spy_shares * float(spy.iloc[position])
             + reserve
+            + pending_annual_cash
             + quality_value(lots, current_row)
         )
         if position and previous_total > 0:
             performance_index *= pre_flow_total / previous_total
 
         contribution = float(contributions.iloc[position])
+        deferred_contribution = float(deferred_contributions.iloc[position])
+        total_contribution = contribution + deferred_contribution
         if contribution:
             spy_cash = contribution * args.spy_share
             reserve_cash = contribution - spy_cash
@@ -410,6 +431,49 @@ def simulate(
                 stamp.date().isoformat(), "contribution", contribution, signal_dd,
                 contribution_detail,
             ))
+
+        if deferred_contribution:
+            pending_annual_cash += deferred_contribution
+            events.append(Event(
+                stamp.date().isoformat(), "deferred_annual_contribution",
+                deferred_contribution, signal_dd,
+                "Annual cash entered the waiting pool and earns DGS3MO",
+            ))
+
+        deployment_rank = float(deferred_signal.iloc[position])
+        if math.isfinite(deployment_rank) and deployment_rank < deferred_reset_below:
+            vix_deployment_fired.clear()
+            vix_episode_base = 0.0
+        if math.isfinite(deployment_rank) and pending_annual_cash > 0:
+            triggered_vix_levels = [
+                threshold for threshold in deferred_deployment_thresholds
+                if threshold not in vix_deployment_fired
+                and deployment_rank >= threshold
+            ]
+            if triggered_vix_levels and not vix_deployment_fired:
+                vix_episode_base = pending_annual_cash
+            rung_cash = (
+                vix_episode_base / len(deferred_deployment_thresholds)
+                if vix_episode_base > 0 else 0.0
+            )
+            for threshold in triggered_vix_levels:
+                cash = (
+                    pending_annual_cash
+                    if threshold == deferred_deployment_thresholds[-1]
+                    else min(rung_cash, pending_annual_cash)
+                )
+                if cash <= 0:
+                    break
+                pending_annual_cash -= cash
+                invested = cash * (1.0 - cost_rate)
+                core_spy += invested
+                vix_deployment_fired.add(threshold)
+                events.append(Event(
+                    stamp.date().isoformat(), "vix_annual_spy_deployment",
+                    cash, signal_dd,
+                    f"Unlevered SPY at smoothed VIX percentile "
+                    f"{deployment_rank:.1%}; -{threshold:.0%} rung",
+                ))
 
         # A recovered/new SPY high re-arms the ladder.  It does not force a sale
         # of SPY to refill Treasury; the actual reserve becomes the next budget.
@@ -563,8 +627,8 @@ def simulate(
         )
         core_value = core_spy + fresh_core_spy + injection_core_spy
         spy_value = core_value + rescue_spy
-        total = spy_value + reserve + quality
-        investable_after_flow = total - contribution
+        total = spy_value + reserve + pending_annual_cash + quality
+        investable_after_flow = total - total_contribution
         if pre_flow_total > 0 and investable_after_flow > 0:
             performance_index *= investable_after_flow / pre_flow_total
         performance_high = max(performance_high, performance_index)
@@ -592,7 +656,7 @@ def simulate(
         rows.append({
             "wealth": total,
             "performance_index": performance_index,
-            "contribution": contribution,
+            "contribution": total_contribution,
             "flow_adjusted_drawdown": flow_dd,
             "spy": spy_value,
             "core_spy": core_value,
@@ -604,7 +668,9 @@ def simulate(
             "injection_weighted_leverage": injection_weighted_leverage,
             "vix_percentile": current_vix_percentile,
             "rescue_spy": rescue_spy,
-            "treasury": reserve,
+            "treasury": reserve + pending_annual_cash,
+            "available_treasury": reserve,
+            "pending_annual_cash": pending_annual_cash,
             "quality": quality,
             "quality_weight": quality_weight,
             "spy_weight": spy_exposure,

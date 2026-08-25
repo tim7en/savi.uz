@@ -158,6 +158,9 @@ def main(argv=None):
     vix_sma20 = variants["quality_dual_guard_vix_sma20"]
     vix_sma60 = variants["quality_dual_guard_vix_sma60"]
     vix_monthly = variants["quality_dual_guard_vix_monthly"]
+    deferred_annual = variants[
+        "quality_dual_guard_vix_sma60_deferred_annual"
+    ]
     no_brake = variants["quality_cape_no_brake"]
     spy = variants["spy_1x"]
     treasury = variants["treasury_100"]
@@ -175,6 +178,7 @@ def main(argv=None):
         "quality_dual_guard_vix_sma20": "Dual guard + 20-session smoothed VIX",
         "quality_dual_guard_vix_sma60": "Dual guard + 60-session smoothed VIX",
         "quality_dual_guard_vix_monthly": "Dual guard + monthly-held VIX",
+        "quality_dual_guard_vix_sma60_deferred_annual": "60-session VIX + delayed annual deposits",
         "quality_cape_no_brake": "Quality ladder + CAPE, no NAV brake",
         "quality_cape_no_harvest": "CAPE quality ladder, no harvest",
         "spy_ladder_cape": "SPY-only ladder + CAPE leverage",
@@ -233,7 +237,9 @@ def main(argv=None):
     )
 
     order = [
-        "quality_dual_guard_vix_sma60", "quality_dual_guard_vix_sma20",
+        "quality_dual_guard_vix_sma60",
+        "quality_dual_guard_vix_sma60_deferred_annual",
+        "quality_dual_guard_vix_sma20",
         "quality_dual_guard_vix_sma5", "quality_dual_guard_vix_monthly",
         "quality_dual_guard_vix_brake", "quality_dual_guard_injections",
         "quality_dual_guard_vix_reverse", "spy_dual_guard_vix_brake",
@@ -306,6 +312,23 @@ def main(argv=None):
         abs(post_dual["max_flow_adjusted_drawdown"])
         - abs(post_sma60["max_flow_adjusted_drawdown"])
     )
+    post_deferred_annual = post[
+        "quality_dual_guard_vix_sma60_deferred_annual"
+    ]
+    deferred_vs_immediate = (
+        deferred_annual["terminal_wealth"] / vix_sma60["terminal_wealth"] - 1.0
+    )
+    deferred_vs_spy = deferred_annual["terminal_wealth"] / spy["terminal_wealth"] - 1.0
+    post_deferred_vs_immediate = (
+        post_deferred_annual["terminal_wealth"] / post_sma60["terminal_wealth"] - 1.0
+    )
+    deferred_events = [
+        event for event in result["events"][
+            "quality_dual_guard_vix_sma60_deferred_annual"
+        ] if event["kind"] == "vix_annual_spy_deployment"
+    ]
+    deferred_dates = len({event["date"] for event in deferred_events})
+    deferred_deployed = sum(event["amount"] for event in deferred_events)
     vix_change_events = [
         event for event in result["events"]["quality_dual_guard_vix_brake"]
         if event["kind"] == "vix_injection_leverage_change"
