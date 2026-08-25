@@ -206,18 +206,53 @@ def strategy_frame(path: Path, prefix: str) -> pd.DataFrame:
     })
 
 
-def load_regimes(path: Path, volatility_column: str) -> pd.DataFrame:
+def recovery_lockout(performance: pd.Series, trigger_drawdown: float = -0.10,
+                     wait_sessions: int = 20) -> pd.Series:
+    """Causal gate: pause after a drawdown until prior NAV high + wait_sessions."""
+    high = -math.inf
+    blocked = False
+    recovery_target = math.nan
+    wait_remaining: int | None = None
+    ready = []
+    for value in performance.astype(float):
+        if not np.isfinite(value):
+            ready.append(False)
+            continue
+        high = max(high, value)
+        drawdown = value / high - 1.0
+        if not blocked and drawdown <= trigger_drawdown + 1e-12:
+            blocked = True
+            recovery_target = high
+            wait_remaining = None
+        is_ready = not blocked
+        if blocked:
+            if wait_remaining is None and value >= recovery_target - 1e-12:
+                wait_remaining = wait_sessions
+            elif wait_remaining is not None:
+                wait_remaining -= 1
+                if wait_remaining <= 0:
+                    blocked = False
+                    wait_remaining = None
+                    is_ready = True
+        ready.append(is_ready)
+    return pd.Series(ready, index=performance.index, dtype=bool)
+
+
+def load_regimes(path: Path, volatility_column: str, prefix: str) -> pd.DataFrame:
+    performance_column = f"{prefix}_performance_index"
     frame = pd.read_csv(
-        path, usecols=["date", "cape_known", volatility_column],
+        path, usecols=["date", "cape_known", volatility_column, performance_column],
         parse_dates=["date"],
     ).set_index("date").sort_index()
-    return frame.rename(columns={volatility_column: "volatility_percentile"}).astype(float)
+    frame = frame.rename(columns={volatility_column: "volatility_percentile"})
+    frame["nav_recovery_ready"] = recovery_lockout(frame[performance_column])
+    return frame[["cape_known", "volatility_percentile", "nav_recovery_ready"]]
 
 
 def regime_is_eligible(cape: float | None, volatility_percentile: float | None,
-                       policy: str) -> bool:
+                       policy: str, nav_recovery_ready: bool = True) -> bool:
     cape_high = cape is not None and not pd.isna(cape) and cape >= 25.0
-    cape_extreme = cape is not None and not pd.isna(cape) and cape > 35.0
+    cape_extreme = cape is not None and not pd.isna(cape) and cape > 30.0
     volatility_calm = (
         volatility_percentile is not None
         and not pd.isna(volatility_percentile)
@@ -232,6 +267,14 @@ def regime_is_eligible(cape: float | None, volatility_percentile: float | None,
         "cape_extreme_or_vix_calm": cape_extreme or volatility_calm,
         "cape_high_and_vix_calm": cape_high and volatility_calm,
         "cape_extreme_and_vix_calm": cape_extreme and volatility_calm,
+        "recovery_ready": nav_recovery_ready,
+        "vix_calm_and_recovery_ready": volatility_calm and nav_recovery_ready,
+        "cape_extreme_or_vix_calm_and_recovery_ready": (
+            (cape_extreme or volatility_calm) and nav_recovery_ready
+        ),
+        "cape_extreme_and_vix_calm_and_recovery_ready": (
+            cape_extreme and volatility_calm and nav_recovery_ready
+        ),
     }
     if policy not in choices:
         raise ValueError(f"unknown covered-call regime policy: {policy}")
@@ -248,7 +291,11 @@ def filter_trades_by_regime(trades: list[CallTrade], regimes: pd.DataFrame,
         else:
             cape = known["cape_known"].iloc[-1]
             volatility = known["volatility_percentile"].iloc[-1]
-        if regime_is_eligible(cape, volatility, policy):
+        recovery_ready = (
+            bool(known["nav_recovery_ready"].iloc[-1])
+            if not known.empty and "nav_recovery_ready" in known else True
+        )
+        if regime_is_eligible(cape, volatility, policy, recovery_ready):
             selected.append(trade)
     return selected
 
@@ -346,6 +393,9 @@ def main(argv=None) -> int:
         "always", "cape_high", "cape_extreme", "vix_calm",
         "cape_high_or_vix_calm", "cape_extreme_or_vix_calm",
         "cape_high_and_vix_calm", "cape_extreme_and_vix_calm",
+        "recovery_ready", "vix_calm_and_recovery_ready",
+        "cape_extreme_or_vix_calm_and_recovery_ready",
+        "cape_extreme_and_vix_calm_and_recovery_ready",
     ]
     result = {
         "sample": {"start": args.start, "end": args.end},
@@ -357,8 +407,9 @@ def main(argv=None) -> int:
             "premium_routing": "gross option premium attributed to Treasury",
             "assignment_cost": f"{args.assignment_cost_bp:g} bp of covered notional when the call expires ITM",
             "conditional_gate": "sell only when the selected CAPE/VIX regime is true at the issue date",
-            "cape_high": "CAPE >= 25; extreme means CAPE > 35",
+            "cape_high": "CAPE >= 25; normal/average is 20-30; extreme means CAPE > 30",
             "volatility_calm": "prior-known 60-session VIX/VXN percentile < 70%",
+            "recovery_lockout": "after a 10% NAV drawdown, write no calls through recovery and for 20 sessions after NAV regains the prior high",
         },
         "chains": {}, "strategy_overlays": {}, "conditional": {}, "warnings": [
             "A standard ETF option contract represents 100 shares; fractional-notional results are not executable in a $10,000 SPY or QQQ account.",
@@ -374,7 +425,7 @@ def main(argv=None) -> int:
     for symbol, (daily_path, prefix, volatility_column) in strategy_specs.items():
         price_frame = load_price_frame(symbol, args.price_cache)
         base = strategy_frame(daily_path, prefix)
-        regimes = load_regimes(daily_path, volatility_column)
+        regimes = load_regimes(daily_path, volatility_column, prefix)
         result["chains"][symbol] = {}
         result["strategy_overlays"][symbol] = {}
         result["conditional"][symbol] = {}

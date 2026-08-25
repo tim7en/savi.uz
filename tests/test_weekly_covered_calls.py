@@ -35,6 +35,19 @@ class WeeklyCoveredCallTests(unittest.TestCase):
         self.assertTrue(MODULE.regime_is_eligible(30.0, 0.80, "cape_high_or_vix_calm"))
         self.assertFalse(MODULE.regime_is_eligible(30.0, 0.80, "cape_high_and_vix_calm"))
         self.assertTrue(MODULE.regime_is_eligible(36.0, 0.50, "cape_extreme_and_vix_calm"))
+        self.assertFalse(MODULE.regime_is_eligible(
+            36.0, 0.50, "cape_extreme_and_vix_calm_and_recovery_ready", False
+        ))
+
+    def test_recovery_lockout_waits_after_prior_high_is_recovered(self):
+        performance = pd.Series(
+            [1.00, 0.90, 0.95, 1.00, 1.01, 1.02],
+            index=pd.date_range("2020-01-01", periods=6),
+        )
+        ready = MODULE.recovery_lockout(
+            performance, trigger_drawdown=-0.10, wait_sessions=2
+        )
+        self.assertEqual(ready.tolist(), [True, False, False, False, False, True])
 
     def test_trade_filter_uses_issue_date_regime(self):
         regimes = pd.DataFrame({
