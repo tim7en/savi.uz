@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
 from dataclasses import asdict
 from pathlib import Path
 
@@ -43,6 +44,9 @@ def parse_args(argv=None):
     parser.add_argument("--fundamentals", type=Path, default=Path("data/sp500_data"))
     parser.add_argument("--cache", type=Path, default=Path(".cache/yahoo_daily"))
     parser.add_argument(
+        "--macro-db", type=Path, default=Path("data/macro/macro.db")
+    )
+    parser.add_argument(
         "--out", type=Path,
         default=Path("out/strategy/quality_ladder_cape_leverage"),
     )
@@ -55,6 +59,35 @@ def cape_leverage(cape: pd.Series) -> pd.Series:
     result.loc[cape >= 25.0] = 2.0
     result.loc[cape > 35.0] = 1.0
     return result
+
+
+def trailing_vix_percentile(index: pd.DatetimeIndex, macro_db: Path,
+                            window: int = 252) -> pd.Series:
+    """Prior-close VIX rank versus its preceding observations, no look-ahead."""
+    connection = sqlite3.connect(f"file:{macro_db}?mode=ro", uri=True)
+    try:
+        rows = connection.execute(
+            "SELECT obs_date, value FROM observations "
+            "WHERE series_id='VIXCLS' AND value IS NOT NULL ORDER BY obs_date"
+        ).fetchall()
+    finally:
+        connection.close()
+    raw = pd.Series(
+        [float(value) for _, value in rows],
+        index=pd.to_datetime([stamp for stamp, _ in rows]),
+        dtype=float,
+    )
+
+    def rank(values) -> float:
+        history, current = values[:-1], values[-1]
+        return float((history < current).sum() / len(history))
+
+    close_rank = raw.rolling(window + 1, min_periods=window + 1).apply(
+        rank, raw=True
+    )
+    # A VIX close dated D controls exposure no earlier than the following SPY
+    # session. Reindex first so holidays are handled before the trading-day lag.
+    return close_rank.reindex(index).ffill().shift(1)
 
 
 def simulate_spy(spy: pd.Series, contributions: pd.Series,
@@ -95,6 +128,7 @@ def main(argv=None):
     raw = raw.loc[prices.index]
     rates = core.load_rates(prices.index)
     known_cape = cape_data.known_cape_daily(cape_monthly, prices.index)
+    known_vix_percentile = trailing_vix_percentile(prices.index, args.macro_db)
     leverage = cape_leverage(known_cape)
     one = pd.Series(1.0, index=prices.index)
     contributions = contribution_schedule(
@@ -119,6 +153,22 @@ def main(argv=None):
             injection_leverage=leverage,
             injection_nav_drawdown=args.nav_deleverage_at,
         ),
+        "quality_dual_guard_vix_brake": dict(
+            rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
+            cape_enabled=True, core_leverage=one,
+            injection_leverage=leverage,
+            injection_nav_drawdown=args.nav_deleverage_at,
+            injection_vix_percentile=known_vix_percentile,
+            injection_vix_mode="brake",
+        ),
+        "quality_dual_guard_vix_reverse": dict(
+            rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
+            cape_enabled=True, core_leverage=one,
+            injection_leverage=leverage,
+            injection_nav_drawdown=args.nav_deleverage_at,
+            injection_vix_percentile=known_vix_percentile,
+            injection_vix_mode="reverse",
+        ),
         "quality_cape_no_brake": dict(
             rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
             cape_enabled=True, core_leverage=leverage,
@@ -138,6 +188,14 @@ def main(argv=None):
             cape_enabled=False, all_spy_rungs=True, core_leverage=one,
             injection_leverage=leverage,
             injection_nav_drawdown=args.nav_deleverage_at,
+        ),
+        "spy_dual_guard_vix_brake": dict(
+            rungs_enabled=True, quality_enabled=False, harvest_enabled=False,
+            cape_enabled=False, all_spy_rungs=True, core_leverage=one,
+            injection_leverage=leverage,
+            injection_nav_drawdown=args.nav_deleverage_at,
+            injection_vix_percentile=known_vix_percentile,
+            injection_vix_mode="brake",
         ),
         "cape_core_80_20": dict(
             rungs_enabled=False, quality_enabled=False, harvest_enabled=False,
@@ -197,6 +255,12 @@ def main(argv=None):
             "max_injection_weight": float(
                 (path["injection_core_spy"] / path["wealth"]).max()
             ),
+            "mean_injection_leverage_when_active": float(
+                path.loc[
+                    path["injection_lot_count"] > 0,
+                    "injection_weighted_leverage",
+                ].mean()
+            ) if (path["injection_lot_count"] > 0).any() else 0.0,
             "harvest_to_reserve": float(path.attrs["harvest_to_reserve"]),
             "harvest_to_spy": float(path.attrs["harvest_to_spy"]),
             "cape_incremental_reserve": float(path.attrs["cape_incremental_reserve"]),
@@ -226,6 +290,7 @@ def main(argv=None):
             "nav_brake": f"core drops to 1x at -{args.nav_deleverage_at:.0%} flow-adjusted NAV drawdown and restores current CAPE leverage only at a new NAV high",
             "fresh_capital": "in the fresh-capital variants, the 80% core portion of a contribution made while the NAV brake is active follows CAPE leverage; it merges into the legacy core at NAV recovery",
             "dual_guard_injections": f"permanent core stays 1x; when prior-close account NAV DD is at least {args.nav_deleverage_at:.0%}, the SPY portion of a new contribution enters at the CAPE tier and resets to 1x when account NAV recovers",
+            "vix_brake": "prior-close VIX trailing 252-session percentile dynamically caps injection leverage: CAPE ceiling below the 70th percentile, 2x from the 70th through 90th, and 1x at or above the 90th; reverse control applies the opposite ordering",
             "financing": f"prior-known DGS3MO + {args.spread:.2%} on core exposure above 1x",
             "rungs": "20% Treasury to quality at -10% SPY DD; 30% to unlevered SPY at -20%; 30% to quality at -30%; 20% to unlevered SPY at -50%",
             "harvest": f"sell {args.harvest_share:.0%} original lot shares at every new {args.relative_step:.0%} relative-wealth band versus SPY",
@@ -253,6 +318,7 @@ def main(argv=None):
     daily = pd.DataFrame(index=prices.index)
     daily["cape_known"] = known_cape
     daily["cape_leverage"] = leverage
+    daily["vix_percentile"] = known_vix_percentile
     daily["contribution"] = contributions
     daily["cumulative_contribution"] = args.initial + contributions.cumsum()
     daily["spy_1x_wealth"] = spy["wealth"]
@@ -265,6 +331,7 @@ def main(argv=None):
             "base_core_leverage", "nav_brake_active", "gross_exposure",
             "legacy_core_leverage", "fresh_core_leverage", "fresh_core_spy",
             "injection_core_spy", "injection_gross_exposure", "injection_lot_count",
+            "injection_weighted_leverage", "vix_percentile",
             "financing_cost",
         ):
             daily[f"{name}_{column}"] = path[column]

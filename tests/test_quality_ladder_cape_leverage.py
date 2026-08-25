@@ -17,6 +17,12 @@ SPEC.loader.exec_module(MODULE)
 
 
 class QualityLadderCapeLeverageTests(unittest.TestCase):
+    def test_vix_brake_and_reversal_are_directionally_opposite(self):
+        cap = MODULE.ladder.vix_leverage_cap
+        self.assertEqual([cap(3.0, rank, "brake") for rank in (0.50, 0.80, 0.95)], [3.0, 2.0, 1.0])
+        self.assertEqual([cap(3.0, rank, "reverse") for rank in (0.50, 0.80, 0.95)], [1.0, 2.0, 3.0])
+        self.assertEqual(cap(2.0, 0.50, "brake"), 2.0)
+
     def test_cape_leverage_boundaries(self):
         cape = pd.Series([24.99, 25.0, 35.0, 35.01])
         self.assertEqual(MODULE.cape_leverage(cape).tolist(), [3.0, 2.0, 2.0, 1.0])
@@ -127,6 +133,30 @@ class QualityLadderCapeLeverageTests(unittest.TestCase):
             ["injection_leverage_reset"],
         )
         self.assertAlmostEqual(path["injection_core_spy"].iloc[-1], 0.0)
+
+    def test_vix_brake_delays_and_then_restores_cape_leverage(self):
+        index = pd.to_datetime([
+            "2020-01-02", "2020-01-03", "2020-01-06", "2020-01-07"
+        ])
+        prices = pd.DataFrame({"SPY": [100.0, 85.0, 85.0, 85.0]}, index=index)
+        args = SimpleNamespace(
+            initial=100.0, spy_share=0.80, trade_bp=0.0, spread=0.0,
+            relative_step=0.20, harvest_share=0.05, cape_excessive=35.0,
+        )
+        path, _, _ = MODULE.ladder.simulate(
+            prices, pd.DataFrame(index=index), {},
+            pd.Series(0.0, index=index), pd.Series(20.0, index=index), args,
+            name="test", rungs_enabled=False, quality_enabled=False,
+            harvest_enabled=False, cape_enabled=False,
+            contribution_series=pd.Series([0.0, 0.0, 100.0, 0.0], index=index),
+            core_leverage=pd.Series(1.0, index=index),
+            injection_leverage=pd.Series(3.0, index=index),
+            injection_nav_drawdown=0.10,
+            injection_vix_percentile=pd.Series([0.95, 0.95, 0.95, 0.50], index=index),
+            injection_vix_mode="brake",
+        )
+        self.assertEqual(path["injection_weighted_leverage"].iloc[2], 1.0)
+        self.assertEqual(path["injection_weighted_leverage"].iloc[3], 3.0)
 
 
 if __name__ == "__main__":

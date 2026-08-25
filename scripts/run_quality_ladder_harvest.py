@@ -52,10 +52,11 @@ class QualityLot:
 
 @dataclass
 class InjectionLot:
-    """Equity in a contribution tranche with leverage fixed until NAV recovery."""
+    """Equity in a contribution tranche held until account NAV recovery."""
 
     equity: float
     leverage: float
+    desired_leverage: float
     entry_date: pd.Timestamp
     entry_drawdown: float
     entry_cape: float
@@ -119,6 +120,20 @@ def _buy_spy(amount: float, price: float, cost_rate: float) -> float:
     return amount * (1.0 - cost_rate) / price if amount > 0 else 0.0
 
 
+def vix_leverage_cap(desired: float, percentile: float,
+                     mode: str | None) -> float:
+    """Apply the pre-registered VIX brake or its directional reversal."""
+    if mode is None or not math.isfinite(percentile):
+        return desired
+    if mode == "brake":
+        cap = 1.0 if percentile >= 0.90 else 2.0 if percentile >= 0.70 else 3.0
+    elif mode == "reverse":
+        cap = 3.0 if percentile >= 0.90 else 2.0 if percentile >= 0.70 else 1.0
+    else:
+        raise ValueError(f"unknown VIX leverage mode: {mode}")
+    return min(desired, cap)
+
+
 def simulate(
     prices: pd.DataFrame,
     raw: pd.DataFrame,
@@ -140,6 +155,8 @@ def simulate(
     fresh_capital_cape_leverage: bool = False,
     injection_leverage: pd.Series | None = None,
     injection_nav_drawdown: float | None = None,
+    injection_vix_percentile: pd.Series | None = None,
+    injection_vix_mode: str | None = None,
 ) -> tuple[pd.DataFrame, list[Event], list[dict]]:
     spy = prices["SPY"].dropna()
     prices = prices.reindex(spy.index)
@@ -160,6 +177,11 @@ def simulate(
         leverage
         if injection_leverage is None
         else injection_leverage.reindex(spy.index).ffill().bfill().astype(float)
+    )
+    vix_percentiles = (
+        pd.Series(np.nan, index=spy.index)
+        if injection_vix_percentile is None
+        else injection_vix_percentile.reindex(spy.index).ffill().astype(float)
     )
     spy_returns = spy.pct_change().fillna(0.0)
     days = spy.index.to_series().diff().dt.days.fillna(0.0)
@@ -202,6 +224,7 @@ def simulate(
         new_quarter = bool(
             position and stamp.to_period("Q") != signal_date.to_period("Q")
         )
+        current_vix_percentile = float(vix_percentiles.iloc[position])
 
         # Leveraged injection tranches become ordinary 1x core capital once
         # the account regains its previous flow-adjusted high.
@@ -214,6 +237,23 @@ def simulate(
                 previous_flow_drawdown,
                 "Account NAV recovered; injection tranches converted to 1x core",
             ))
+
+        # The VIX layer can reduce or restore tranche leverage using only the
+        # prior-close percentile supplied for this execution day. CAPE fixes
+        # the desired ceiling at entry; VIX controls the path to that ceiling.
+        for lot in injection_lots:
+            old_level = lot.leverage
+            lot.leverage = vix_leverage_cap(
+                lot.desired_leverage, current_vix_percentile,
+                injection_vix_mode,
+            )
+            if abs(lot.leverage - old_level) > 1e-12:
+                events.append(Event(
+                    stamp.date().isoformat(), "vix_injection_leverage_change",
+                    lot.equity, previous_flow_drawdown,
+                    f"{old_level:.0f}x to {lot.leverage:.0f}x; "
+                    f"VIX trailing percentile {current_vix_percentile:.1%}",
+                ))
 
         if nav_deleverage_at is not None:
             was_active = nav_brake_active
@@ -325,18 +365,25 @@ def simulate(
                 and previous_flow_drawdown <= -injection_nav_drawdown + 1e-12
             )
             if injection_gate:
-                injection_level = float(injection_levels.iloc[signal_position])
-                if injection_level > 1.0:
+                desired_injection_level = float(injection_levels.iloc[signal_position])
+                injection_level = vix_leverage_cap(
+                    desired_injection_level, current_vix_percentile,
+                    injection_vix_mode,
+                )
+                if desired_injection_level > 1.0:
                     injection_lots.append(InjectionLot(
                         equity=spy_cash,
                         leverage=injection_level,
+                        desired_leverage=desired_injection_level,
                         entry_date=stamp,
                         entry_drawdown=previous_flow_drawdown,
                         entry_cape=signal_cape,
                     ))
                     contribution_detail = (
-                        f"{args.spy_share:.0%} SPY injection at {injection_level:.0f}x; "
+                        f"{args.spy_share:.0%} SPY injection at {injection_level:.0f}x "
+                        f"(CAPE ceiling {desired_injection_level:.0f}x); "
                         f"NAV DD {previous_flow_drawdown:.1%}; CAPE {signal_cape:.1f}; "
+                        f"VIX percentile {current_vix_percentile:.1%}; "
                         f"{1.0 - args.spy_share:.0%} Treasury"
                     )
                 else:
@@ -510,6 +557,10 @@ def simulate(
         injection_exposure = sum(
             lot.equity * lot.leverage for lot in injection_lots
         )
+        injection_weighted_leverage = (
+            injection_exposure / injection_core_spy
+            if injection_core_spy > 0 else 0.0
+        )
         core_value = core_spy + fresh_core_spy + injection_core_spy
         spy_value = core_value + rescue_spy
         total = spy_value + reserve + quality
@@ -550,6 +601,8 @@ def simulate(
             "injection_core_spy": injection_core_spy,
             "injection_gross_exposure": injection_exposure,
             "injection_lot_count": len(injection_lots),
+            "injection_weighted_leverage": injection_weighted_leverage,
+            "vix_percentile": current_vix_percentile,
             "rescue_spy": rescue_spy,
             "treasury": reserve,
             "quality": quality,
