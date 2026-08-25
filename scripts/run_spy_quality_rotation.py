@@ -205,10 +205,12 @@ def usable_earnings(path: Path) -> int:
 
 
 def load_earnings_history(path: Path) -> pd.DataFrame:
-    """Return reported EPS indexed by the date it became public.
+    """Return reported EPS indexed by its conservative availability date.
 
     The fiscal period end is deliberately not used as the availability date.
-    A report can only influence a decision after ``reportedDate``.
+    Before-market reports are available on ``reportedDate``.  After-market and
+    unknown-time reports are delayed by one calendar day, so they cannot leak
+    into a same-close signal.
     """
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))["data"]
@@ -224,16 +226,24 @@ def load_earnings_history(path: Path) -> pd.DataFrame:
             continue
         if pd.isna(reported_date) or pd.isna(fiscal_date) or not math.isfinite(eps):
             continue
+        report_time = str(row.get("reportTime", "")).lower()
+        available_date = (
+            reported_date if report_time == "bmo"
+            else reported_date + pd.Timedelta(days=1)
+        )
         records.append({
             "reported_date": reported_date,
+            "available_date": available_date,
             "fiscal_date": fiscal_date,
             "reported_eps": eps,
-            "report_time": str(row.get("reportTime", "")).lower(),
+            "report_time": report_time,
         })
     if not records:
         return pd.DataFrame(columns=["fiscal_date", "reported_eps", "report_time"])
-    frame = pd.DataFrame(records).sort_values(["reported_date", "fiscal_date"])
-    return frame.drop_duplicates("fiscal_date", keep="last").set_index("reported_date")
+    frame = pd.DataFrame(records).sort_values(["available_date", "fiscal_date"])
+    return frame.drop_duplicates("fiscal_date", keep="last").set_index(
+        "available_date"
+    )
 
 
 def load_earnings_histories(path: Path, tickers) -> dict[str, pd.DataFrame]:
@@ -282,6 +292,19 @@ def earnings_quality_as_of(history: pd.DataFrame, as_of: pd.Timestamp) -> dict:
         "prior_ttm_eps": prior_ttm,
         "three_year_ago_ttm_eps": three_year_ttm,
     }
+
+
+def point_in_time_earnings_eligible(history: pd.DataFrame,
+                                    as_of: pd.Timestamp,
+                                    minimum_reports: int = 20) -> bool:
+    """Require enough already-available reports and an intact guardrail."""
+    if history.empty or not isinstance(history.index, pd.DatetimeIndex):
+        return False
+    known = history.loc[:as_of]
+    return (
+        len(known) >= minimum_reports
+        and earnings_quality_as_of(history, as_of)["broken"] is False
+    )
 
 
 def rolling_total_return_cagr_as_of(series: pd.Series, position: int,
@@ -630,12 +653,10 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
                     signal_date = spy.index[signal_position]
                     available = [
                         ticker for ticker in available
-                        if len(earnings_histories.get(
-                            ticker, pd.DataFrame()
-                        ).loc[:signal_date]) >= 20
-                        and earnings_quality_as_of(
-                            earnings_histories[ticker], signal_date
-                        )["broken"] is False
+                        if point_in_time_earnings_eligible(
+                            earnings_histories.get(ticker, pd.DataFrame()),
+                            signal_date,
+                        )
                     ]
                 if not available:
                     continue

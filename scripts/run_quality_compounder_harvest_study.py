@@ -3,7 +3,8 @@
 The policy decisions in this study are temporally clean:
 
 * a stock-price threshold observed at one close is executed at the next close;
-* only earnings with ``reportedDate`` at or before the signal close are used;
+* earnings are gated by report time: before-open reports may be used that day,
+  while after-close and unknown-time reports become eligible the next day;
 * the rolling five-year CAGR uses only total-return prices then available; and
 * a post-five-year sale requires both CAGR below the threshold and a mechanical
   earnings break.
@@ -228,11 +229,19 @@ def main(argv=None) -> int:
     bias_audit = {
         "decision_rules_use_future_prices": False,
         "price_signal_execution": "prior close signal; next close execution",
-        "earnings_availability_field": "reportedDate",
+        "earnings_availability_field": "reportedDate + reportTime",
+        "after_close_or_unknown_report_timing": (
+            "conservatively available on the next calendar day"
+        ),
         "future_earnings_filtered": True,
+        "historical_fundamental_vintages_available": False,
+        "vendor_revision_risk": (
+            "Historical reported EPS may reflect later vendor corrections"
+        ),
         "rolling_cagr_uses_future_prices": False,
         "fundamental_missing_data_forces_sale": False,
         "point_in_time_universe_membership": False,
+        "point_in_time_market_cap_screen": False,
         "delisted_security_return_coverage": False,
         "static_present_day_candidate_basket": True,
         "overall_strategy_claim_is_survivorship_bias_free": False,

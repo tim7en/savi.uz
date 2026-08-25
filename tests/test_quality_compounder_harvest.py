@@ -32,7 +32,45 @@ def args():
     )
 
 
+def intact_history_before(day):
+    dates = pd.date_range(end=pd.Timestamp(day), periods=20, freq="QS")
+    return pd.DataFrame({"reported_eps": [1.0] * 20}, index=dates)
+
+
 class QualityCompounderHarvestTests(unittest.TestCase):
+    def test_after_close_earnings_are_not_available_at_same_close(self):
+        import json
+        import tempfile
+
+        rows = []
+        for index, day in enumerate(pd.date_range("2019-01-15", periods=16, freq="QS")):
+            rows.append({
+                "reportedDate": day.date().isoformat(),
+                "fiscalDateEnding": (day - pd.Timedelta(days=30)).date().isoformat(),
+                "reportedEPS": "-2" if index >= 12 else "1",
+                "reportTime": "amc",
+            })
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "earnings.json"
+            path.write_text(json.dumps({"data": {"quarterlyEarnings": rows}}))
+            history = MODULE.load_earnings_history(path)
+
+        same_close = MODULE.earnings_quality_as_of(
+            history, pd.Timestamp(rows[-1]["reportedDate"])
+        )
+        next_day = MODULE.earnings_quality_as_of(
+            history, pd.Timestamp(rows[-1]["reportedDate"]) + pd.Timedelta(days=1)
+        )
+
+        self.assertEqual(same_close["reports_used"], 15)
+        self.assertIsNone(same_close["broken"])
+        self.assertTrue(next_day["broken"])
+
+    def test_missing_earnings_history_is_not_entry_eligible(self):
+        self.assertFalse(MODULE.point_in_time_earnings_eligible(
+            pd.DataFrame(), pd.Timestamp("2020-01-01")
+        ))
+
     def test_earnings_guardrail_ignores_reports_after_signal_date(self):
         dates = pd.date_range("2018-01-15", periods=20, freq="QS")
         history = pd.DataFrame(
@@ -80,6 +118,9 @@ class QualityCompounderHarvestTests(unittest.TestCase):
             prices, rates, args(), "harvest_test", "step_3_2_1",
             staging=True, quality_at_40=True, harvest_share=0.0,
             signal_source="portfolio", exit_policy="compounder_guardrail",
+            earnings_histories={
+                "QUALITY": intact_history_before("2019-12-31")
+            },
         )
         purchase = next(event for event in events if event.kind == "deploy_quality")
         harvests = [
@@ -101,10 +142,11 @@ class QualityCompounderHarvestTests(unittest.TestCase):
             index=dates,
         )
         rates = pd.Series(0.0, index=dates)
-        report_dates = pd.date_range("2020-03-01", periods=16, freq="QS")
+        report_dates = pd.date_range(end="2019-12-31", periods=20, freq="QS")
+        later_dates = pd.date_range("2024-03-01", periods=4, freq="QS")
         history = pd.DataFrame(
-            {"reported_eps": [1.0] * 12 + [-1.0] * 4},
-            index=report_dates,
+            {"reported_eps": [1.0] * 20 + [-2.0] * 4},
+            index=report_dates.append(later_dates),
         )
 
         _, events = MODULE.simulate(
