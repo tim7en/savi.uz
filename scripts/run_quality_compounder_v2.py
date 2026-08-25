@@ -158,13 +158,17 @@ def trailing_cagr(series: pd.Series, position: int, years: float = 5.0):
 
 def simulate(prices: pd.DataFrame, raw: pd.DataFrame, shares, rates,
              args, *, reserve_share: float, contribution_mode: str,
-             name: str) -> tuple[pd.DataFrame, list[Event], list[dict]]:
+             name: str,
+             leverage_cap: pd.Series | None = None
+             ) -> tuple[pd.DataFrame, list[Event], list[dict]]:
     if contribution_mode not in {"immediate", "treasury_first"}:
         raise ValueError("unknown contribution mode")
     spy = prices["SPY"].dropna()
     prices = prices.reindex(spy.index)
     raw = raw.reindex(spy.index)
     rates = rates.reindex(spy.index).ffill().bfill()
+    if leverage_cap is not None:
+        leverage_cap = leverage_cap.reindex(spy.index).ffill().bfill()
     spy_returns = spy.pct_change().fillna(0.0)
     days = spy.index.to_series().diff().dt.days.fillna(0.0)
     contributions = monthly_schedule(spy.index, args.monthly_contribution)
@@ -220,6 +224,8 @@ def simulate(prices: pd.DataFrame, raw: pd.DataFrame, shares, rates,
                 ))
 
         leverage = leverage_state(leverage, signal_dd)
+        if leverage_cap is not None:
+            leverage = min(leverage, float(leverage_cap.iloc[signal_position]))
         if position:
             elapsed = float(days.iloc[position]) / 365.0
             known_rate = float(rates.iloc[position - 1])
@@ -362,6 +368,10 @@ def simulate(prices: pd.DataFrame, raw: pd.DataFrame, shares, rates,
         # At a high, reset rungs/leverage and release only parked contributions.
         if current_dd >= -1e-12:
             leverage = 3.0
+            if leverage_cap is not None:
+                leverage = min(
+                    leverage, float(leverage_cap.iloc[signal_position])
+                )
             if fired:
                 events.append(Event(
                     stamp.date().isoformat(), "episode_reset", 0.0, current_dd,
