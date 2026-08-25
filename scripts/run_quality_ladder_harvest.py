@@ -50,6 +50,17 @@ class QualityLot:
     harvested_shares: float = 0.0
 
 
+@dataclass
+class InjectionLot:
+    """Equity in a contribution tranche with leverage fixed until NAV recovery."""
+
+    equity: float
+    leverage: float
+    entry_date: pd.Timestamp
+    entry_drawdown: float
+    entry_cape: float
+
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--start", default="1993-01-29")
@@ -127,6 +138,8 @@ def simulate(
     nav_deleverage_at: float | None = None,
     nav_restore_drawdown: float = 0.0,
     fresh_capital_cape_leverage: bool = False,
+    injection_leverage: pd.Series | None = None,
+    injection_nav_drawdown: float | None = None,
 ) -> tuple[pd.DataFrame, list[Event], list[dict]]:
     spy = prices["SPY"].dropna()
     prices = prices.reindex(spy.index)
@@ -143,6 +156,11 @@ def simulate(
         if core_leverage is None
         else core_leverage.reindex(spy.index).ffill().bfill().astype(float)
     )
+    injection_levels = (
+        leverage
+        if injection_leverage is None
+        else injection_leverage.reindex(spy.index).ffill().bfill().astype(float)
+    )
     spy_returns = spy.pct_change().fillna(0.0)
     days = spy.index.to_series().diff().dt.days.fillna(0.0)
     spy_high = spy.cummax()
@@ -157,6 +175,7 @@ def simulate(
     rescue_spy_shares = 0.0
     reserve = args.initial * (1.0 - args.spy_share)
     lots: list[QualityLot] = []
+    injection_lots: list[InjectionLot] = []
     events: list[Event] = []
     rows = []
     fired: set[float] = set()
@@ -183,6 +202,18 @@ def simulate(
         new_quarter = bool(
             position and stamp.to_period("Q") != signal_date.to_period("Q")
         )
+
+        # Leveraged injection tranches become ordinary 1x core capital once
+        # the account regains its previous flow-adjusted high.
+        if position and injection_lots and previous_flow_drawdown >= -1e-12:
+            merged = sum(lot.equity for lot in injection_lots)
+            core_spy += merged
+            injection_lots.clear()
+            events.append(Event(
+                stamp.date().isoformat(), "injection_leverage_reset", merged,
+                previous_flow_drawdown,
+                "Account NAV recovered; injection tranches converted to 1x core",
+            ))
 
         if nav_deleverage_at is not None:
             was_active = nav_brake_active
@@ -228,7 +259,16 @@ def simulate(
                 * (known_rate + float(getattr(args, "spread", 0.01)))
                 * elapsed
             )
-            financing_cost = legacy_financing_cost + fresh_financing_cost
+            injection_financing_cost = sum(
+                lot.equity * max(lot.leverage - 1.0, 0.0)
+                * (known_rate + float(getattr(args, "spread", 0.01)))
+                * elapsed
+                for lot in injection_lots
+            )
+            financing_cost = (
+                legacy_financing_cost + fresh_financing_cost
+                + injection_financing_cost
+            )
             financing_cost_total += financing_cost
             core_spy = max(
                 core_spy * (
@@ -250,6 +290,17 @@ def simulate(
                 ),
                 0.0,
             )
+            for lot in injection_lots:
+                lot.equity = max(
+                    lot.equity * (
+                        1.0
+                        + lot.leverage * float(spy_returns.iloc[position])
+                        - max(lot.leverage - 1.0, 0.0)
+                        * (known_rate + float(getattr(args, "spread", 0.01)))
+                        * elapsed
+                    ),
+                    0.0,
+                )
             reserve *= 1.0 + known_rate * elapsed
         else:
             financing_cost = 0.0
@@ -257,6 +308,7 @@ def simulate(
         pre_flow_total = (
             core_spy
             + fresh_core_spy
+            + sum(lot.equity for lot in injection_lots)
             + rescue_spy_shares * float(spy.iloc[position])
             + reserve
             + quality_value(lots, current_row)
@@ -268,7 +320,32 @@ def simulate(
         if contribution:
             spy_cash = contribution * args.spy_share
             reserve_cash = contribution - spy_cash
-            if fresh_capital_cape_leverage and nav_brake_active:
+            injection_gate = (
+                injection_nav_drawdown is not None
+                and previous_flow_drawdown <= -injection_nav_drawdown + 1e-12
+            )
+            if injection_gate:
+                injection_level = float(injection_levels.iloc[signal_position])
+                if injection_level > 1.0:
+                    injection_lots.append(InjectionLot(
+                        equity=spy_cash,
+                        leverage=injection_level,
+                        entry_date=stamp,
+                        entry_drawdown=previous_flow_drawdown,
+                        entry_cape=signal_cape,
+                    ))
+                    contribution_detail = (
+                        f"{args.spy_share:.0%} SPY injection at {injection_level:.0f}x; "
+                        f"NAV DD {previous_flow_drawdown:.1%}; CAPE {signal_cape:.1f}; "
+                        f"{1.0 - args.spy_share:.0%} Treasury"
+                    )
+                else:
+                    core_spy += spy_cash
+                    contribution_detail = (
+                        f"{args.spy_share:.0%} SPY injection at 1x; expensive CAPE "
+                        f"{signal_cape:.1f}; {1.0 - args.spy_share:.0%} Treasury"
+                    )
+            elif fresh_capital_cape_leverage and nav_brake_active:
                 fresh_core_spy += spy_cash
                 contribution_detail = (
                     f"{args.spy_share:.0%} CAPE-levered fresh core / "
@@ -338,6 +415,7 @@ def simulate(
                 total_before_routing = (
                     core_spy
                     + fresh_core_spy
+                    + sum(lot.equity for lot in injection_lots)
                     + rescue_spy_shares * float(spy.iloc[position])
                     + reserve + proceeds
                     + quality_value(lots, current_row)
@@ -428,7 +506,11 @@ def simulate(
 
         quality = quality_value(lots, current_row)
         rescue_spy = rescue_spy_shares * float(spy.iloc[position])
-        core_value = core_spy + fresh_core_spy
+        injection_core_spy = sum(lot.equity for lot in injection_lots)
+        injection_exposure = sum(
+            lot.equity * lot.leverage for lot in injection_lots
+        )
+        core_value = core_spy + fresh_core_spy + injection_core_spy
         spy_value = core_value + rescue_spy
         total = spy_value + reserve + quality
         investable_after_flow = total - contribution
@@ -442,10 +524,15 @@ def simulate(
         gross_exposure = (
             core_spy * applied_level
             + fresh_core_spy * base_level
+            + injection_exposure
             + rescue_spy + quality
         ) / total if total > 0 else 0.0
         effective_core_leverage = (
-            (core_spy * applied_level + fresh_core_spy * base_level) / core_value
+            (
+                core_spy * applied_level
+                + fresh_core_spy * base_level
+                + injection_exposure
+            ) / core_value
             if core_value > 0 else 0.0
         )
         max_spy_exposure = max(max_spy_exposure, gross_exposure)
@@ -460,6 +547,9 @@ def simulate(
             "core_spy": core_value,
             "legacy_core_spy": core_spy,
             "fresh_core_spy": fresh_core_spy,
+            "injection_core_spy": injection_core_spy,
+            "injection_gross_exposure": injection_exposure,
+            "injection_lot_count": len(injection_lots),
             "rescue_spy": rescue_spy,
             "treasury": reserve,
             "quality": quality,

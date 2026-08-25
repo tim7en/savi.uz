@@ -112,6 +112,8 @@ def main(argv=None):
     variants = result["variants"]
     primary = variants["quality_cape"]
     fresh = variants["quality_cape_fresh_cape"]
+    dual = variants["quality_dual_guard_injections"]
+    spy_dual = variants["spy_dual_guard_injections"]
     no_brake = variants["quality_cape_no_brake"]
     spy = variants["spy_1x"]
     quality_1x = variants["quality_1x"]
@@ -121,9 +123,11 @@ def main(argv=None):
     labels = {
         "quality_cape": "Quality ladder + CAPE + NAV brake",
         "quality_cape_fresh_cape": "Quality ladder + fresh-capital CAPE sleeve",
+        "quality_dual_guard_injections": "Dual guard: 1x core + CAPE drawdown injections",
         "quality_cape_no_brake": "Quality ladder + CAPE, no NAV brake",
         "quality_cape_no_harvest": "CAPE quality ladder, no harvest",
         "spy_ladder_cape": "SPY-only ladder + CAPE leverage",
+        "spy_dual_guard_injections": "Dual guard with SPY-only Treasury ladder",
         "cape_core_80_20": "CAPE core, no ladder",
         "cape_core_80_20_fresh_cape": "CAPE core + fresh-capital CAPE sleeve",
         "quality_1x": "Quality ladder, 1x core",
@@ -131,14 +135,17 @@ def main(argv=None):
         "spy_1x": "SPY 1x",
     }
     colors = {
+        "quality_dual_guard_injections_wealth": "var(--purple)",
         "quality_cape_fresh_cape_wealth": "var(--purple)",
         "quality_cape_wealth": "var(--teal)",
         "quality_1x_wealth": "var(--blue)",
         "spy_1x_wealth": "var(--ink)",
+        "quality_dual_guard_injections_performance_index": "var(--purple)",
         "quality_cape_fresh_cape_performance_index": "var(--purple)",
         "quality_cape_performance_index": "var(--teal)",
         "quality_1x_performance_index": "var(--blue)",
         "spy_1x_performance": "var(--ink)",
+        "quality_dual_guard_injections_pnl": "var(--purple)",
         "quality_cape_fresh_cape_pnl": "var(--purple)",
         "quality_cape_pnl": "var(--teal)",
         "quality_1x_pnl": "var(--blue)",
@@ -146,35 +153,36 @@ def main(argv=None):
     }
     growth = line_chart(
         daily,
-        ["quality_cape_fresh_cape_wealth", "quality_cape_wealth", "spy_1x_wealth"],
+        ["quality_dual_guard_injections_wealth", "quality_1x_wealth", "spy_1x_wealth"],
         colors,
     )
     drawdown = line_chart(
         daily,
-        ["quality_cape_fresh_cape_performance_index", "quality_cape_performance_index", "spy_1x_performance"],
+        ["quality_dual_guard_injections_performance_index", "quality_1x_performance_index", "spy_1x_performance"],
         colors,
         performance=True,
     )
     pnl = linear_chart(
         daily,
-        ["quality_cape_fresh_cape_pnl", "quality_cape_pnl", "spy_1x_pnl"],
+        ["quality_dual_guard_injections_pnl", "quality_1x_pnl", "spy_1x_pnl"],
         colors,
         "Cumulative profit and loss net of contributions",
     )
     cape_plot = cape_chart(daily)
     legend = (
-        '<span><i style="--swatch:var(--purple)"></i>Fresh contributions follow CAPE</span>'
-        '<span><i style="--swatch:var(--teal)"></i>All core obeys NAV brake</span>'
+        '<span><i style="--swatch:var(--purple)"></i>Dual-guard injection strategy</span>'
+        '<span><i style="--swatch:var(--blue)"></i>Quality ladder, 1x core</span>'
         '<span><i style="--swatch:var(--ink)"></i>SPY 1x</span>'
     )
 
     order = [
-        "quality_cape_fresh_cape", "quality_cape", "quality_cape_no_brake",
-        "quality_cape_no_harvest", "spy_ladder_cape", "cape_core_80_20_fresh_cape",
-        "cape_core_80_20", "quality_1x", "static_80_20", "spy_1x",
+        "quality_dual_guard_injections", "spy_dual_guard_injections",
+        "quality_1x", "quality_cape_fresh_cape", "quality_cape",
+        "quality_cape_no_brake", "quality_cape_no_harvest", "spy_ladder_cape",
+        "cape_core_80_20_fresh_cape", "cape_core_80_20", "static_80_20", "spy_1x",
     ]
     rows = "".join(
-        f'<tr class="{"featured" if name == "quality_cape_fresh_cape" else ""}">'
+        f'<tr class="{"featured" if name == "quality_dual_guard_injections" else ""}">'
         f'<td><strong>{html.escape(labels[name])}</strong></td>'
         f'<td>{money(variants[name]["terminal_wealth"])}</td>'
         f'<td>{pct(variants[name]["xirr"])}</td>'
@@ -185,7 +193,7 @@ def main(argv=None):
         for name in order
     )
     post_rows = "".join(
-        f'<tr class="{"featured" if name == "quality_cape_fresh_cape" else ""}">'
+        f'<tr class="{"featured" if name == "quality_dual_guard_injections" else ""}">'
         f'<td><strong>{html.escape(labels[name])}</strong></td>'
         f'<td>{money(sensitivity["variants"][name]["terminal_wealth"])}</td>'
         f'<td>{pct(sensitivity["variants"][name]["xirr"])}</td>'
@@ -211,6 +219,23 @@ def main(argv=None):
     fresh_drawdown_cost = abs(fresh["max_flow_adjusted_drawdown"]) - abs(primary["max_flow_adjusted_drawdown"])
     post_fresh = post["quality_cape_fresh_cape"]
     post_fresh_advantage = post_fresh["terminal_wealth"] / post["spy_1x"]["terminal_wealth"] - 1.0
+    dual_vs_spy = dual["terminal_wealth"] / spy["terminal_wealth"] - 1.0
+    dual_vs_quality_1x = dual["terminal_wealth"] / quality_1x["terminal_wealth"] - 1.0
+    dual_selection_effect = dual["terminal_wealth"] / spy_dual["terminal_wealth"] - 1.0
+    post_dual = post["quality_dual_guard_injections"]
+    post_dual_vs_spy = post_dual["terminal_wealth"] / post["spy_1x"]["terminal_wealth"] - 1.0
+    levered_injections = [
+        event for event in result["events"]["quality_dual_guard_injections"]
+        if event["kind"] == "contribution"
+        and (" at 2x" in event["detail"] or " at 3x" in event["detail"])
+    ]
+    injection_rows = "".join(
+        f'<tr><td><strong>{event["date"]}</strong></td>'
+        f'<td>{money(event["amount"])}</td>'
+        f'<td>{pct(event["drawdown"], 1)}</td>'
+        f'<td>{html.escape(event["detail"])}</td></tr>'
+        for event in levered_injections
+    )
     pnl_gap_text = (
         f"{money(abs(pnl_advantage))} more"
         if pnl_advantage >= 0
@@ -224,48 +249,46 @@ def main(argv=None):
 *{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:17px/1.62 var(--serif)}}main{{width:min(1100px,calc(100% - 34px));margin:auto;padding:52px 0 80px}}header{{border-bottom:2px solid var(--ink);padding-bottom:34px}}.eyebrow{{font:700 11px var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--teal)}}h1{{font:650 clamp(40px,7vw,72px)/1.02 var(--serif);letter-spacing:-.045em;max-width:14ch;margin:13px 0 20px}}h1 em{{color:var(--brick)}}.standfirst{{font-size:22px;line-height:1.43;color:var(--muted);max-width:66ch}}section{{padding-top:48px;max-width:880px}}section.wide{{max-width:none}}h2{{font:650 31px/1.18 var(--serif);letter-spacing:-.025em;margin:0 0 14px}}h3{{font:650 21px/1.3 var(--serif);margin:30px 0 10px}}p{{margin:0 0 18px}}.cards{{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);margin-top:28px}}.card{{background:var(--paper);padding:17px;border-right:1px solid var(--line)}}.card:last-child{{border:0}}.card b{{display:block;font:700 22px var(--mono)}}.card span{{display:block;font:12px/1.4 var(--sans);color:var(--faint);margin-top:7px}}.rule{{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:23px 0}}.step{{background:var(--paper);border-top:4px solid var(--teal);padding:17px}}.step:nth-child(2){{border-color:#b38108}}.step:last-child{{border-color:var(--brick)}}.step b{{display:block;font:700 22px var(--mono)}}.step span{{font:12px/1.45 var(--sans);color:var(--faint)}}.note{{background:var(--soft);border-left:3px solid var(--teal);padding:18px 20px;color:var(--muted)}}.warning{{background:var(--warn);border-left-color:var(--brick)}}.caution{{background:var(--gold);border-left-color:#9a6a00}}.scroll{{overflow:auto;border:1px solid var(--line);background:var(--paper);margin-top:22px}}table{{border-collapse:collapse;width:100%;font:13px/1.4 var(--sans);font-variant-numeric:tabular-nums}}th,td{{padding:12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}}th{{font:700 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--faint)}}th:first-child,td:first-child{{text-align:left}}td:first-child{{white-space:normal;min-width:180px}}td strong,td small{{display:block}}tr.featured{{background:var(--soft)}}figure{{margin:30px 0}}.figure-head{{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:9px;font:13px var(--sans);color:var(--muted)}}.plate{{background:var(--paper);border:1px solid var(--line);padding:14px;margin-top:13px;overflow:auto}}svg{{display:block;width:100%;min-width:720px}}.frame{{fill:none;stroke:var(--line)}}.grid{{stroke:var(--line)}}.zero{{stroke:var(--brick);stroke-width:1.5}}.axis{{font:10px var(--mono);fill:var(--faint)}}.axis-title{{font:12px var(--sans);fill:var(--ink)}}.legend{{display:flex;gap:18px;flex-wrap:wrap;padding:8px 4px 0;font:11px var(--sans);color:var(--muted)}}.legend span{{display:flex;gap:7px;align-items:center}}.legend i{{width:22px;border-top:2px solid var(--swatch)}}footer{{font:12px/1.55 var(--sans);color:var(--faint);border-top:1px solid var(--line);margin-top:55px;padding-top:20px;max-width:960px}}a{{color:var(--teal)}}code{{font-family:var(--mono)}}@media(max-width:760px){{.cards{{grid-template-columns:1fr 1fr}}.rule{{grid-template-columns:1fr}}.card:nth-child(2){{border-right:0}}}}@media(max-width:520px){{.cards{{grid-template-columns:1fr}}}}
 </style></head><body><main>
 <header><div class="eyebrow">CAPE sample - {result["sample"]["start"]} to {result["sample"]["end"]}</div>
-<h1>Fresh capital helps. <em>It also bypasses the brake.</em></h1>
-<p class="standfirst">Existing core capital still falls to 1x at a 10% NAV drawdown. New contributions made while underwater now enter a separate sleeve at the leverage permitted by CAPE. Return improves, but the fresh sleeve can rebuild dangerous exposure before the account recovers.</p>
-<div class="cards"><div class="card"><b>{money(fresh["terminal_wealth"])}</b><span>fresh-sleeve terminal wealth; SPY {money(spy["terminal_wealth"])}</span></div>
-<div class="card"><b>{pct(fresh["xirr"])}</b><span>fresh-sleeve XIRR; SPY {pct(spy["xirr"])}</span></div>
-<div class="card"><b>{pct(fresh["max_flow_adjusted_drawdown"])}</b><span>maximum drawdown; old brake path {pct(primary["max_flow_adjusted_drawdown"])}</span></div>
-<div class="card"><b>{fresh["mean_gross_exposure"]:.2f}x</b><span>mean exposure; fresh sleeve active {pct(fresh["fresh_capital_active_share"], 1)} of sessions</span></div></div></header>
+<h1>NAV chooses when. <em>CAPE chooses how much.</em></h1>
+<p class="standfirst">The permanent SPY core never exceeds 1x. Only new capital arriving during an account drawdown can use leverage, with its entry exposure selected by CAPE. Once the combined account recovers its prior high, every injected tranche converts back to 1x.</p>
+<div class="cards"><div class="card"><b>{money(dual["terminal_wealth"])}</b><span>dual-guard terminal wealth; SPY {money(spy["terminal_wealth"])}</span></div>
+<div class="card"><b>{pct(dual["xirr"])}</b><span>dual-guard XIRR; SPY {pct(spy["xirr"])}</span></div>
+<div class="card"><b>{pct(dual["max_flow_adjusted_drawdown"])}</b><span>maximum drawdown; SPY {pct(spy["max_flow_adjusted_drawdown"])}</span></div>
+<div class="card"><b>{dual["mean_gross_exposure"]:.2f}x</b><span>mean gross exposure; maximum {dual["max_gross_exposure"]:.2f}x</span></div></div></header>
 
-<section><div class="eyebrow">I - Corrected specification</div><h2>CAPE sets the ceiling; NAV can shut it down.</h2>
+<section><div class="eyebrow">I - Two-account specification</div><h2>Permanent capital and opportunity capital have different jobs.</h2>
 <p>Begin with {money(result["cash_flows"]["initial"])} at 80% SPY core and 20% Treasury. Add {money(result["cash_flows"]["annual"])} at the first session of every later year and an additional {money(result["cash_flows"]["additional_every_third_year"])} in contribution years 3, 6, 9 and so on. Total contributed was {money(result["cash_flows"]["total_contributed"])} across {result["cash_flows"]["contribution_events"]} later deposits.</p>
-<div class="rule"><div class="step"><b>CAPE &lt;25</b><span>Standing SPY core at 3x.</span></div><div class="step"><b>25-35</b><span>Standing SPY core at 2x.</span></div><div class="step"><b>CAPE &gt;35</b><span>Standing SPY core at 1x.</span></div></div>
-<p>Monthly CAPE is usable only from the next month. <strong>At a 10% flow-adjusted NAV drawdown, the core drops to 1x on the following session and remains at 1x until NAV makes a new high.</strong> It then restores only the leverage currently permitted by CAPE. Exposure above 1x pays prior-known DGS3MO +1%.</p>
-<p><strong>New rule tested:</strong> while that brake is active, the 80% SPY portion of every annual contribution enters a separate sleeve at 3x below CAPE 25, 2x from 25 through 35, or 1x above 35. The remaining 20% still enters Treasury. At NAV recovery, the fresh sleeve merges into the legacy core and becomes subject to the next account-level brake.</p>
+<div class="rule"><div class="step"><b>CAPE &lt;25</b><span>Drawdown-time SPY injection enters at 3x.</span></div><div class="step"><b>25-35</b><span>Drawdown-time SPY injection enters at 2x.</span></div><div class="step"><b>CAPE &gt;35</b><span>New capital buys SPY at 1x.</span></div></div>
+<p><strong>NAV is the gate:</strong> the permanent 80% SPY core stays at 1x. If the prior-close flow-adjusted account NAV is less than 10% below its high, a new contribution also enters at 1x regardless of CAPE. At a drawdown of 10% or more, CAPE determines only the leverage of that new SPY tranche. The remaining 20% of every contribution enters Treasury.</p>
+<p><strong>Recovery is the reset:</strong> each leveraged injection holds its entry exposure until the combined account regains the high that preceded the drawdown. On the following session it is converted to 1x and merged into the permanent core. Monthly CAPE is lagged one month, and exposure above 1x pays prior-known DGS3MO +1%.</p>
 <p>The Treasury ladder remains unchanged: quality at -10%, SPY at -20%, quality at -30%, and SPY at -50% of SPY drawdown. Those rescue tranches remain unlevered.</p>
 <p class="note">This is a daily-rebalanced leverage model, not a promise that a leveraged ETF, futures account or margin account would reproduce it. ETF tracking, margin liquidation and taxes are omitted.</p></section>
 
-<section class="wide"><div class="eyebrow">II - P&amp;L versus SPY</div><h2>More return than the strict brake, but still just behind SPY.</h2>
+<section class="wide"><div class="eyebrow">II - P&amp;L versus SPY</div><h2>The dual guard nearly matched SPY with less full-sample drawdown.</h2>
 <figure><div class="figure-head"><strong>Cumulative P&amp;L after subtracting all deposits</strong><span>not realized or tax-adjusted</span></div><div class="plate">{pnl}<div class="legend">{legend}</div></div></figure>
-<p>The fresh-sleeve strategy produced {money(fresh["net_gain"])} of cumulative net gain versus {money(spy["net_gain"])} for SPY. It improved terminal wealth by {pct(fresh_vs_braked, 1)} over forcing every contribution to obey the active NAV brake, but still finished {pct(fresh_terminal_advantage, 1)} versus SPY with identical cash flows.</p>
+<p>The dual-guard strategy produced {money(dual["net_gain"])} of cumulative net gain versus {money(spy["net_gain"])} for SPY. Terminal wealth was {pct(dual_vs_spy, 2)} versus SPY with identical cash flows, while XIRR differed by only {(dual["xirr"] - spy["xirr"]) * 10_000:.0f} basis points.</p>
 <figure><div class="figure-head"><strong>Account value with matched deposits</strong><span>log scale</span></div><div class="plate">{growth}<div class="legend">{legend}</div></div></figure>
 <figure><div class="figure-head"><strong>Flow-adjusted drawdown</strong><span>deposits removed from return clock</span></div><div class="plate">{drawdown}<div class="legend">{legend}</div></div></figure>
-<p class="warning note"><strong>This is not free incremental return:</strong> maximum drawdown worsened by {fresh_drawdown_cost:.1%} versus the strict NAV brake and was also worse than SPY's {pct(spy["max_flow_adjusted_drawdown"])}. Fresh deposits followed CAPE even while the older account remained deleveraged.</p></section>
+<p class="note"><strong>Risk result:</strong> full-sample maximum drawdown was {pct(dual["max_flow_adjusted_drawdown"])} versus {pct(spy["max_flow_adjusted_drawdown"])} for SPY, and annualized volatility was {pct(dual["annual_volatility"])} versus {pct(spy["annual_volatility"])}.</p></section>
 
-<section class="wide"><div class="eyebrow">III - Full comparison</div><h2>Separating old and new capital changes the middle ground.</h2>
+<section class="wide"><div class="eyebrow">III - Full comparison</div><h2>Selective leverage added return without levering the permanent core.</h2>
 <div class="scroll"><table><thead><tr><th>Path</th><th>Terminal</th><th>XIRR</th><th>TWR CAGR</th><th>Max DD</th><th>Volatility</th><th>Mean exposure</th></tr></thead><tbody>{rows}</tbody></table></div>
-<p>The NAV brake improved the no-brake drawdown by {brake_drawdown_improvement:.1%}, but reduced terminal wealth by {pct(abs(brake_wealth_effect), 0)}. The corrected CAPE strategy ended {pct(leverage_effect, 1)} versus the same quality ladder held continuously at 1x. Quality selection added {pct(selection_effect, 1)} over the corrected SPY-only ladder, while harvesting reduced terminal wealth by {pct(abs(harvest_effect), 2)} versus leaving the selected stocks untouched.</p>
-<p>The fresh contribution sleeve raised full-sample XIRR from {pct(primary["xirr"])} to {pct(fresh["xirr"])} and terminal wealth from {money(primary["terminal_wealth"])} to {money(fresh["terminal_wealth"])}. Financing cost increased from {money(primary["financing_cost"])} to {money(fresh["financing_cost"])}.</p>
-<p class="caution note">The strongest tested combination was the simpler CAPE core plus NAV brake with no drawdown ladder: {money(variants["cape_core_80_20"]["terminal_wealth"])}, {pct(variants["cape_core_80_20"]["xirr"])} XIRR and {pct(variants["cape_core_80_20"]["max_flow_adjusted_drawdown"])} maximum drawdown. This is an in-sample comparison, not yet a validated replacement rule.</p>
-<p>Corrected-strategy financing charges accumulated to {money(primary["financing_cost"])}. Actual core leverage was 3x for {pct(primary["time_at_3x"], 1)} of sessions, 2x for {pct(primary["time_at_2x"], 1)}, and 1x for {pct(primary["time_at_1x"], 1)}.</p></section>
+<p>Selective injection leverage added {pct(dual_vs_quality_1x, 1)} of terminal wealth over the same quality/Treasury strategy with a permanently 1x core. The quality-stock rungs added {pct(dual_selection_effect, 2)} over using SPY for every Treasury rung. Total modeled financing cost was only {money(dual["financing_cost"])} because leverage was confined to qualifying contribution tranches.</p>
+<p class="caution note">The average injected-capital weight was {pct(dual["mean_injection_weight"], 1)}, with a full-sample maximum of {pct(dual["max_injection_weight"], 1)}. These percentages depend strongly on contribution size relative to the account: a $40,000 triennial contribution is immaterial to a mature account but can dominate a recently started $10,000 account.</p></section>
 
-<section class="wide"><div class="eyebrow">IV - CAPE regime</div><h2>CAPE now governs fresh money while NAV governs old money.</h2>
+<section class="wide"><div class="eyebrow">IV - Historical injections</div><h2>Eight deposits qualified for 2x or 3x exposure.</h2>
 <figure><div class="figure-head"><strong>Prior-known monthly CAPE</strong><span>green 3x / amber 2x / red 1x</span></div><div class="plate">{cape_plot}</div></figure>
-<p>The background shows the CAPE ceiling, not necessarily applied leverage. The NAV brake was active {pct(primary["nav_brake_share"], 1)} of sessions, reducing average core leverage to {primary["mean_core_leverage"]:.2f}x and average total gross exposure to {primary["mean_gross_exposure"]:.2f}x. There were {primary["events"]["nav_deleverage"]["count"]} deleveraging events and {primary["events"]["nav_leverage_restore"]["count"]} completed restorations.</p>
-<p>Under the new rule, the fresh sleeve was present for {pct(fresh["fresh_capital_active_share"], 1)} of sessions but averaged only {pct(fresh["mean_fresh_capital_weight"], 1)} of total NAV over the full history. Even that modest average raised mean gross exposure to {fresh["mean_gross_exposure"]:.2f}x.</p></section>
+<div class="scroll"><table><thead><tr><th>Date</th><th>Total contribution</th><th>Account DD</th><th>Execution rule</th></tr></thead><tbody>{injection_rows}</tbody></table></div>
+<p>There were {len(levered_injections)} levered contribution events and {dual["events"]["injection_leverage_reset"]["count"]} completed recovery resets. The injection sleeve was active for {pct(dual["injection_active_share"], 1)} of sessions; outside these episodes, all SPY capital remained at 1x.</p></section>
 
-<section class="wide"><div class="eyebrow">V - 2007 clean-data sensitivity</div><h2>The extra return came with a 71% drawdown.</h2>
+<section class="wide"><div class="eyebrow">V - 2007 clean-data sensitivity</div><h2>It edged past SPY, but starting-account size matters.</h2>
 <div class="scroll"><table><thead><tr><th>2007-2024 path</th><th>Terminal</th><th>XIRR</th><th>Max DD</th><th>Volatility</th></tr></thead><tbody>{post_rows}</tbody></table></div>
-<p>With {money(sensitivity["cash_flows"]["total_contributed"])} contributed, the strict-brake strategy reached {money(post["quality_cape"]["terminal_wealth"])} versus {money(post["spy_1x"]["terminal_wealth"])} for SPY, a relative result of {pct(post_advantage, 1)}.</p>
-<p>The fresh-sleeve version reached {money(post_fresh["terminal_wealth"])} and beat SPY terminal wealth by {pct(post_fresh_advantage, 1)}, but maximum drawdown deteriorated to {pct(post_fresh["max_flow_adjusted_drawdown"])}. Contributions made during the 2008 decline accumulated leveraged exposure before the legacy NAV recovered.</p></section>
+<p>With {money(sensitivity["cash_flows"]["total_contributed"])} contributed, the dual guard reached {money(post_dual["terminal_wealth"])} versus {money(post["spy_1x"]["terminal_wealth"])} for SPY, an advantage of {pct(post_dual_vs_spy, 2)}. XIRR was {pct(post_dual["xirr"])} versus {pct(post["spy_1x"]["xirr"])}.</p>
+<p class="warning note">Maximum drawdown was {pct(post_dual["max_flow_adjusted_drawdown"])} versus SPY's {pct(post["spy_1x"]["max_flow_adjusted_drawdown"])}. Maximum gross exposure reached {post_dual["max_gross_exposure"]:.2f}x because the 2009 and 2010 injections were large relative to the initial $10,000 account. A practical implementation needs an account-level gross-exposure cap.</p></section>
 
-<section><div class="eyebrow">VI - Decision</div><h2>The idea accelerates return, not safety.</h2>
-<p>Letting new money ignore the account drawdown prevents the NAV brake from trapping every future deposit at 1x. But during a long recovery, repeated deposits can make the exempt sleeve large enough to dominate account risk.</p>
-<p class="warning note"><strong>Bottom line:</strong> CAPE-only leverage for fresh contributions is too permissive in this form. It improves the strict-brake return, but the full sample still trails SPY and the post-2007 drawdown reaches 71%. The next sensible test is to cap fresh capital at 2x and give the fresh sleeve its own 10% drawdown brake, rather than allowing 3x until the whole account recovers.</p></section>
+<section><div class="eyebrow">VI - Decision</div><h2>This is the cleanest version tested so far.</h2>
+<p>The economic separation is coherent: old capital compounds at 1x, NAV prevents leverage near highs, CAPE controls the size of genuinely new drawdown exposure, and recovery automatically removes the borrowing. The quality/Treasury mechanism remains independent.</p>
+<p class="warning note"><strong>Bottom line:</strong> the historical result is close to SPY with modestly better full-sample drawdown, and it slightly beats SPY after 2007. The remaining flaw is scale, not signal selection. Before considering implementation, cap total account gross exposure—1.5x is a reasonable next test—so a large contribution cannot make a young account effectively 2x or more.</p></section>
 
 <footer>Historical simulation, not investment advice. Adjusted total returns reinvest dividends. Monthly CAPE is lagged one month and the test stops at the local September 2024 observation. CAPE source: <a href="https://www.econ.yale.edu/~shiller/data.htm">Robert Shiller / Yale</a>. Treasury and funding reference: <a href="https://fred.stlouisfed.org/series/DGS3MO">FRED DGS3MO</a>. Financing is prior-known DGS3MO +1%; quality and rescue trades cost 5 bp. Margin calls, leveraged-ETF tracking differences, taxes, market impact and a survivor-free historical top-seven universe are omitted. Generated by <code>scripts/run_quality_ladder_cape_leverage.py</code>.</footer>
 </main></body></html>'''

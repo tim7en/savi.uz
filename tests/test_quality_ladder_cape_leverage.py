@@ -96,6 +96,38 @@ class QualityLadderCapeLeverageTests(unittest.TestCase):
         self.assertAlmostEqual(path["legacy_core_spy"].iloc[3], 74.8)
         self.assertAlmostEqual(path["fresh_core_spy"].iloc[3], 104.0)
 
+    def test_dual_guard_leverages_only_drawdown_injection_and_resets_at_recovery(self):
+        index = pd.to_datetime([
+            "2020-01-02", "2020-01-03", "2020-01-06",
+            "2020-01-07", "2020-01-08"
+        ])
+        prices = pd.DataFrame(
+            {"SPY": [100.0, 85.0, 85.0, 100.0, 100.0]}, index=index
+        )
+        args = SimpleNamespace(
+            initial=100.0, spy_share=0.80, trade_bp=0.0, spread=0.0,
+            relative_step=0.20, harvest_share=0.05, cape_excessive=35.0,
+        )
+        contributions = pd.Series([0.0, 0.0, 100.0, 0.0, 0.0], index=index)
+        path, events, _ = MODULE.ladder.simulate(
+            prices, pd.DataFrame(index=index), {},
+            pd.Series(0.0, index=index), pd.Series(20.0, index=index), args,
+            name="test", rungs_enabled=False, quality_enabled=False,
+            harvest_enabled=False, cape_enabled=False,
+            contribution_series=contributions,
+            core_leverage=pd.Series(1.0, index=index),
+            injection_leverage=pd.Series(3.0, index=index),
+            injection_nav_drawdown=0.10,
+        )
+        self.assertAlmostEqual(path["injection_core_spy"].iloc[2], 80.0)
+        self.assertAlmostEqual(path["injection_gross_exposure"].iloc[2], 240.0)
+        self.assertEqual(path["base_core_leverage"].tolist(), [1.0] * 5)
+        self.assertEqual(
+            [event.kind for event in events if event.kind == "injection_leverage_reset"],
+            ["injection_leverage_reset"],
+        )
+        self.assertAlmostEqual(path["injection_core_spy"].iloc[-1], 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -113,6 +113,12 @@ def main(argv=None):
             nav_deleverage_at=args.nav_deleverage_at,
             fresh_capital_cape_leverage=True,
         ),
+        "quality_dual_guard_injections": dict(
+            rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
+            cape_enabled=True, core_leverage=one,
+            injection_leverage=leverage,
+            injection_nav_drawdown=args.nav_deleverage_at,
+        ),
         "quality_cape_no_brake": dict(
             rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
             cape_enabled=True, core_leverage=leverage,
@@ -126,6 +132,12 @@ def main(argv=None):
             rungs_enabled=True, quality_enabled=False, harvest_enabled=False,
             cape_enabled=False, all_spy_rungs=True, core_leverage=leverage,
             nav_deleverage_at=args.nav_deleverage_at,
+        ),
+        "spy_dual_guard_injections": dict(
+            rungs_enabled=True, quality_enabled=False, harvest_enabled=False,
+            cape_enabled=False, all_spy_rungs=True, core_leverage=one,
+            injection_leverage=leverage,
+            injection_nav_drawdown=args.nav_deleverage_at,
         ),
         "cape_core_80_20": dict(
             rungs_enabled=False, quality_enabled=False, harvest_enabled=False,
@@ -178,6 +190,13 @@ def main(argv=None):
             "mean_fresh_capital_weight": float(
                 (path["fresh_core_spy"] / path["wealth"]).mean()
             ),
+            "injection_active_share": float((path["injection_lot_count"] > 0).mean()),
+            "mean_injection_weight": float(
+                (path["injection_core_spy"] / path["wealth"]).mean()
+            ),
+            "max_injection_weight": float(
+                (path["injection_core_spy"] / path["wealth"]).max()
+            ),
             "harvest_to_reserve": float(path.attrs["harvest_to_reserve"]),
             "harvest_to_spy": float(path.attrs["harvest_to_spy"]),
             "cape_incremental_reserve": float(path.attrs["cape_incremental_reserve"]),
@@ -206,6 +225,7 @@ def main(argv=None):
             "cape_leverage": "3x below 25; 2x from 25 through 35; 1x above 35; monthly CAPE usable next month",
             "nav_brake": f"core drops to 1x at -{args.nav_deleverage_at:.0%} flow-adjusted NAV drawdown and restores current CAPE leverage only at a new NAV high",
             "fresh_capital": "in the fresh-capital variants, the 80% core portion of a contribution made while the NAV brake is active follows CAPE leverage; it merges into the legacy core at NAV recovery",
+            "dual_guard_injections": f"permanent core stays 1x; when prior-close account NAV DD is at least {args.nav_deleverage_at:.0%}, the SPY portion of a new contribution enters at the CAPE tier and resets to 1x when account NAV recovers",
             "financing": f"prior-known DGS3MO + {args.spread:.2%} on core exposure above 1x",
             "rungs": "20% Treasury to quality at -10% SPY DD; 30% to unlevered SPY at -20%; 30% to quality at -30%; 20% to unlevered SPY at -50%",
             "harvest": f"sell {args.harvest_share:.0%} original lot shares at every new {args.relative_step:.0%} relative-wealth band versus SPY",
@@ -244,6 +264,7 @@ def main(argv=None):
             "quality_weight", "spy_weight", "spy_drawdown", "core_leverage",
             "base_core_leverage", "nav_brake_active", "gross_exposure",
             "legacy_core_leverage", "fresh_core_leverage", "fresh_core_spy",
+            "injection_core_spy", "injection_gross_exposure", "injection_lot_count",
             "financing_cost",
         ):
             daily[f"{name}_{column}"] = path[column]
