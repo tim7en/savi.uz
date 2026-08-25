@@ -122,19 +122,39 @@ def simulate(
     harvest_enabled: bool,
     cape_enabled: bool,
     all_spy_rungs: bool = False,
+    contribution_series: pd.Series | None = None,
+    core_leverage: pd.Series | None = None,
+    nav_deleverage_at: float | None = None,
+    nav_restore_drawdown: float = 0.0,
+    fresh_capital_cape_leverage: bool = False,
 ) -> tuple[pd.DataFrame, list[Event], list[dict]]:
     spy = prices["SPY"].dropna()
     prices = prices.reindex(spy.index)
     raw = raw.reindex(spy.index)
     rates = rates.reindex(spy.index).ffill().bfill()
     cape = cape.reindex(spy.index).ffill()
-    contributions = market.monthly_schedule(spy.index, args.monthly_contribution)
+    contributions = (
+        market.monthly_schedule(spy.index, args.monthly_contribution)
+        if contribution_series is None
+        else contribution_series.reindex(spy.index).fillna(0.0)
+    )
+    leverage = (
+        pd.Series(1.0, index=spy.index)
+        if core_leverage is None
+        else core_leverage.reindex(spy.index).ffill().bfill().astype(float)
+    )
+    spy_returns = spy.pct_change().fillna(0.0)
     days = spy.index.to_series().diff().dt.days.fillna(0.0)
     spy_high = spy.cummax()
     spy_drawdown = spy / spy_high - 1.0
     cost_rate = args.trade_bp / 10_000.0
 
-    spy_shares = args.initial * args.spy_share / float(spy.iloc[0])
+    core_spy = args.initial * args.spy_share
+    # Contributions made while the legacy NAV brake is active can optionally
+    # live in a separate sleeve.  That sleeve follows CAPE leverage until NAV
+    # recovers, when it merges into the legacy core for the next drawdown cycle.
+    fresh_core_spy = 0.0
+    rescue_spy_shares = 0.0
     reserve = args.initial * (1.0 - args.spy_share)
     lots: list[QualityLot] = []
     events: list[Event] = []
@@ -144,12 +164,15 @@ def simulate(
     reserve_target = reserve
     performance_index = 1.0
     performance_high = 1.0
+    previous_flow_drawdown = 0.0
+    nav_brake_active = False
     previous_total = args.initial
     max_quality_weight = 0.0
-    max_spy_exposure = args.spy_share
+    max_spy_exposure = args.spy_share * float(leverage.iloc[0])
     harvest_to_reserve_total = 0.0
     harvest_to_spy_total = 0.0
     cape_incremental_reserve_total = 0.0
+    financing_cost_total = 0.0
 
     for position, stamp in enumerate(spy.index):
         signal_position = max(position - 1, 0)
@@ -161,12 +184,80 @@ def simulate(
             position and stamp.to_period("Q") != signal_date.to_period("Q")
         )
 
+        if nav_deleverage_at is not None:
+            was_active = nav_brake_active
+            if not nav_brake_active and previous_flow_drawdown <= -nav_deleverage_at + 1e-12:
+                nav_brake_active = True
+            elif nav_brake_active and previous_flow_drawdown >= -nav_restore_drawdown - 1e-12:
+                nav_brake_active = False
+            if nav_brake_active != was_active:
+                kind = "nav_deleverage" if nav_brake_active else "nav_leverage_restore"
+                detail = (
+                    f"NAV drawdown {previous_flow_drawdown:.1%}; core set to 1x"
+                    if nav_brake_active
+                    else "NAV recovered its high; current CAPE leverage restored"
+                )
+                events.append(Event(
+                    stamp.date().isoformat(), kind, 0.0,
+                    previous_flow_drawdown, detail,
+                ))
+                if not nav_brake_active and fresh_core_spy > 0:
+                    merged = fresh_core_spy
+                    core_spy += fresh_core_spy
+                    fresh_core_spy = 0.0
+                    events.append(Event(
+                        stamp.date().isoformat(), "fresh_capital_merge", merged,
+                        previous_flow_drawdown,
+                        "NAV recovered; CAPE-levered contribution sleeve merged into legacy core",
+                    ))
+
+        base_position = max(position - 1, 0)
+        base_level = float(leverage.iloc[base_position])
+        applied_level = 1.0 if nav_brake_active else base_level
+
         if position:
             elapsed = float(days.iloc[position]) / 365.0
-            reserve *= 1.0 + float(rates.iloc[position - 1]) * elapsed
+            known_rate = float(rates.iloc[position - 1])
+            legacy_financing_cost = (
+                core_spy * max(applied_level - 1.0, 0.0)
+                * (known_rate + float(getattr(args, "spread", 0.01)))
+                * elapsed
+            )
+            fresh_financing_cost = (
+                fresh_core_spy * max(base_level - 1.0, 0.0)
+                * (known_rate + float(getattr(args, "spread", 0.01)))
+                * elapsed
+            )
+            financing_cost = legacy_financing_cost + fresh_financing_cost
+            financing_cost_total += financing_cost
+            core_spy = max(
+                core_spy * (
+                    1.0
+                    + applied_level * float(spy_returns.iloc[position])
+                    - max(applied_level - 1.0, 0.0)
+                    * (known_rate + float(getattr(args, "spread", 0.01)))
+                    * elapsed
+                ),
+                0.0,
+            )
+            fresh_core_spy = max(
+                fresh_core_spy * (
+                    1.0
+                    + base_level * float(spy_returns.iloc[position])
+                    - max(base_level - 1.0, 0.0)
+                    * (known_rate + float(getattr(args, "spread", 0.01)))
+                    * elapsed
+                ),
+                0.0,
+            )
+            reserve *= 1.0 + known_rate * elapsed
+        else:
+            financing_cost = 0.0
 
         pre_flow_total = (
-            spy_shares * float(spy.iloc[position])
+            core_spy
+            + fresh_core_spy
+            + rescue_spy_shares * float(spy.iloc[position])
             + reserve
             + quality_value(lots, current_row)
         )
@@ -177,12 +268,23 @@ def simulate(
         if contribution:
             spy_cash = contribution * args.spy_share
             reserve_cash = contribution - spy_cash
-            spy_shares += spy_cash / float(spy.iloc[position])
+            if fresh_capital_cape_leverage and nav_brake_active:
+                fresh_core_spy += spy_cash
+                contribution_detail = (
+                    f"{args.spy_share:.0%} CAPE-levered fresh core / "
+                    f"{1.0 - args.spy_share:.0%} Treasury"
+                )
+            else:
+                core_spy += spy_cash
+                contribution_detail = (
+                    f"{args.spy_share:.0%} SPY / "
+                    f"{1.0 - args.spy_share:.0%} Treasury"
+                )
             reserve += reserve_cash
             reserve_target += reserve_cash
             events.append(Event(
                 stamp.date().isoformat(), "contribution", contribution, signal_dd,
-                f"{args.spy_share:.0%} SPY / {1.0 - args.spy_share:.0%} Treasury",
+                contribution_detail,
             ))
 
         # A recovered/new SPY high re-arms the ladder.  It does not force a sale
@@ -234,7 +336,9 @@ def simulate(
                 lot.harvest_bands += bands
 
                 total_before_routing = (
-                    spy_shares * float(spy.iloc[position])
+                    core_spy
+                    + fresh_core_spy
+                    + rescue_spy_shares * float(spy.iloc[position])
                     + reserve + proceeds
                     + quality_value(lots, current_row)
                 )
@@ -253,7 +357,7 @@ def simulate(
                     to_reserve - base_to_reserve, 0.0
                 )
                 reserve += to_reserve
-                spy_shares += _buy_spy(
+                rescue_spy_shares += _buy_spy(
                     to_spy, float(spy.iloc[position]), cost_rate
                 )
                 events.append(Event(
@@ -276,7 +380,7 @@ def simulate(
             actual_destination = "spy" if all_spy_rungs else destination
             if actual_destination == "spy" or not quality_enabled:
                 reserve -= amount
-                spy_shares += _buy_spy(
+                rescue_spy_shares += _buy_spy(
                     amount, float(spy.iloc[position]), cost_rate
                 )
                 events.append(Event(
@@ -323,7 +427,9 @@ def simulate(
             ))
 
         quality = quality_value(lots, current_row)
-        spy_value = spy_shares * float(spy.iloc[position])
+        rescue_spy = rescue_spy_shares * float(spy.iloc[position])
+        core_value = core_spy + fresh_core_spy
+        spy_value = core_value + rescue_spy
         total = spy_value + reserve + quality
         investable_after_flow = total - contribution
         if pre_flow_total > 0 and investable_after_flow > 0:
@@ -333,14 +439,28 @@ def simulate(
         quality_weight = quality / total if total > 0 else 0.0
         spy_exposure = spy_value / total if total > 0 else 0.0
         max_quality_weight = max(max_quality_weight, quality_weight)
-        max_spy_exposure = max(max_spy_exposure, spy_exposure)
+        gross_exposure = (
+            core_spy * applied_level
+            + fresh_core_spy * base_level
+            + rescue_spy + quality
+        ) / total if total > 0 else 0.0
+        effective_core_leverage = (
+            (core_spy * applied_level + fresh_core_spy * base_level) / core_value
+            if core_value > 0 else 0.0
+        )
+        max_spy_exposure = max(max_spy_exposure, gross_exposure)
         previous_total = total
+        previous_flow_drawdown = flow_dd
         rows.append({
             "wealth": total,
             "performance_index": performance_index,
             "contribution": contribution,
             "flow_adjusted_drawdown": flow_dd,
             "spy": spy_value,
+            "core_spy": core_value,
+            "legacy_core_spy": core_spy,
+            "fresh_core_spy": fresh_core_spy,
+            "rescue_spy": rescue_spy,
             "treasury": reserve,
             "quality": quality,
             "quality_weight": quality_weight,
@@ -349,6 +469,13 @@ def simulate(
             "episode_reserve": episode_reserve,
             "reserve_target": reserve_target,
             "cape_known": signal_cape,
+            "core_leverage": effective_core_leverage,
+            "legacy_core_leverage": applied_level,
+            "fresh_core_leverage": base_level if fresh_core_spy > 0 else 0.0,
+            "base_core_leverage": base_level,
+            "nav_brake_active": float(nav_brake_active),
+            "gross_exposure": gross_exposure,
+            "financing_cost": financing_cost,
         })
 
     path = pd.DataFrame(rows, index=spy.index)
@@ -378,6 +505,7 @@ def simulate(
     path.attrs["harvest_to_reserve"] = harvest_to_reserve_total
     path.attrs["harvest_to_spy"] = harvest_to_spy_total
     path.attrs["cape_incremental_reserve"] = cape_incremental_reserve_total
+    path.attrs["financing_cost"] = financing_cost_total
     return path, events, holdings
 
 
