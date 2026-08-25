@@ -161,6 +161,13 @@ def simulate(
     deferred_deployment_percentile: pd.Series | None = None,
     deferred_deployment_thresholds: tuple[float, ...] = (0.70, 0.80, 0.90, 0.95),
     deferred_reset_below: float = 0.50,
+    nav_leverage_ladder: bool = False,
+    nav_ladder_restore: str = "hysteresis",
+    nav_ladder_down_2x: float = 0.10,
+    nav_ladder_down_1x: float = 0.20,
+    spy_dividend_yield: pd.Series | None = None,
+    spy_dividends_to_treasury: bool = False,
+    treasury_interest_to_spy_annual: bool = False,
 ) -> tuple[pd.DataFrame, list[Event], list[dict]]:
     spy = prices["SPY"].dropna()
     prices = prices.reindex(spy.index)
@@ -181,6 +188,11 @@ def simulate(
         pd.Series(np.nan, index=spy.index)
         if deferred_deployment_percentile is None
         else deferred_deployment_percentile.reindex(spy.index).ffill().astype(float)
+    )
+    dividend_yields = (
+        pd.Series(0.0, index=spy.index)
+        if spy_dividend_yield is None
+        else spy_dividend_yield.reindex(spy.index).fillna(0.0).astype(float)
     )
     leverage = (
         pd.Series(1.0, index=spy.index)
@@ -231,6 +243,10 @@ def simulate(
     harvest_to_spy_total = 0.0
     cape_incremental_reserve_total = 0.0
     financing_cost_total = 0.0
+    nav_ladder_level = 3.0
+    treasury_interest_this_year = 0.0
+    dividend_to_treasury_total = 0.0
+    treasury_interest_to_spy_total = 0.0
 
     for position, stamp in enumerate(spy.index):
         signal_position = max(position - 1, 0)
@@ -242,6 +258,20 @@ def simulate(
             position and stamp.to_period("Q") != signal_date.to_period("Q")
         )
         current_vix_percentile = float(vix_percentiles.iloc[position])
+
+        if (treasury_interest_to_spy_annual and position
+                and stamp.year != signal_date.year):
+            sweep = min(treasury_interest_this_year, reserve)
+            if sweep > 0:
+                reserve -= sweep
+                core_spy += sweep
+                treasury_interest_to_spy_total += sweep
+                events.append(Event(
+                    stamp.date().isoformat(), "treasury_interest_to_spy",
+                    sweep, previous_flow_drawdown,
+                    "Prior-year Treasury interest reinvested into unlevered SPY core",
+                ))
+            treasury_interest_this_year = 0.0
 
         # Leveraged injection tranches become ordinary 1x core capital once
         # the account regains its previous flow-adjusted high.
@@ -301,11 +331,47 @@ def simulate(
 
         base_position = max(position - 1, 0)
         base_level = float(leverage.iloc[base_position])
-        applied_level = 1.0 if nav_brake_active else base_level
+        if nav_leverage_ladder:
+            old_nav_ladder_level = nav_ladder_level
+            if nav_ladder_restore == "symmetric":
+                if previous_flow_drawdown <= -nav_ladder_down_1x + 1e-12:
+                    nav_ladder_level = 1.0
+                elif previous_flow_drawdown <= -nav_ladder_down_2x + 1e-12:
+                    nav_ladder_level = 2.0
+                else:
+                    nav_ladder_level = 3.0
+            elif nav_ladder_restore == "hysteresis":
+                if previous_flow_drawdown <= -nav_ladder_down_1x + 1e-12:
+                    nav_ladder_level = 1.0
+                elif nav_ladder_level >= 3.0 and previous_flow_drawdown <= -nav_ladder_down_2x + 1e-12:
+                    nav_ladder_level = 2.0
+                elif nav_ladder_level <= 1.0 and previous_flow_drawdown > -nav_ladder_down_2x + 1e-12:
+                    nav_ladder_level = 2.0
+                elif nav_ladder_level == 2.0 and previous_flow_drawdown >= -1e-12:
+                    nav_ladder_level = 3.0
+            else:
+                raise ValueError(f"unknown NAV ladder restore mode: {nav_ladder_restore}")
+            if nav_ladder_level != old_nav_ladder_level:
+                events.append(Event(
+                    stamp.date().isoformat(), "nav_leverage_ladder_change", 0.0,
+                    previous_flow_drawdown,
+                    f"{old_nav_ladder_level:.0f}x to {nav_ladder_level:.0f}x; "
+                    f"{nav_ladder_restore} reversal",
+                ))
+            applied_level = min(base_level, nav_ladder_level)
+        else:
+            applied_level = 1.0 if nav_brake_active else base_level
 
         if position:
             elapsed = float(days.iloc[position]) / 365.0
             known_rate = float(rates.iloc[position - 1])
+            total_spy_return = float(spy_returns.iloc[position])
+            dividend_yield = float(dividend_yields.iloc[position])
+            routed_dividend = 0.0
+            applied_spy_return = (
+                total_spy_return - dividend_yield
+                if spy_dividends_to_treasury else total_spy_return
+            )
             legacy_financing_cost = (
                 core_spy * max(applied_level - 1.0, 0.0)
                 * (known_rate + float(getattr(args, "spread", 0.01)))
@@ -327,10 +393,16 @@ def simulate(
                 + injection_financing_cost
             )
             financing_cost_total += financing_cost
+            if spy_dividends_to_treasury and dividend_yield > 0:
+                routed_dividend = (
+                    core_spy * applied_level
+                    + fresh_core_spy * base_level
+                    + sum(lot.equity * lot.leverage for lot in injection_lots)
+                ) * dividend_yield
             core_spy = max(
                 core_spy * (
                     1.0
-                    + applied_level * float(spy_returns.iloc[position])
+                    + applied_level * applied_spy_return
                     - max(applied_level - 1.0, 0.0)
                     * (known_rate + float(getattr(args, "spread", 0.01)))
                     * elapsed
@@ -340,7 +412,7 @@ def simulate(
             fresh_core_spy = max(
                 fresh_core_spy * (
                     1.0
-                    + base_level * float(spy_returns.iloc[position])
+                    + base_level * applied_spy_return
                     - max(base_level - 1.0, 0.0)
                     * (known_rate + float(getattr(args, "spread", 0.01)))
                     * elapsed
@@ -351,14 +423,17 @@ def simulate(
                 lot.equity = max(
                     lot.equity * (
                         1.0
-                        + lot.leverage * float(spy_returns.iloc[position])
+                        + lot.leverage * applied_spy_return
                         - max(lot.leverage - 1.0, 0.0)
                         * (known_rate + float(getattr(args, "spread", 0.01)))
                         * elapsed
                     ),
                     0.0,
                 )
-            reserve *= 1.0 + known_rate * elapsed
+            treasury_interest = reserve * known_rate * elapsed
+            reserve += treasury_interest + routed_dividend
+            treasury_interest_this_year += treasury_interest
+            dividend_to_treasury_total += routed_dividend
             pending_annual_cash *= 1.0 + known_rate * elapsed
         else:
             financing_cost = 0.0
@@ -715,6 +790,8 @@ def simulate(
     path.attrs["harvest_to_spy"] = harvest_to_spy_total
     path.attrs["cape_incremental_reserve"] = cape_incremental_reserve_total
     path.attrs["financing_cost"] = financing_cost_total
+    path.attrs["dividend_to_treasury"] = dividend_to_treasury_total
+    path.attrs["treasury_interest_to_spy"] = treasury_interest_to_spy_total
     return path, events, holdings
 
 

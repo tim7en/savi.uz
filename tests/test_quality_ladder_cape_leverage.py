@@ -203,6 +203,72 @@ class QualityLadderCapeLeverageTests(unittest.TestCase):
         )
         self.assertAlmostEqual(path["wealth"].iloc[-1], 200.0)
 
+    def test_standing_nav_ladder_cuts_three_to_two_to_one(self):
+        index = pd.date_range("2020-01-02", periods=4, freq="B")
+        prices = pd.DataFrame(
+            {"SPY": [100.0, 95.0, 85.5, 85.5]}, index=index
+        )
+        args = SimpleNamespace(
+            initial=100.0, spy_share=0.80, trade_bp=0.0, spread=0.0,
+            relative_step=0.20, harvest_share=0.05, cape_excessive=35.0,
+        )
+        path, events, _ = MODULE.ladder.simulate(
+            prices, pd.DataFrame(index=index), {},
+            pd.Series(0.0, index=index), pd.Series(20.0, index=index), args,
+            name="test", rungs_enabled=False, quality_enabled=False,
+            harvest_enabled=False, cape_enabled=False,
+            contribution_series=pd.Series(0.0, index=index),
+            core_leverage=pd.Series(3.0, index=index),
+            nav_leverage_ladder=True, nav_ladder_restore="hysteresis",
+        )
+        self.assertEqual(path["legacy_core_leverage"].tolist(), [3.0, 3.0, 2.0, 1.0])
+        self.assertEqual(
+            [e.detail.split(";")[0] for e in events if e.kind == "nav_leverage_ladder_change"],
+            ["3x to 2x", "2x to 1x"],
+        )
+
+    def test_spy_dividend_can_be_routed_to_treasury(self):
+        index = pd.to_datetime(["2020-01-02", "2020-01-03"])
+        prices = pd.DataFrame({"SPY": [100.0, 101.0]}, index=index)
+        args = SimpleNamespace(
+            initial=100.0, spy_share=0.80, trade_bp=0.0, spread=0.0,
+            relative_step=0.20, harvest_share=0.05, cape_excessive=35.0,
+        )
+        path, _, _ = MODULE.ladder.simulate(
+            prices, pd.DataFrame(index=index), {},
+            pd.Series(0.0, index=index), pd.Series(20.0, index=index), args,
+            name="test", rungs_enabled=False, quality_enabled=False,
+            harvest_enabled=False, cape_enabled=False,
+            contribution_series=pd.Series(0.0, index=index),
+            core_leverage=pd.Series(1.0, index=index),
+            spy_dividend_yield=pd.Series([0.0, 0.01], index=index),
+            spy_dividends_to_treasury=True,
+        )
+        self.assertAlmostEqual(path["legacy_core_spy"].iloc[-1], 80.0)
+        self.assertAlmostEqual(path["available_treasury"].iloc[-1], 20.8)
+        self.assertAlmostEqual(path["wealth"].iloc[-1], 100.8)
+
+    def test_treasury_interest_can_sweep_to_spy_annually(self):
+        index = pd.to_datetime(["2020-01-02", "2020-12-31", "2021-01-04"])
+        prices = pd.DataFrame({"SPY": [100.0] * 3}, index=index)
+        args = SimpleNamespace(
+            initial=100.0, spy_share=0.80, trade_bp=0.0, spread=0.0,
+            relative_step=0.20, harvest_share=0.05, cape_excessive=35.0,
+        )
+        path, events, _ = MODULE.ladder.simulate(
+            prices, pd.DataFrame(index=index), {},
+            pd.Series(0.10, index=index), pd.Series(20.0, index=index), args,
+            name="test", rungs_enabled=False, quality_enabled=False,
+            harvest_enabled=False, cape_enabled=False,
+            contribution_series=pd.Series(0.0, index=index),
+            core_leverage=pd.Series(1.0, index=index),
+            treasury_interest_to_spy_annual=True,
+        )
+        sweeps = [e for e in events if e.kind == "treasury_interest_to_spy"]
+        self.assertEqual(len(sweeps), 1)
+        self.assertGreater(sweeps[0].amount, 1.9)
+        self.assertGreater(path["legacy_core_spy"].iloc[-1], 81.9)
+
 
 if __name__ == "__main__":
     unittest.main()

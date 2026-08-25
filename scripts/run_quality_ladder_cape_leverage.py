@@ -104,6 +104,28 @@ def trailing_vix_percentile(index: pd.DatetimeIndex, macro_db: Path,
     return trailing_percentile(signal, index, window)
 
 
+def vix_leverage_ceiling(percentile: pd.Series) -> pd.Series:
+    """Map the prior-known VIX percentile to a 3x/2x/1x ceiling."""
+    result = pd.Series(3.0, index=percentile.index, dtype=float)
+    result.loc[percentile >= 0.70] = 2.0
+    result.loc[percentile >= 0.90] = 1.0
+    return result
+
+
+def spy_dividend_yield(index: pd.DatetimeIndex, cache: Path) -> pd.Series:
+    """Cash dividend per prior raw close on each SPY ex-dividend session."""
+    path = cache / "SPY.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))["chart"]["result"][0]
+    dividends = payload.get("events", {}).get("dividends", {})
+    cash = pd.Series(0.0, index=index)
+    for event in dividends.values():
+        stamp = pd.to_datetime(event["date"], unit="s", utc=True).tz_localize(None).normalize()
+        if stamp in cash.index:
+            cash.loc[stamp] += float(event["amount"])
+    raw_close = market.raw_close_from_cache("SPY", cache, index)
+    return (cash / raw_close.shift(1)).replace([float("inf"), -float("inf")], 0.0).fillna(0.0)
+
+
 def simulate_spy(spy: pd.Series, contributions: pd.Series,
                  initial: float = 10_000.0) -> pd.DataFrame:
     wealth = initial
@@ -181,7 +203,11 @@ def main(argv=None):
         prices.index.to_period("M")
     ).transform("first")
     leverage = cape_leverage(known_cape)
+    vix_ceiling = vix_leverage_ceiling(known_vix_sma60)
+    cape_vix_ceiling = pd.concat([leverage, vix_ceiling], axis=1).min(axis=1)
+    dividend_yield = spy_dividend_yield(prices.index, args.cache)
     one = pd.Series(1.0, index=prices.index)
+    three = pd.Series(3.0, index=prices.index)
     contributions = contribution_schedule(
         prices.index, args.annual_contribution, args.triennial_contribution
     )
@@ -268,6 +294,52 @@ def main(argv=None):
             contribution_series=triennial_contributions,
             deferred_contribution_series=annual_contributions,
             deferred_deployment_percentile=known_vix_sma60,
+        ),
+        "quality_nav3_symmetric": dict(
+            rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
+            cape_enabled=True, core_leverage=three,
+            nav_leverage_ladder=True, nav_ladder_restore="symmetric",
+        ),
+        "quality_nav3_hysteresis": dict(
+            rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
+            cape_enabled=True, core_leverage=three,
+            nav_leverage_ladder=True, nav_ladder_restore="hysteresis",
+        ),
+        "quality_nav3_hysteresis_cape": dict(
+            rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
+            cape_enabled=True, core_leverage=leverage,
+            nav_leverage_ladder=True, nav_ladder_restore="hysteresis",
+        ),
+        "quality_nav3_hysteresis_vix": dict(
+            rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
+            cape_enabled=True, core_leverage=vix_ceiling,
+            nav_leverage_ladder=True, nav_ladder_restore="hysteresis",
+        ),
+        "quality_nav3_hysteresis_cape_vix": dict(
+            rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
+            cape_enabled=True, core_leverage=cape_vix_ceiling,
+            nav_leverage_ladder=True, nav_ladder_restore="hysteresis",
+        ),
+        "quality_nav3_cape_vix_dividends_treasury": dict(
+            rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
+            cape_enabled=True, core_leverage=cape_vix_ceiling,
+            nav_leverage_ladder=True, nav_ladder_restore="hysteresis",
+            spy_dividend_yield=dividend_yield,
+            spy_dividends_to_treasury=True,
+        ),
+        "quality_nav3_cape_vix_interest_to_spy": dict(
+            rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
+            cape_enabled=True, core_leverage=cape_vix_ceiling,
+            nav_leverage_ladder=True, nav_ladder_restore="hysteresis",
+            treasury_interest_to_spy_annual=True,
+        ),
+        "quality_nav3_cape_vix_cash_routing": dict(
+            rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
+            cape_enabled=True, core_leverage=cape_vix_ceiling,
+            nav_leverage_ladder=True, nav_ladder_restore="hysteresis",
+            spy_dividend_yield=dividend_yield,
+            spy_dividends_to_treasury=True,
+            treasury_interest_to_spy_annual=True,
         ),
         "quality_cape_no_brake": dict(
             rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
@@ -368,6 +440,12 @@ def main(argv=None):
             "ending_pending_annual_cash": float(
                 path["pending_annual_cash"].iloc[-1]
             ),
+            "dividend_to_treasury": float(
+                path.attrs["dividend_to_treasury"]
+            ),
+            "treasury_interest_to_spy": float(
+                path.attrs["treasury_interest_to_spy"]
+            ),
             "harvest_to_reserve": float(path.attrs["harvest_to_reserve"]),
             "harvest_to_spy": float(path.attrs["harvest_to_spy"]),
             "cape_incremental_reserve": float(path.attrs["cape_incremental_reserve"]),
@@ -401,6 +479,9 @@ def main(argv=None):
             "dual_guard_injections": f"permanent core stays 1x; when prior-close account NAV DD is at least {args.nav_deleverage_at:.0%}, the SPY portion of a new contribution enters at the CAPE tier and resets to 1x when account NAV recovers",
             "vix_brake": "prior-close VIX trailing 252-session percentile dynamically caps injection leverage: CAPE ceiling below the 70th percentile, 2x from the 70th through 90th, and 1x at or above the 90th; smoothing tests use 5-, 20-, or 60-session trailing averages before ranking, plus a monthly-held raw signal",
             "vix_timed_annual_contributions": "the annual $10,000 enters a DGS3MO waiting pool and deploys unlevered to SPY in four equal episode-base rungs at the 70th, 80th, 90th, and 95th percentiles of 60-session-smoothed VIX; re-arm below the 50th percentile; triennial $30,000 follows the ordinary rule",
+            "standing_nav_leverage": "80% SPY core starts at 3x; prior-close flow-adjusted NAV reduces it to 2x at -10% and 1x at -20%; symmetric and hysteretic recovery controls are compared",
+            "standing_signal_caps": "CAPE and 60-session-smoothed VIX can independently cap the standing NAV leverage; the combined variant uses the lower ceiling",
+            "cash_routing": "adjusted total returns reinvest dividends by default; controls route SPY core dividends to Treasury and/or sweep accrued Treasury interest to unlevered SPY at the next year start",
             "financing": f"prior-known DGS3MO + {args.spread:.2%} on core exposure above 1x",
             "rungs": "20% Treasury to quality at -10% SPY DD; 30% to unlevered SPY at -20%; 30% to quality at -30%; 20% to unlevered SPY at -50%",
             "harvest": f"sell {args.harvest_share:.0%} original lot shares at every new {args.relative_step:.0%} relative-wealth band versus SPY",
@@ -433,6 +514,7 @@ def main(argv=None):
     daily["vix_sma20_percentile"] = known_vix_sma20
     daily["vix_sma60_percentile"] = known_vix_sma60
     daily["vix_monthly_percentile"] = known_vix_monthly
+    daily["spy_dividend_yield"] = dividend_yield
     daily["contribution"] = contributions
     daily["cumulative_contribution"] = args.initial + contributions.cumsum()
     daily["spy_1x_wealth"] = spy["wealth"]

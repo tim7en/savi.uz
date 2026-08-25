@@ -210,6 +210,44 @@ drawdown worsened slightly, from -52.33% to -52.83%. The rule is rejected:
 contribute on schedule and use VIX to constrain leverage, not to time the whole
 annual deposit.
 
+### Experimental standing-leverage alternative
+
+A separate test starts the permanent 80% SPY core at 3x rather than limiting
+leverage to new drawdown contributions. Prior-close flow-adjusted NAV reduces
+the core to 2x at a 10% drawdown and 1x at a 20% drawdown. The slower reversal
+restores 2x only after NAV rises above -10% and restores 3x only at a new NAV
+high. Actual leverage is then capped by the lower of:
+
+- NAV state: 3x / 2x / 1x;
+- prior-known CAPE: 3x below 25, 2x from 25 through 35, 1x above 35; and
+- 60-session VIX percentile: 3x below 70%, 2x through 90%, 1x above 90%.
+
+The 20% Treasury and quality/Mag-7 drawdown ladder remain unchanged. Exposure
+above 1x pays prior-known DGS3MO plus 1%.
+
+| 1993–2024 path | Terminal | XIRR | Max DD | Volatility | Max gross |
+|---|---:|---:|---:|---:|---:|
+| Raw 3x with symmetric NAV reversals | $6,139,880 | 12.168% | -60.11% | 25.83% | 2.82x |
+| Raw 3x with slow NAV reversals | $5,718,794 | 11.829% | -57.78% | 23.58% | 2.79x |
+| Slow NAV + CAPE/VIX ceilings | $5,659,269 | 11.779% | -56.51% | 21.58% | 2.74x |
+| Same, SPY core dividends to Treasury | $5,579,453 | 11.711% | -52.72% | 19.85% | 2.48x |
+| Selective-injection dual guard | $4,119,424 | 10.245% | -52.33% | 17.60% | 1.17x |
+| SPY 1x | $4,058,936 | 10.173% | -55.19% | 18.65% | 1.00x |
+
+Routing actual SPY core cash dividends to Treasury moved $571,409 over the full
+sample. It surrendered some terminal wealth but materially reduced volatility,
+drawdown, financing cost and average exposure. Treasury interest performed
+better when left to compound in Treasury; sweeping it annually into SPY was
+worse and changed later NAV threshold crossings, demonstrating substantial path
+dependence.
+
+This standing alternative is economically stronger but operationally more
+dangerous than selective drawdown injections. Maximum gross account exposure
+still reached 2.48x, leverage-switching costs are omitted, and a prior-close NAV
+rule cannot prevent gap or margin-liquidation risk. It is an experimental
+candidate only until a hard account exposure cap and rolling-start validation
+are tested.
+
 ## 7. Leverage and funding
 
 Leverage applies to tranche equity, not to the entire account. An $8,000 SPY

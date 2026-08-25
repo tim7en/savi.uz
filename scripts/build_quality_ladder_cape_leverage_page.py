@@ -161,6 +161,16 @@ def main(argv=None):
     deferred_annual = variants[
         "quality_dual_guard_vix_sma60_deferred_annual"
     ]
+    nav3_symmetric = variants["quality_nav3_symmetric"]
+    nav3_hysteresis = variants["quality_nav3_hysteresis"]
+    nav3_cape = variants["quality_nav3_hysteresis_cape"]
+    nav3_vix = variants["quality_nav3_hysteresis_vix"]
+    nav3_combined = variants["quality_nav3_hysteresis_cape_vix"]
+    nav3_dividends_treasury = variants[
+        "quality_nav3_cape_vix_dividends_treasury"
+    ]
+    nav3_interest_spy = variants["quality_nav3_cape_vix_interest_to_spy"]
+    nav3_cash_routing = variants["quality_nav3_cape_vix_cash_routing"]
     no_brake = variants["quality_cape_no_brake"]
     spy = variants["spy_1x"]
     treasury = variants["treasury_100"]
@@ -179,6 +189,14 @@ def main(argv=None):
         "quality_dual_guard_vix_sma60": "Dual guard + 60-session smoothed VIX",
         "quality_dual_guard_vix_monthly": "Dual guard + monthly-held VIX",
         "quality_dual_guard_vix_sma60_deferred_annual": "60-session VIX + delayed annual deposits",
+        "quality_nav3_symmetric": "Standing 3x + symmetric NAV reversals",
+        "quality_nav3_hysteresis": "Standing 3x + slow NAV reversals",
+        "quality_nav3_hysteresis_cape": "Standing NAV ladder + CAPE ceiling",
+        "quality_nav3_hysteresis_vix": "Standing NAV ladder + VIX ceiling",
+        "quality_nav3_hysteresis_cape_vix": "Standing NAV ladder + CAPE/VIX ceilings",
+        "quality_nav3_cape_vix_dividends_treasury": "Standing guarded ladder + dividends to Treasury",
+        "quality_nav3_cape_vix_interest_to_spy": "Standing guarded ladder + Treasury interest to SPY",
+        "quality_nav3_cape_vix_cash_routing": "Standing guarded ladder + both cash-routing rules",
         "quality_cape_no_brake": "Quality ladder + CAPE, no NAV brake",
         "quality_cape_no_harvest": "CAPE quality ladder, no harvest",
         "spy_ladder_cape": "SPY-only ladder + CAPE leverage",
@@ -192,19 +210,22 @@ def main(argv=None):
         "treasury_100": "100% Treasury proxy",
     }
     colors = {
-        "quality_dual_guard_vix_sma60_wealth": "var(--purple)",
+        "quality_nav3_cape_vix_dividends_treasury_wealth": "var(--purple)",
+        "quality_dual_guard_vix_sma60_wealth": "var(--teal)",
         "quality_dual_guard_injections_wealth": "var(--teal)",
         "quality_cape_fresh_cape_wealth": "var(--purple)",
         "quality_cape_wealth": "var(--teal)",
         "quality_1x_wealth": "var(--blue)",
         "spy_1x_wealth": "var(--ink)",
-        "quality_dual_guard_vix_sma60_performance_index": "var(--purple)",
+        "quality_nav3_cape_vix_dividends_treasury_performance_index": "var(--purple)",
+        "quality_dual_guard_vix_sma60_performance_index": "var(--teal)",
         "quality_dual_guard_injections_performance_index": "var(--teal)",
         "quality_cape_fresh_cape_performance_index": "var(--purple)",
         "quality_cape_performance_index": "var(--teal)",
         "quality_1x_performance_index": "var(--blue)",
         "spy_1x_performance": "var(--ink)",
-        "quality_dual_guard_vix_sma60_pnl": "var(--purple)",
+        "quality_nav3_cape_vix_dividends_treasury_pnl": "var(--purple)",
+        "quality_dual_guard_vix_sma60_pnl": "var(--teal)",
         "quality_dual_guard_injections_pnl": "var(--teal)",
         "quality_cape_fresh_cape_pnl": "var(--purple)",
         "quality_cape_pnl": "var(--teal)",
@@ -213,30 +234,38 @@ def main(argv=None):
     }
     growth = line_chart(
         daily,
-        ["quality_dual_guard_vix_sma60_wealth", "quality_dual_guard_injections_wealth", "spy_1x_wealth"],
+        ["quality_nav3_cape_vix_dividends_treasury_wealth", "quality_dual_guard_vix_sma60_wealth", "spy_1x_wealth"],
         colors,
     )
     drawdown = line_chart(
         daily,
-        ["quality_dual_guard_vix_sma60_performance_index", "quality_dual_guard_injections_performance_index", "spy_1x_performance"],
+        ["quality_nav3_cape_vix_dividends_treasury_performance_index", "quality_dual_guard_vix_sma60_performance_index", "spy_1x_performance"],
         colors,
         performance=True,
     )
     pnl = linear_chart(
         daily,
-        ["quality_dual_guard_vix_sma60_pnl", "quality_dual_guard_injections_pnl", "spy_1x_pnl"],
+        ["quality_nav3_cape_vix_dividends_treasury_pnl", "quality_dual_guard_vix_sma60_pnl", "spy_1x_pnl"],
         colors,
         "Cumulative profit and loss net of contributions",
     )
     cape_plot = cape_chart(daily)
     vix_plot = vix_chart(daily)
     legend = (
-        '<span><i style="--swatch:var(--purple)"></i>Dual guard + 60-session VIX</span>'
-        '<span><i style="--swatch:var(--teal)"></i>Dual guard, no VIX</span>'
+        '<span><i style="--swatch:var(--purple)"></i>Standing guarded leverage + dividends to Treasury</span>'
+        '<span><i style="--swatch:var(--teal)"></i>Selective-injection dual guard</span>'
         '<span><i style="--swatch:var(--ink)"></i>SPY 1x</span>'
     )
 
     order = [
+        "quality_nav3_cape_vix_dividends_treasury",
+        "quality_nav3_cape_vix_cash_routing",
+        "quality_nav3_hysteresis_cape_vix",
+        "quality_nav3_hysteresis_vix",
+        "quality_nav3_hysteresis_cape",
+        "quality_nav3_hysteresis",
+        "quality_nav3_symmetric",
+        "quality_nav3_cape_vix_interest_to_spy",
         "quality_dual_guard_vix_sma60",
         "quality_dual_guard_vix_sma60_deferred_annual",
         "quality_dual_guard_vix_sma20",
@@ -250,7 +279,7 @@ def main(argv=None):
         "spy_1x",
     ]
     rows = "".join(
-        f'<tr class="{"featured" if name == "quality_dual_guard_vix_sma60" else ""}">'
+        f'<tr class="{"featured" if name == "quality_nav3_cape_vix_dividends_treasury" else ""}">'
         f'<td><strong>{html.escape(labels[name])}</strong></td>'
         f'<td>{money(variants[name]["terminal_wealth"])}</td>'
         f'<td>{pct(variants[name]["xirr"])}</td>'
@@ -261,7 +290,7 @@ def main(argv=None):
         for name in order
     )
     post_rows = "".join(
-        f'<tr class="{"featured" if name == "quality_dual_guard_vix_sma60" else ""}">'
+        f'<tr class="{"featured" if name == "quality_nav3_cape_vix_dividends_treasury" else ""}">'
         f'<td><strong>{html.escape(labels[name])}</strong></td>'
         f'<td>{money(sensitivity["variants"][name]["terminal_wealth"])}</td>'
         f'<td>{pct(sensitivity["variants"][name]["xirr"])}</td>'
@@ -315,6 +344,54 @@ def main(argv=None):
     post_deferred_annual = post[
         "quality_dual_guard_vix_sma60_deferred_annual"
     ]
+    post_nav3_selected = post[
+        "quality_nav3_cape_vix_dividends_treasury"
+    ]
+    nav3_selected_vs_spy = (
+        nav3_dividends_treasury["terminal_wealth"] / spy["terminal_wealth"] - 1.0
+    )
+    nav3_selected_vs_dual = (
+        nav3_dividends_treasury["terminal_wealth"]
+        / vix_sma60["terminal_wealth"] - 1.0
+    )
+    post_nav3_vs_spy = (
+        post_nav3_selected["terminal_wealth"] / post["spy_1x"]["terminal_wealth"] - 1.0
+    )
+    standing_names = [
+        "quality_nav3_symmetric", "quality_nav3_hysteresis",
+        "quality_nav3_hysteresis_cape", "quality_nav3_hysteresis_vix",
+        "quality_nav3_hysteresis_cape_vix",
+        "quality_nav3_cape_vix_dividends_treasury",
+    ]
+    standing_rows = "".join(
+        f'<tr class="{"featured" if name == "quality_nav3_cape_vix_dividends_treasury" else ""}">'
+        f'<td><strong>{html.escape(labels[name])}</strong></td>'
+        f'<td>{money(variants[name]["terminal_wealth"])}</td>'
+        f'<td>{pct(variants[name]["xirr"])}</td>'
+        f'<td>{pct(variants[name]["max_flow_adjusted_drawdown"])}</td>'
+        f'<td>{pct(variants[name]["annual_volatility"])}</td>'
+        f'<td>{variants[name]["mean_gross_exposure"]:.2f}x</td>'
+        f'<td>{variants[name]["max_gross_exposure"]:.2f}x</td>'
+        f'<td>{variants[name]["events"].get("nav_leverage_ladder_change", {}).get("count", 0)}</td></tr>'
+        for name in standing_names
+    )
+    routing_names = [
+        "quality_nav3_hysteresis_cape_vix",
+        "quality_nav3_cape_vix_dividends_treasury",
+        "quality_nav3_cape_vix_interest_to_spy",
+        "quality_nav3_cape_vix_cash_routing",
+    ]
+    routing_rows = "".join(
+        f'<tr class="{"featured" if name == "quality_nav3_cape_vix_dividends_treasury" else ""}">'
+        f'<td><strong>{html.escape(labels[name])}</strong></td>'
+        f'<td>{money(variants[name]["terminal_wealth"])}</td>'
+        f'<td>{pct(variants[name]["xirr"])}</td>'
+        f'<td>{pct(variants[name]["max_flow_adjusted_drawdown"])}</td>'
+        f'<td>{pct(variants[name]["annual_volatility"])}</td>'
+        f'<td>{money(variants[name]["dividend_to_treasury"])}</td>'
+        f'<td>{money(variants[name]["treasury_interest_to_spy"])}</td></tr>'
+        for name in routing_names
+    )
     deferred_vs_immediate = (
         deferred_annual["terminal_wealth"] / vix_sma60["terminal_wealth"] - 1.0
     )
@@ -383,51 +460,61 @@ def main(argv=None):
 *{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:17px/1.62 var(--serif)}}main{{width:min(1100px,calc(100% - 34px));margin:auto;padding:52px 0 80px}}header{{border-bottom:2px solid var(--ink);padding-bottom:34px}}.eyebrow{{font:700 11px var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--teal)}}h1{{font:650 clamp(40px,7vw,72px)/1.02 var(--serif);letter-spacing:-.045em;max-width:14ch;margin:13px 0 20px}}h1 em{{color:var(--brick)}}.standfirst{{font-size:22px;line-height:1.43;color:var(--muted);max-width:66ch}}section{{padding-top:48px;max-width:880px}}section.wide{{max-width:none}}h2{{font:650 31px/1.18 var(--serif);letter-spacing:-.025em;margin:0 0 14px}}h3{{font:650 21px/1.3 var(--serif);margin:30px 0 10px}}p{{margin:0 0 18px}}.cards{{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);margin-top:28px}}.card{{background:var(--paper);padding:17px;border-right:1px solid var(--line)}}.card:last-child{{border:0}}.card b{{display:block;font:700 22px var(--mono)}}.card span{{display:block;font:12px/1.4 var(--sans);color:var(--faint);margin-top:7px}}.rule{{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:23px 0}}.step{{background:var(--paper);border-top:4px solid var(--teal);padding:17px}}.step:nth-child(2){{border-color:#b38108}}.step:last-child{{border-color:var(--brick)}}.step b{{display:block;font:700 22px var(--mono)}}.step span{{font:12px/1.45 var(--sans);color:var(--faint)}}.note{{background:var(--soft);border-left:3px solid var(--teal);padding:18px 20px;color:var(--muted)}}.warning{{background:var(--warn);border-left-color:var(--brick)}}.caution{{background:var(--gold);border-left-color:#9a6a00}}.scroll{{overflow:auto;border:1px solid var(--line);background:var(--paper);margin-top:22px}}table{{border-collapse:collapse;width:100%;font:13px/1.4 var(--sans);font-variant-numeric:tabular-nums}}th,td{{padding:12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}}th{{font:700 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--faint)}}th:first-child,td:first-child{{text-align:left}}td:first-child{{white-space:normal;min-width:180px}}td strong,td small{{display:block}}tr.featured{{background:var(--soft)}}figure{{margin:30px 0}}.figure-head{{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:9px;font:13px var(--sans);color:var(--muted)}}.plate{{background:var(--paper);border:1px solid var(--line);padding:14px;margin-top:13px;overflow:auto}}svg{{display:block;width:100%;min-width:720px}}.frame{{fill:none;stroke:var(--line)}}.grid{{stroke:var(--line)}}.zero{{stroke:var(--brick);stroke-width:1.5}}.axis{{font:10px var(--mono);fill:var(--faint)}}.axis-title{{font:12px var(--sans);fill:var(--ink)}}.legend{{display:flex;gap:18px;flex-wrap:wrap;padding:8px 4px 0;font:11px var(--sans);color:var(--muted)}}.legend span{{display:flex;gap:7px;align-items:center}}.legend i{{width:22px;border-top:2px solid var(--swatch)}}footer{{font:12px/1.55 var(--sans);color:var(--faint);border-top:1px solid var(--line);margin-top:55px;padding-top:20px;max-width:960px}}a{{color:var(--teal)}}code{{font-family:var(--mono)}}@media(max-width:760px){{.cards{{grid-template-columns:1fr 1fr}}.rule{{grid-template-columns:1fr}}.card:nth-child(2){{border-right:0}}}}@media(max-width:520px){{.cards{{grid-template-columns:1fr}}}}
 </style></head><body><main>
 <header><div class="eyebrow">CAPE sample - {result["sample"]["start"]} to {result["sample"]["end"]}</div>
-<h1>Smoothing helped. <em>Still provisional.</em></h1>
-<p class="standfirst">A 60-session VIX average removed most of the daily switching and improved the historical return/drawdown trade-off. It is a useful robustness result, not yet a production rule: four smoothing choices were examined and switching costs remain omitted.</p>
-<div class="cards"><div class="card"><b>{money(vix_sma60["terminal_wealth"])}</b><span>60-session VIX terminal wealth; no-VIX {money(dual["terminal_wealth"])}</span></div>
-<div class="card"><b>{pct(vix_sma60["xirr"])}</b><span>60-session XIRR; no-VIX {pct(dual["xirr"])}</span></div>
-<div class="card"><b>{pct(vix_sma60["max_flow_adjusted_drawdown"])}</b><span>maximum drawdown; no-VIX {pct(dual["max_flow_adjusted_drawdown"])}</span></div>
-<div class="card"><b>{sma60_change_dates}</b><span>distinct leverage-change dates; raw VIX {vix_change_dates}</span></div></div></header>
+<h1>Standing 3x worked. <em>At a price.</em></h1>
+<p class="standfirst">Starting the 80% SPY core at 3x and cutting it with NAV produced much more wealth. CAPE, smoothed VIX and slow reversals made the path less fragile; routing SPY dividends to Treasury provided the best tested balance. Maximum account exposure still approached 2.5x.</p>
+<div class="cards"><div class="card"><b>{money(nav3_dividends_treasury["terminal_wealth"])}</b><span>selected standing-leverage terminal wealth; SPY {money(spy["terminal_wealth"])}</span></div>
+<div class="card"><b>{pct(nav3_dividends_treasury["xirr"])}</b><span>XIRR; SPY {pct(spy["xirr"])}</span></div>
+<div class="card"><b>{pct(nav3_dividends_treasury["max_flow_adjusted_drawdown"])}</b><span>maximum drawdown; SPY {pct(spy["max_flow_adjusted_drawdown"])}</span></div>
+<div class="card"><b>{nav3_dividends_treasury["max_gross_exposure"]:.2f}x</b><span>maximum gross account exposure</span></div></div></header>
 
-<section><div class="eyebrow">I - Two-account specification</div><h2>Permanent capital and opportunity capital have different jobs.</h2>
+<section><div class="eyebrow">I - Standing-leverage specification</div><h2>Three guards control one leveraged SPY core.</h2>
 <p>Begin with {money(result["cash_flows"]["initial"])} at 80% SPY core and 20% Treasury. Add {money(result["cash_flows"]["annual"])} at the first session of every later year and an additional {money(result["cash_flows"]["additional_every_third_year"])} in contribution years 3, 6, 9 and so on. Total contributed was {money(result["cash_flows"]["total_contributed"])} across {result["cash_flows"]["contribution_events"]} later deposits.</p>
-<div class="rule"><div class="step"><b>CAPE &lt;25</b><span>Drawdown-time SPY injection enters at 3x.</span></div><div class="step"><b>25-35</b><span>Drawdown-time SPY injection enters at 2x.</span></div><div class="step"><b>CAPE &gt;35</b><span>New capital buys SPY at 1x.</span></div></div>
-<p><strong>NAV is the gate:</strong> the permanent 80% SPY core stays at 1x. If the prior-close flow-adjusted account NAV is less than 10% below its high, a new contribution also enters at 1x regardless of CAPE. At a drawdown of 10% or more, CAPE determines only the leverage of that new SPY tranche. The remaining 20% of every contribution enters Treasury.</p>
-<p><strong>Recovery is the reset:</strong> each leveraged injection holds its entry exposure until the combined account regains the high that preceded the drawdown. On the following session it is converted to 1x and merged into the permanent core. Monthly CAPE is lagged one month, and exposure above 1x pays prior-known DGS3MO +1%.</p>
-<p><strong>VIX is a dynamic ceiling:</strong> average the prior closes over 60 sessions, rank that smoothed value against its preceding 252 observations, and act no earlier than the following session. Below the 70th percentile, the CAPE ceiling is available; from the 70th through 90th percentile, cap the tranche at 2x; at or above the 90th, cap it at 1x. The raw, 5-session, 20-session and monthly-held versions are retained as controls.</p>
+<div class="rule"><div class="step"><b>3x</b><span>At a NAV high, subject to CAPE and VIX ceilings.</span></div><div class="step"><b>2x</b><span>At a 10% flow-adjusted NAV drawdown.</span></div><div class="step"><b>1x</b><span>At a 20% flow-adjusted NAV drawdown.</span></div></div>
+<p><strong>NAV controls the reversal:</strong> use only the prior close. Deleverage immediately through the 3x/2x/1x ladder. On recovery, move from 1x to 2x only above a -10% NAV drawdown and restore 3x only at a new NAV high. This hysteresis produced far fewer exposure changes than symmetric daily reversals.</p>
+<p><strong>CAPE and VIX are ceilings:</strong> prior-known CAPE allows 3x below 25, 2x from 25 through 35 and 1x above 35. The 60-session VIX percentile allows 3x below 70%, 2x from 70% through 90% and 1x above 90%. Actual leverage is the lowest of the NAV state, CAPE ceiling and VIX ceiling.</p>
+<p><strong>Funding and cash:</strong> exposure above 1x pays prior-known DGS3MO +1%. The selected variant routes actual SPY core cash dividends to Treasury instead of reinvesting them into leveraged SPY; Treasury interest remains in Treasury and compounds.</p>
 <p>The Treasury ladder remains unchanged: quality at -10%, SPY at -20%, quality at -30%, and SPY at -50% of SPY drawdown. Those rescue tranches remain unlevered.</p>
 <p class="note">This is a daily-rebalanced leverage model, not a promise that a leveraged ETF, futures account or margin account would reproduce it. ETF tracking, margin liquidation and taxes are omitted.</p></section>
 
-<section class="wide"><div class="eyebrow">II - P&amp;L versus SPY</div><h2>The 60-session signal improved this historical path.</h2>
+<section class="wide"><div class="eyebrow">II - P&amp;L versus SPY</div><h2>Standing guarded leverage materially increased terminal wealth.</h2>
 <figure><div class="figure-head"><strong>Cumulative P&amp;L after subtracting all deposits</strong><span>not realized or tax-adjusted</span></div><div class="plate">{pnl}<div class="legend">{legend}</div></div></figure>
-<p>The 60-session VIX version produced {money(vix_sma60["net_gain"])} of cumulative net gain. It finished {pct(sma60_vs_dual, 2)} versus the no-VIX dual guard and {pct(sma60_vs_spy, 2)} versus SPY with identical deposits.</p>
+<p>The selected standing-leverage version produced {money(nav3_dividends_treasury["net_gain"])} of cumulative net gain. It finished {pct(nav3_selected_vs_dual, 2)} versus the selective-injection dual guard and {pct(nav3_selected_vs_spy, 2)} versus SPY with identical deposits.</p>
 <figure><div class="figure-head"><strong>Account value with matched deposits</strong><span>log scale</span></div><div class="plate">{growth}<div class="legend">{legend}</div></div></figure>
 <figure><div class="figure-head"><strong>Flow-adjusted drawdown</strong><span>deposits removed from return clock</span></div><div class="plate">{drawdown}<div class="legend">{legend}</div></div></figure>
-<p class="note"><strong>Risk result:</strong> maximum drawdown improved by {sma60_dd_improvement * 100:.2f} percentage point, from {pct(dual["max_flow_adjusted_drawdown"])} to {pct(vix_sma60["max_flow_adjusted_drawdown"])}. Annualized volatility declined from {pct(dual["annual_volatility"])} to {pct(vix_sma60["annual_volatility"])}.</p></section>
+<p class="warning note"><strong>Risk result:</strong> annualized volatility was {pct(nav3_dividends_treasury["annual_volatility"])} and modeled funding cost reached {money(nav3_dividends_treasury["financing_cost"])}. The selective-injection strategy cost only {money(vix_sma60["financing_cost"])} to finance and never exceeded {vix_sma60["max_gross_exposure"]:.2f}x gross exposure.</p></section>
 
-<section class="wide"><div class="eyebrow">III - Smoothing comparison</div><h2>Less chatter, but only the slowest signal added return.</h2>
+<section class="wide"><div class="eyebrow">III - Standing-leverage comparison</div><h2>Slow reversals and dual ceilings improved the raw 3x idea.</h2>
+<div class="scroll"><table><thead><tr><th>Standing-core rule</th><th>Terminal</th><th>XIRR</th><th>Max DD</th><th>Volatility</th><th>Mean exposure</th><th>Max exposure</th><th>Reversals</th></tr></thead><tbody>{standing_rows}</tbody></table></div>
+<p>Symmetric reversals generated {nav3_symmetric["events"]["nav_leverage_ladder_change"]["count"]} leverage changes. Slow recovery reduced that to {nav3_hysteresis["events"]["nav_leverage_ladder_change"]["count"]}. CAPE alone reduced financing but did not improve full-sample drawdown; VIX reduced return substantially. Their combined ceiling lowered volatility and drawdown relative to either raw standing rule.</p>
+<p class="warning note">The selected dividend-routing version still reached {nav3_dividends_treasury["max_gross_exposure"]:.2f}x gross account exposure. A prior-close NAV rule cannot protect against an overnight gap, execution delay, margin changes or forced liquidation.</p></section>
+
+<section class="wide"><div class="eyebrow">IV - Dividends and Treasury interest</div><h2>Dividends helped more as ballast than as additional leverage.</h2>
+<div class="scroll"><table><thead><tr><th>Cash routing</th><th>Terminal</th><th>XIRR</th><th>Max DD</th><th>Volatility</th><th>Dividends to Treasury</th><th>Interest to SPY</th></tr></thead><tbody>{routing_rows}</tbody></table></div>
+<p>Routing {money(nav3_dividends_treasury["dividend_to_treasury"])} of cumulative SPY core dividends to Treasury reduced mean exposure from {nav3_combined["mean_gross_exposure"]:.2f}x to {nav3_dividends_treasury["mean_gross_exposure"]:.2f}x and improved maximum drawdown from {pct(nav3_combined["max_flow_adjusted_drawdown"])} to {pct(nav3_dividends_treasury["max_flow_adjusted_drawdown"])}.</p>
+<p class="caution note">Sweeping annual Treasury interest into SPY was worse over the full sample. The small transfer also changed later NAV threshold crossings, producing a disproportionately different path. That sensitivity is evidence that the strategy is path-dependent and should not be judged by terminal wealth alone.</p></section>
+
+<section class="wide"><div class="eyebrow">V - Smoothing comparison</div><h2>Less chatter, but only the slowest signal added return.</h2>
 <div class="scroll"><table><thead><tr><th>VIX treatment</th><th>Terminal</th><th>XIRR</th><th>Max DD</th><th>Change dates</th></tr></thead><tbody>{smoothing_rows}</tbody></table></div>
 <p>Raw VIX changed leverage on {vix_change_dates} dates. The 60-session average reduced that to {sma60_change_dates} dates and lowered modeled financing cost from {money(dual["financing_cost"])} without VIX to {money(vix_sma60["financing_cost"])}.</p>
 <p class="caution note">The 60-session result is the best of the smoothing choices examined, so it has selection bias. Treat it as a candidate for a frozen-rule, out-of-sample test—not proof that 60 sessions is optimal.</p></section>
 
-<section class="wide"><div class="eyebrow">IV - Full strategy comparison</div><h2>The smoothed result must still be judged against simpler portfolios.</h2>
+<section class="wide"><div class="eyebrow">VI - Full strategy comparison</div><h2>The standing result must still be judged against simpler portfolios.</h2>
 <div class="scroll"><table><thead><tr><th>Path</th><th>Terminal</th><th>XIRR</th><th>TWR CAGR</th><th>Max DD</th><th>Volatility</th><th>Mean exposure</th></tr></thead><tbody>{rows}</tbody></table></div>
 <p>The 60-session brake averaged {vix_sma60["mean_injection_leverage_when_active"]:.2f}x on active injections versus {dual["mean_injection_leverage_when_active"]:.2f}x without VIX. The reversed VIX rule averaged only {vix_reverse["mean_injection_leverage_when_active"]:.2f}x.</p>
 <p class="caution note">The reversed rule's similar full-sample drawdown does not validate buying more leverage during fear. It mostly behaved like a lower-leverage strategy. The clean comparison is VIX brake versus the otherwise identical no-VIX dual guard.</p></section>
 
-<section class="wide"><div class="eyebrow">V - VIX path and injections</div><h2>The slow signal filters short-lived volatility spikes.</h2>
+<section class="wide"><div class="eyebrow">VII - VIX path and injections</div><h2>The slow signal filters short-lived volatility spikes.</h2>
 <figure><div class="figure-head"><strong>Raw and 60-session VIX percentiles</strong><span>black raw / purple smoothed; green CAPE ceiling / amber max 2x / red max 1x</span></div><div class="plate">{vix_plot}</div></figure>
 <figure><div class="figure-head"><strong>Prior-known monthly CAPE</strong><span>green 3x / amber 2x / red 1x</span></div><div class="plate">{cape_plot}</div></figure>
 <div class="scroll"><table><thead><tr><th>Date</th><th>Total contribution</th><th>Account DD</th><th>Execution rule</th></tr></thead><tbody>{injection_rows}</tbody></table></div>
 <p>There were {len(levered_injections)} drawdown-time contribution events. The 60-session brake caused {len(sma60_change_events)} lot-level changes on {sma60_change_dates} dates, versus {len(vix_change_events)} changes on {vix_change_dates} dates with raw VIX. Switching costs were not charged, so both results are optimistic.</p></section>
 
-<section class="wide"><div class="eyebrow">VI - 2007 clean-data sensitivity</div><h2>The slow signal retained its drawdown benefit after 2007.</h2>
+<section class="wide"><div class="eyebrow">VIII - 2007 clean-data sensitivity</div><h2>The standing guarded strategy also led after 2007.</h2>
 <div class="scroll"><table><thead><tr><th>2007-2024 path</th><th>Terminal</th><th>XIRR</th><th>Max DD</th><th>Volatility</th></tr></thead><tbody>{post_rows}</tbody></table></div>
-<p>With {money(sensitivity["cash_flows"]["total_contributed"])} contributed, the 60-session version reached {money(post_sma60["terminal_wealth"])}: {pct(post_sma60_vs_dual, 2)} versus no VIX and {pct(post_sma60_vs_spy, 2)} versus SPY. XIRR was {pct(post_sma60["xirr"])} versus {pct(post["spy_1x"]["xirr"])} for SPY.</p>
-<p class="warning note">It improved post-2007 maximum drawdown by {post_sma60_dd_improvement * 100:.2f} percentage points versus no VIX, but maximum gross exposure was still {post_sma60["max_gross_exposure"]:.2f}x. Smoothing does not replace an account-level exposure cap.</p></section>
+<p>With {money(sensitivity["cash_flows"]["total_contributed"])} contributed, the selected standing strategy reached {money(post_nav3_selected["terminal_wealth"])} versus {money(post["spy_1x"]["terminal_wealth"])} for SPY, an advantage of {pct(post_nav3_vs_spy, 2)}. XIRR was {pct(post_nav3_selected["xirr"])} versus {pct(post["spy_1x"]["xirr"])} for SPY.</p>
+<p class="warning note">Post-2007 maximum drawdown was {pct(post_nav3_selected["max_flow_adjusted_drawdown"])} and maximum gross exposure was {post_nav3_selected["max_gross_exposure"]:.2f}x. The result is attractive, but the exposure is far above the previously proposed 1.5x account cap.</p></section>
 
-<section class="wide"><div class="eyebrow">VII - Timing the annual $10,000</div><h2>Waiting for high VIX reduced exposure—and reduced wealth.</h2>
+<section class="wide"><div class="eyebrow">IX - Timing the annual $10,000</div><h2>Waiting for high VIX reduced exposure—and reduced wealth.</h2>
 <div class="scroll"><table><thead><tr><th>1993-2024 path</th><th>Terminal</th><th>XIRR</th><th>Max DD</th><th>Volatility</th><th>Max exposure</th></tr></thead><tbody>
 <tr><td><strong>Annual cash deployed normally</strong></td><td>{money(vix_sma60["terminal_wealth"])}</td><td>{pct(vix_sma60["xirr"])}</td><td>{pct(vix_sma60["max_flow_adjusted_drawdown"])}</td><td>{pct(vix_sma60["annual_volatility"])}</td><td>{vix_sma60["max_gross_exposure"]:.2f}x</td></tr>
 <tr><td><strong>Annual cash waits for high VIX</strong></td><td>{money(deferred_annual["terminal_wealth"])}</td><td>{pct(deferred_annual["xirr"])}</td><td>{pct(deferred_annual["max_flow_adjusted_drawdown"])}</td><td>{pct(deferred_annual["annual_volatility"])}</td><td>{deferred_annual["max_gross_exposure"]:.2f}x</td></tr>
@@ -437,7 +524,7 @@ def main(argv=None):
 <p>The timing rule deployed {money(deferred_deployed)} including earned interest through {len(deferred_events)} rungs on {deferred_dates} dates. It finished {pct(deferred_vs_immediate, 2)} versus immediate annual deployment and {pct(deferred_vs_spy, 2)} versus SPY. From 2007 it finished {pct(post_deferred_vs_immediate, 2)} versus the immediate 60-session strategy.</p>
 <p class="warning note"><strong>Interpretation:</strong> high relative VIX often occurred during modest corrections, while long equity advances kept contributions waiting. The rule lowered maximum account exposure, but it did not improve maximum drawdown and sacrificed compounding.</p></section>
 
-<section class="wide"><div class="eyebrow">VIII - Treasury versus SPY</div><h2>Treasury preserved optionality; SPY created the wealth.</h2>
+<section class="wide"><div class="eyebrow">X - Treasury versus SPY</div><h2>Treasury preserved optionality; SPY created the wealth.</h2>
 <div class="scroll"><table><thead><tr><th>1993-2024 path</th><th>Terminal with deposits</th><th>Net gain</th><th>XIRR</th><th>$10,000 lump terminal</th><th>TWR CAGR</th><th>Max DD</th></tr></thead><tbody>
 <tr><td><strong>SPY buy and hold</strong></td><td>{money(spy["terminal_wealth"])}</td><td>{money(spy["net_gain"])}</td><td>{pct(spy["xirr"])}</td><td>{money(spy_lump_terminal)}</td><td>{pct(spy["time_weighted_cagr"])}</td><td>{pct(spy["max_flow_adjusted_drawdown"])}</td></tr>
 <tr><td><strong>100% three-month Treasury proxy</strong></td><td>{money(treasury["terminal_wealth"])}</td><td>{money(treasury["net_gain"])}</td><td>{pct(treasury["xirr"])}</td><td>{money(treasury_lump_terminal)}</td><td>{pct(treasury["time_weighted_cagr"])}</td><td>{pct(treasury["max_flow_adjusted_drawdown"])}</td></tr>
@@ -445,11 +532,11 @@ def main(argv=None):
 <p>Both paths start with {money(initial)} and receive the same {money(result["cash_flows"]["total_contributed"])} total capital. The Treasury proxy compounds at the prior-known DGS3MO yield; SPY uses adjusted total returns with dividends reinvested.</p>
 <p class="note">The 20% Treasury sleeve is therefore insurance and dry powder, not a long-run return competitor. Its economic cost is the foregone equity compounding visible above.</p></section>
 
-<section><div class="eyebrow">IX - Decision</div><h2>Keep the 60-session risk brake, not the annual-cash timer.</h2>
-<p>Smoothing fixed the operational chatter and the 60-session result held up in the post-2007 sensitivity. However, it was selected from four alternatives on the same history.</p>
-<p class="warning note"><strong>Bottom line:</strong> contribute on schedule. Use VIX to constrain leverage, not to withhold the whole annual contribution. Freeze the 60-session brake, charge switching costs, and pair it with a 1.5x account-level exposure cap before further evaluation.</p></section>
+<section><div class="eyebrow">XI - Decision</div><h2>The standing strategy is stronger—and much less forgiving.</h2>
+<p>The coherent version uses slow NAV reversals, takes the lower CAPE/VIX ceiling, contributes on schedule, routes SPY dividends to Treasury and leaves Treasury interest compounding there. It produced the best tested standing-leverage risk/return balance.</p>
+<p class="warning note"><strong>Bottom line:</strong> this is not yet resistant enough for unrestricted 3x implementation. Freeze every threshold, charge leverage-switching costs, test a hard account gross-exposure cap and run rolling start dates. Dividend routing is promising; annual Treasury-interest sweeps and VIX-timed annual contributions are rejected.</p></section>
 
-<footer><strong>Full operating manual:</strong> <a href="dual-guard-quality-compounder-guide.md">Dual-Guard Quality Compounder Guide</a>.<br>Historical simulation, not investment advice. Adjusted total returns reinvest dividends. Monthly CAPE is lagged one month and the test stops at the local September 2024 observation. CAPE source: <a href="https://www.econ.yale.edu/~shiller/data.htm">Robert Shiller / Yale</a>. Treasury and funding reference: <a href="https://fred.stlouisfed.org/series/DGS3MO">FRED DGS3MO</a>. Financing is prior-known DGS3MO +1%; quality and rescue trades cost 5 bp. Margin calls, leveraged-ETF tracking differences, taxes, market impact and a survivor-free historical top-seven universe are omitted. Generated by <code>scripts/run_quality_ladder_cape_leverage.py</code>.</footer>
+<footer><strong>Full operating manual:</strong> <a href="dual-guard-quality-compounder-guide.md">Dual-Guard Quality Compounder Guide</a>.<br>Historical simulation, not investment advice. Adjusted total returns reinvest dividends except in the explicit cash-routing controls, where actual SPY cash-dividend events are removed from core return and credited to Treasury. Monthly CAPE is lagged one month and the test stops at the local September 2024 observation. CAPE source: <a href="https://www.econ.yale.edu/~shiller/data.htm">Robert Shiller / Yale</a>. Treasury and funding reference: <a href="https://fred.stlouisfed.org/series/DGS3MO">FRED DGS3MO</a>. Financing is prior-known DGS3MO +1%; quality and rescue trades cost 5 bp. Leverage-switching costs, margin calls, leveraged-ETF tracking differences, taxes, market impact and a survivor-free historical top-seven universe are omitted. Generated by <code>scripts/run_quality_ladder_cape_leverage.py</code>.</footer>
 </main></body></html>'''
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(html_text, encoding="utf-8")
