@@ -134,6 +134,15 @@ def vix_leverage_cap(desired: float, percentile: float,
     return min(desired, cap)
 
 
+def nav_injection_ceiling(drawdown: float) -> float:
+    """Contrarian fresh-capital ceiling used by the daily DCA dashboard."""
+    if drawdown > -0.10:
+        return 1.0
+    if drawdown > -0.20:
+        return 2.0
+    return 3.0
+
+
 def simulate(
     prices: pd.DataFrame,
     raw: pd.DataFrame,
@@ -157,6 +166,7 @@ def simulate(
     injection_nav_drawdown: float | None = None,
     injection_vix_percentile: pd.Series | None = None,
     injection_vix_mode: str | None = None,
+    injection_nav_tiered: bool = False,
     deferred_contribution_series: pd.Series | None = None,
     deferred_deployment_percentile: pd.Series | None = None,
     deferred_deployment_thresholds: tuple[float, ...] = (0.70, 0.80, 0.90, 0.95),
@@ -168,6 +178,7 @@ def simulate(
     spy_dividend_yield: pd.Series | None = None,
     spy_dividends_to_treasury: bool = False,
     treasury_interest_to_spy_annual: bool = False,
+    initial_spy_share: float | None = None,
 ) -> tuple[pd.DataFrame, list[Event], list[dict]]:
     spy = prices["SPY"].dropna()
     prices = prices.reindex(spy.index)
@@ -215,13 +226,16 @@ def simulate(
     spy_drawdown = spy / spy_high - 1.0
     cost_rate = args.trade_bp / 10_000.0
 
-    core_spy = args.initial * args.spy_share
+    starting_spy_share = args.spy_share if initial_spy_share is None else initial_spy_share
+    if not 0.0 <= starting_spy_share <= 1.0:
+        raise ValueError("initial_spy_share must be between zero and one")
+    core_spy = args.initial * starting_spy_share
     # Contributions made while the legacy NAV brake is active can optionally
     # live in a separate sleeve.  That sleeve follows CAPE leverage until NAV
     # recovers, when it merges into the legacy core for the next drawdown cycle.
     fresh_core_spy = 0.0
     rescue_spy_shares = 0.0
-    reserve = args.initial * (1.0 - args.spy_share)
+    reserve = args.initial * (1.0 - starting_spy_share)
     pending_annual_cash = 0.0
     vix_deployment_fired: set[float] = set()
     vix_episode_base = 0.0
@@ -238,7 +252,7 @@ def simulate(
     nav_brake_active = False
     previous_total = args.initial
     max_quality_weight = 0.0
-    max_spy_exposure = args.spy_share * float(leverage.iloc[0])
+    max_spy_exposure = starting_spy_share * float(leverage.iloc[0])
     harvest_to_reserve_total = 0.0
     harvest_to_spy_total = 0.0
     cape_incremental_reserve_total = 0.0
@@ -462,6 +476,11 @@ def simulate(
             )
             if injection_gate:
                 desired_injection_level = float(injection_levels.iloc[signal_position])
+                if injection_nav_tiered:
+                    desired_injection_level = min(
+                        desired_injection_level,
+                        nav_injection_ceiling(previous_flow_drawdown),
+                    )
                 injection_level = vix_leverage_cap(
                     desired_injection_level, current_vix_percentile,
                     injection_vix_mode,

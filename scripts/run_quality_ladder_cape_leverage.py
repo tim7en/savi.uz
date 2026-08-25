@@ -80,13 +80,15 @@ def trailing_percentile(signal: pd.Series, index: pd.DatetimeIndex,
 
 def trailing_vix_percentile(index: pd.DatetimeIndex, macro_db: Path,
                             window: int = 252,
-                            smooth_sessions: int = 1) -> pd.Series:
+                            smooth_sessions: int = 1,
+                            series_id: str = "VIXCLS") -> pd.Series:
     """Prior-close VIX rank, optionally after a trailing simple moving average."""
     connection = sqlite3.connect(f"file:{macro_db}?mode=ro", uri=True)
     try:
         rows = connection.execute(
             "SELECT obs_date, value FROM observations "
-            "WHERE series_id='VIXCLS' AND value IS NOT NULL ORDER BY obs_date"
+            "WHERE series_id=? AND value IS NOT NULL ORDER BY obs_date",
+            (series_id,),
         ).fetchall()
     finally:
         connection.close()
