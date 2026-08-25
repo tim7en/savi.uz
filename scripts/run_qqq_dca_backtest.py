@@ -313,7 +313,11 @@ def main(argv=None) -> int:
     daily = pd.DataFrame(index=index)
     for name, path in paths.items():
         for column in ("wealth", "performance_index", "flow_adjusted_drawdown",
-                       "treasury", "quality", "gross_exposure", "financing_cost"):
+                       "contribution",
+                       "treasury", "quality", "spy_weight", "legacy_core_spy",
+                       "rescue_spy", "injection_core_spy",
+                       "injection_weighted_leverage", "gross_exposure",
+                       "financing_cost"):
             if column in path:
                 daily[f"{name}_{column}"] = path[column]
     daily["vxn_sma60_percentile"] = known_vxn
