@@ -56,7 +56,7 @@ def parse_args(argv=None):
     )
     parser.add_argument("--refresh", action="store_true")
     parser.add_argument(
-        "--fundamentals", type=Path, default=Path("data/data/sp500_data")
+        "--fundamentals", type=Path, default=Path("data/sp500_data")
     )
     parser.add_argument(
         "--cache", type=Path, default=Path(".cache/yahoo_daily")
