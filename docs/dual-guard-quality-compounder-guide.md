@@ -165,6 +165,41 @@ Cheap markets can become cheaper. In 2009, low CAPE authorized 3x injection
 tranches while the market was still falling. NAV gating limits where leverage
 can start, but it cannot eliminate path risk after entry.
 
+### VIX overlay test — smoothed candidate
+
+We also tested VIX as a dynamic ceiling on each active injection, using only the
+prior close and its percentile versus the preceding 252 observations:
+
+- below the 70th percentile: allow the CAPE leverage ceiling;
+- 70th through 90th percentile: cap the tranche at 2x; and
+- at or above the 90th percentile: cap the tranche at 1x.
+
+Leverage was allowed to rise again if VIX subsided before NAV recovered. A
+reversed control used 1x at low VIX, 2x in the middle and the CAPE ceiling at
+high VIX.
+
+The intuitive brake was not strong enough to adopt. Over 1993–2024 it ended at
+$3,969,543 versus $4,019,327 without VIX, while maximum drawdown improved only
+from -52.60% to -52.40%. Over 2007–2024 it improved maximum drawdown from
+-55.58% to -53.51%, but ended 0.34% behind the no-VIX version. It also caused
+276 lot-level leverage changes on 145 dates in the full sample, before charging
+switching costs. The reversed control mostly behaved as a lower-leverage
+strategy and does not establish that high VIX should invite more leverage.
+
+We then ranked trailing simple averages of VIX rather than the raw close. The
+5-, 20- and 60-session averages and a monthly-held raw signal were specified
+before comparing their results. The 60-session version was the only one that
+added full-sample return: terminal wealth reached $4,119,424, XIRR was 10.245%,
+maximum drawdown was -52.33%, and leverage changed on only 11 dates. Over
+2007–2024 it reached $1,240,949 with a -50.86% maximum drawdown, versus
+$1,248,235 and -55.58% without VIX.
+
+This makes the 60-session rule a candidate, not a validated rule. It was the
+best of four smoothing choices selected on the same history, switching costs
+remain omitted, and maximum account exposure remained above 2x. Freeze the
+lookback before further testing, include switching costs, and combine it with
+an account-level gross-exposure cap.
+
 ## 7. Leverage and funding
 
 Leverage applies to tranche equity, not to the entire account. An $8,000 SPY
@@ -222,6 +257,8 @@ Total capital contributed is $620,000.
 
 | Strategy | Terminal wealth | XIRR | Maximum drawdown | Volatility |
 |---|---:|---:|---:|---:|
+| Dual guard + 60-session VIX brake | $4,119,424 | 10.245% | -52.33% | 17.60% |
+| Dual guard + raw VIX brake | $3,969,543 | 10.064% | -52.40% | 17.57% |
 | Dual-guard quality strategy | $4,019,327 | 10.125% | -52.60% | 17.70% |
 | Same quality strategy, 1x core | $3,927,534 | 10.012% | -52.04% | 17.22% |
 | SPY 1x | $4,058,936 | 10.173% | -55.19% | 18.65% |

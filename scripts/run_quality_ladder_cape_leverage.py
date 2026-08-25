@@ -61,9 +61,27 @@ def cape_leverage(cape: pd.Series) -> pd.Series:
     return result
 
 
+def trailing_percentile(signal: pd.Series, index: pd.DatetimeIndex,
+                        window: int = 252) -> pd.Series:
+    """Prior-close trailing rank of a daily signal, aligned without look-ahead."""
+    signal = signal.sort_index().astype(float)
+
+    def rank(values) -> float:
+        history, current = values[:-1], values[-1]
+        return float((history < current).sum() / len(history))
+
+    close_rank = signal.rolling(window + 1, min_periods=window + 1).apply(
+        rank, raw=True
+    )
+    # A close dated D controls exposure no earlier than the following SPY
+    # session. Reindex first so holidays are handled before the trading-day lag.
+    return close_rank.reindex(index).ffill().shift(1)
+
+
 def trailing_vix_percentile(index: pd.DatetimeIndex, macro_db: Path,
-                            window: int = 252) -> pd.Series:
-    """Prior-close VIX rank versus its preceding observations, no look-ahead."""
+                            window: int = 252,
+                            smooth_sessions: int = 1) -> pd.Series:
+    """Prior-close VIX rank, optionally after a trailing simple moving average."""
     connection = sqlite3.connect(f"file:{macro_db}?mode=ro", uri=True)
     try:
         rows = connection.execute(
@@ -78,16 +96,12 @@ def trailing_vix_percentile(index: pd.DatetimeIndex, macro_db: Path,
         dtype=float,
     )
 
-    def rank(values) -> float:
-        history, current = values[:-1], values[-1]
-        return float((history < current).sum() / len(history))
-
-    close_rank = raw.rolling(window + 1, min_periods=window + 1).apply(
-        rank, raw=True
-    )
-    # A VIX close dated D controls exposure no earlier than the following SPY
-    # session. Reindex first so holidays are handled before the trading-day lag.
-    return close_rank.reindex(index).ffill().shift(1)
+    if smooth_sessions < 1:
+        raise ValueError("smooth_sessions must be at least one")
+    signal = raw.rolling(
+        smooth_sessions, min_periods=smooth_sessions
+    ).mean() if smooth_sessions > 1 else raw
+    return trailing_percentile(signal, index, window)
 
 
 def simulate_spy(spy: pd.Series, contributions: pd.Series,
@@ -114,6 +128,31 @@ def simulate_spy(spy: pd.Series, contributions: pd.Series,
     return pd.DataFrame(rows, index=spy.index)
 
 
+def simulate_treasury(rates: pd.Series, contributions: pd.Series,
+                      initial: float = 10_000.0) -> pd.DataFrame:
+    """Compound at the prior-known DGS3MO yield with matched cash flows."""
+    wealth = initial
+    perf = 1.0
+    previous = wealth
+    rows = []
+    days = rates.index.to_series().diff().dt.days.fillna(0.0)
+    for position, stamp in enumerate(rates.index):
+        if position:
+            known_rate = float(rates.iloc[position - 1])
+            wealth *= 1.0 + known_rate * float(days.iloc[position]) / 365.0
+            perf *= wealth / previous
+        contribution = float(contributions.iloc[position])
+        wealth += contribution
+        previous = wealth
+        rows.append({
+            "wealth": wealth,
+            "performance_index": perf,
+            "contribution": contribution,
+            "flow_adjusted_drawdown": 0.0,
+        })
+    return pd.DataFrame(rows, index=rates.index)
+
+
 def main(argv=None):
     args = parse_args(argv)
     load_args = market.parse_args([])
@@ -129,6 +168,18 @@ def main(argv=None):
     rates = core.load_rates(prices.index)
     known_cape = cape_data.known_cape_daily(cape_monthly, prices.index)
     known_vix_percentile = trailing_vix_percentile(prices.index, args.macro_db)
+    known_vix_sma5 = trailing_vix_percentile(
+        prices.index, args.macro_db, smooth_sessions=5
+    )
+    known_vix_sma20 = trailing_vix_percentile(
+        prices.index, args.macro_db, smooth_sessions=20
+    )
+    known_vix_sma60 = trailing_vix_percentile(
+        prices.index, args.macro_db, smooth_sessions=60
+    )
+    known_vix_monthly = known_vix_percentile.groupby(
+        prices.index.to_period("M")
+    ).transform("first")
     leverage = cape_leverage(known_cape)
     one = pd.Series(1.0, index=prices.index)
     contributions = contribution_schedule(
@@ -168,6 +219,38 @@ def main(argv=None):
             injection_nav_drawdown=args.nav_deleverage_at,
             injection_vix_percentile=known_vix_percentile,
             injection_vix_mode="reverse",
+        ),
+        "quality_dual_guard_vix_sma5": dict(
+            rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
+            cape_enabled=True, core_leverage=one,
+            injection_leverage=leverage,
+            injection_nav_drawdown=args.nav_deleverage_at,
+            injection_vix_percentile=known_vix_sma5,
+            injection_vix_mode="brake",
+        ),
+        "quality_dual_guard_vix_sma20": dict(
+            rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
+            cape_enabled=True, core_leverage=one,
+            injection_leverage=leverage,
+            injection_nav_drawdown=args.nav_deleverage_at,
+            injection_vix_percentile=known_vix_sma20,
+            injection_vix_mode="brake",
+        ),
+        "quality_dual_guard_vix_sma60": dict(
+            rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
+            cape_enabled=True, core_leverage=one,
+            injection_leverage=leverage,
+            injection_nav_drawdown=args.nav_deleverage_at,
+            injection_vix_percentile=known_vix_sma60,
+            injection_vix_mode="brake",
+        ),
+        "quality_dual_guard_vix_monthly": dict(
+            rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
+            cape_enabled=True, core_leverage=one,
+            injection_leverage=leverage,
+            injection_nav_drawdown=args.nav_deleverage_at,
+            injection_vix_percentile=known_vix_monthly,
+            injection_vix_mode="brake",
         ),
         "quality_cape_no_brake": dict(
             rungs_enabled=True, quality_enabled=True, harvest_enabled=True,
@@ -270,6 +353,8 @@ def main(argv=None):
 
     spy = simulate_spy(prices["SPY"], contributions, args.initial)
     metrics["spy_1x"] = performance_metrics(spy, rates, args.initial)
+    treasury = simulate_treasury(rates, contributions, args.initial)
+    metrics["treasury_100"] = performance_metrics(treasury, rates, args.initial)
     result = {
         "sample": {
             "start": prices.index[0].date().isoformat(),
@@ -290,7 +375,7 @@ def main(argv=None):
             "nav_brake": f"core drops to 1x at -{args.nav_deleverage_at:.0%} flow-adjusted NAV drawdown and restores current CAPE leverage only at a new NAV high",
             "fresh_capital": "in the fresh-capital variants, the 80% core portion of a contribution made while the NAV brake is active follows CAPE leverage; it merges into the legacy core at NAV recovery",
             "dual_guard_injections": f"permanent core stays 1x; when prior-close account NAV DD is at least {args.nav_deleverage_at:.0%}, the SPY portion of a new contribution enters at the CAPE tier and resets to 1x when account NAV recovers",
-            "vix_brake": "prior-close VIX trailing 252-session percentile dynamically caps injection leverage: CAPE ceiling below the 70th percentile, 2x from the 70th through 90th, and 1x at or above the 90th; reverse control applies the opposite ordering",
+            "vix_brake": "prior-close VIX trailing 252-session percentile dynamically caps injection leverage: CAPE ceiling below the 70th percentile, 2x from the 70th through 90th, and 1x at or above the 90th; smoothing tests use 5-, 20-, or 60-session trailing averages before ranking, plus a monthly-held raw signal",
             "financing": f"prior-known DGS3MO + {args.spread:.2%} on core exposure above 1x",
             "rungs": "20% Treasury to quality at -10% SPY DD; 30% to unlevered SPY at -20%; 30% to quality at -30%; 20% to unlevered SPY at -50%",
             "harvest": f"sell {args.harvest_share:.0%} original lot shares at every new {args.relative_step:.0%} relative-wealth band versus SPY",
@@ -319,11 +404,18 @@ def main(argv=None):
     daily["cape_known"] = known_cape
     daily["cape_leverage"] = leverage
     daily["vix_percentile"] = known_vix_percentile
+    daily["vix_sma5_percentile"] = known_vix_sma5
+    daily["vix_sma20_percentile"] = known_vix_sma20
+    daily["vix_sma60_percentile"] = known_vix_sma60
+    daily["vix_monthly_percentile"] = known_vix_monthly
     daily["contribution"] = contributions
     daily["cumulative_contribution"] = args.initial + contributions.cumsum()
     daily["spy_1x_wealth"] = spy["wealth"]
     daily["spy_1x_performance"] = spy["performance_index"]
     daily["spy_1x_pnl"] = spy["wealth"] - daily["cumulative_contribution"]
+    daily["treasury_100_wealth"] = treasury["wealth"]
+    daily["treasury_100_performance"] = treasury["performance_index"]
+    daily["treasury_100_pnl"] = treasury["wealth"] - daily["cumulative_contribution"]
     for name, path in paths.items():
         for column in (
             "wealth", "performance_index", "treasury", "quality",

@@ -158,6 +158,20 @@ class QualityLadderCapeLeverageTests(unittest.TestCase):
         self.assertEqual(path["injection_weighted_leverage"].iloc[2], 1.0)
         self.assertEqual(path["injection_weighted_leverage"].iloc[3], 3.0)
 
+    def test_trailing_percentile_is_shifted_to_next_session(self):
+        index = pd.date_range("2020-01-01", periods=4, freq="D")
+        signal = pd.Series([1.0, 2.0, 3.0, 4.0], index=index)
+        ranked = MODULE.trailing_percentile(signal, index, window=2)
+        self.assertTrue(pd.isna(ranked.iloc[2]))
+        self.assertEqual(ranked.iloc[3], 1.0)
+
+    def test_treasury_uses_prior_known_rate_and_calendar_days(self):
+        index = pd.to_datetime(["2020-01-01", "2020-12-31"])
+        rates = pd.Series([0.10, 0.20], index=index)
+        contributions = pd.Series(0.0, index=index)
+        path = MODULE.simulate_treasury(rates, contributions, initial=100.0)
+        self.assertAlmostEqual(path["wealth"].iloc[-1], 110.0)
+
 
 if __name__ == "__main__":
     unittest.main()
