@@ -74,6 +74,8 @@ class Lot:
     recovery_spy: float
     next_sale_rung: int
     cost: float
+    last_harvest_price: float
+    harvest_count: int = 0
     exit_date: pd.Timestamp | None = None
 
 
@@ -91,6 +93,9 @@ def parse_args(argv=None):
     parser.add_argument("--trade-bp", type=float, default=5.0)
     parser.add_argument("--max-quality-hold-years", type=float, default=5.0)
     parser.add_argument("--trend-exit-days", type=int, default=200)
+    parser.add_argument("--quality-harvest-share", type=float, default=0.05)
+    parser.add_argument("--quality-harvest-step", type=float, default=0.20)
+    parser.add_argument("--compounder-cagr", type=float, default=0.05)
     parser.add_argument("--rolling-years", type=int, default=20)
     parser.add_argument(
         "--cohort-frequency", choices=("annual", "quarterly", "monthly"),
@@ -199,6 +204,108 @@ def usable_earnings(path: Path) -> int:
     return count
 
 
+def load_earnings_history(path: Path) -> pd.DataFrame:
+    """Return reported EPS indexed by the date it became public.
+
+    The fiscal period end is deliberately not used as the availability date.
+    A report can only influence a decision after ``reportedDate``.
+    """
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))["data"]
+    except (OSError, KeyError, json.JSONDecodeError):
+        return pd.DataFrame(columns=["fiscal_date", "reported_eps", "report_time"])
+    records = []
+    for row in payload.get("quarterlyEarnings", []):
+        try:
+            reported_date = pd.Timestamp(str(row.get("reportedDate", ""))[:10])
+            fiscal_date = pd.Timestamp(str(row.get("fiscalDateEnding", ""))[:10])
+            eps = float(row.get("reportedEPS"))
+        except (TypeError, ValueError):
+            continue
+        if pd.isna(reported_date) or pd.isna(fiscal_date) or not math.isfinite(eps):
+            continue
+        records.append({
+            "reported_date": reported_date,
+            "fiscal_date": fiscal_date,
+            "reported_eps": eps,
+            "report_time": str(row.get("reportTime", "")).lower(),
+        })
+    if not records:
+        return pd.DataFrame(columns=["fiscal_date", "reported_eps", "report_time"])
+    frame = pd.DataFrame(records).sort_values(["reported_date", "fiscal_date"])
+    return frame.drop_duplicates("fiscal_date", keep="last").set_index("reported_date")
+
+
+def load_earnings_histories(path: Path, tickers) -> dict[str, pd.DataFrame]:
+    return {
+        ticker: load_earnings_history(path / f"{ticker}_earnings.json")
+        for ticker in tickers
+    }
+
+
+def earnings_quality_as_of(history: pd.DataFrame, as_of: pd.Timestamp) -> dict:
+    """Evaluate earnings using only reports available by ``as_of``.
+
+    A fundamental break requires either non-positive trailing-four-quarter EPS,
+    or trailing EPS below both the prior-year and three-years-earlier trailing
+    EPS.  Missing history is returned as indeterminate and never forces a sale.
+    """
+    if history.empty or not isinstance(history.index, pd.DatetimeIndex):
+        return {
+            "broken": None,
+            "reason": "insufficient_history",
+            "reports_used": 0,
+        }
+    known = history.loc[:as_of].sort_index()
+    if len(known) < 16:
+        return {
+            "broken": None,
+            "reason": "insufficient_history",
+            "reports_used": int(len(known)),
+        }
+    eps = known["reported_eps"].astype(float)
+    current_ttm = float(eps.iloc[-4:].sum())
+    prior_ttm = float(eps.iloc[-8:-4].sum())
+    three_year_ttm = float(eps.iloc[-16:-12].sum())
+    non_positive = current_ttm <= 0.0
+    persistent_decline = current_ttm < prior_ttm and current_ttm < three_year_ttm
+    return {
+        "broken": bool(non_positive or persistent_decline),
+        "reason": (
+            "non_positive_ttm" if non_positive
+            else "persistent_ttm_decline" if persistent_decline
+            else "intact"
+        ),
+        "reports_used": int(len(known)),
+        "latest_reported_date": known.index[-1].date().isoformat(),
+        "current_ttm_eps": current_ttm,
+        "prior_ttm_eps": prior_ttm,
+        "three_year_ago_ttm_eps": three_year_ttm,
+    }
+
+
+def rolling_total_return_cagr_as_of(series: pd.Series, position: int,
+                                    years: float = 5.0) -> float | None:
+    """Use only prices at or before ``position`` to compute trailing CAGR."""
+    if position <= 0 or pd.isna(series.iloc[position]):
+        return None
+    end_date = series.index[position]
+    cutoff = end_date - pd.DateOffset(years=years)
+    history = series.iloc[:position + 1].dropna()
+    eligible = history.loc[:cutoff]
+    if eligible.empty:
+        return None
+    start_date = eligible.index[-1]
+    elapsed = (end_date - start_date).days / 365.2425
+    if elapsed < years * 0.98:
+        return None
+    start_value = float(eligible.iloc[-1])
+    end_value = float(history.iloc[-1])
+    if start_value <= 0.0 or end_value <= 0.0:
+        return None
+    return float((end_value / start_value) ** (1.0 / elapsed) - 1.0)
+
+
 def load_prices(args) -> tuple[pd.DataFrame, dict[str, dict]]:
     basket = tuple(dict.fromkeys(
         ticker for group in QUALITY_GROUPS.values() for ticker in group
@@ -286,14 +393,36 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
              leverage_policy: str, staging: bool,
              quality_at_40: bool, harvest_share: float,
              signal_source: str = "spy",
-             exit_policy: str = "signal_rebound") -> tuple[pd.DataFrame, list[Event]]:
+             exit_policy: str = "signal_rebound",
+             earnings_histories: dict[str, pd.DataFrame] | None = None,
+             quality_harvest_share: float | None = None,
+             quality_harvest_step: float | None = None,
+             compounder_cagr: float | None = None) -> tuple[pd.DataFrame, list[Event]]:
     if signal_source not in {"spy", "portfolio"}:
         raise ValueError(f"unknown signal source: {signal_source}")
     if exit_policy not in {
         "signal_rebound", "spy_recovery_ladder",
         "spy_recovery_ladder_sunset", "spy_recovery_ladder_trend",
+        "compounder_guardrail",
     }:
         raise ValueError(f"unknown quality exit policy: {exit_policy}")
+    earnings_histories = earnings_histories or {}
+    quality_harvest_share = (
+        quality_harvest_share if quality_harvest_share is not None
+        else getattr(args, "quality_harvest_share", 0.05)
+    )
+    quality_harvest_step = (
+        quality_harvest_step if quality_harvest_step is not None
+        else getattr(args, "quality_harvest_step", 0.20)
+    )
+    compounder_cagr = (
+        compounder_cagr if compounder_cagr is not None
+        else getattr(args, "compounder_cagr", 0.05)
+    )
+    if not 0.0 < quality_harvest_share < 1.0:
+        raise ValueError("quality harvest share must be between zero and one")
+    if quality_harvest_step <= 0.0:
+        raise ValueError("quality harvest step must be positive")
     spy = prices["SPY"].dropna()
     prices = prices.reindex(spy.index)
     rates = rates.reindex(spy.index).ffill().bfill()
@@ -360,52 +489,101 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
             stock_price = current_row.get(lot.ticker, np.nan)
             if pd.isna(stock_price) or lot.remaining_shares <= 0.0:
                 continue
-            if exit_policy == "signal_rebound":
-                recovery_multiple = recovery_signal_reference / lot.entry_reference
-                required_multiple = lambda rung: 1.0 + rung * 0.10
-                exit_label = signal_source
-            else:
-                recovery_multiple = signal_spy_price / lot.recovery_spy
-                required_multiple = lambda rung: 1.0 + (rung - 1) * 0.10
-                exit_label = "SPY recovery high"
-
-            while (lot.next_sale_rung <= 10
-                   and recovery_multiple
-                   >= required_multiple(lot.next_sale_rung) - 1e-12):
-                shares = min(lot.original_shares * 0.10, lot.remaining_shares)
-                proceeds = shares * float(stock_price) * (1.0 - cost_rate)
-                lot.remaining_shares -= shares
-                if lot.remaining_shares <= lot.original_shares * 1e-10:
-                    lot.remaining_shares = 0.0
-                reserve += proceeds
-                events.append(Event(
-                    stamp.date().isoformat(), name, "quality_sale", proceeds,
-                    signal_drawdown,
-                    float(spy_drawdown.iloc[position]),
-                    f"{lot.ticker}; {exit_label}; sale rung "
-                    f"{lot.next_sale_rung}/10",
-                ))
-                lot.next_sale_rung += 1
-
-            if lot.remaining_shares <= 0.0:
-                lot.exit_date = stamp
-                continue
             forced_kind = None
-            if exit_policy == "spy_recovery_ladder_sunset":
-                maximum_holding_days = args.max_quality_hold_years * 365.2425
-                if (stamp - lot.entry_date).days >= maximum_holding_days:
-                    forced_kind = "quality_sunset_sale"
-            elif (exit_policy == "spy_recovery_ladder_trend"
-                  and signal_spy_price >= lot.recovery_spy
-                  and signal_position >= args.trend_exit_days):
-                prior_window = prices[lot.ticker].iloc[
-                    signal_position - args.trend_exit_days:signal_position
-                ].dropna()
+            forced_detail = f"{lot.ticker}; residual position closed"
+
+            if exit_policy == "compounder_guardrail":
                 signal_stock_price = prices[lot.ticker].iloc[signal_position]
-                if (len(prior_window) == args.trend_exit_days
-                        and pd.notna(signal_stock_price)
-                        and float(signal_stock_price) < float(prior_window.min())):
-                    forced_kind = "quality_trend_sale"
+                while (pd.notna(signal_stock_price)
+                       and float(signal_stock_price)
+                       >= lot.last_harvest_price * (1.0 + quality_harvest_step)
+                       - 1e-12):
+                    shares = lot.remaining_shares * quality_harvest_share
+                    proceeds = shares * float(stock_price) * (1.0 - cost_rate)
+                    lot.remaining_shares -= shares
+                    lot.last_harvest_price *= 1.0 + quality_harvest_step
+                    lot.harvest_count += 1
+                    reserve += proceeds
+                    events.append(Event(
+                        stamp.date().isoformat(), name,
+                        "quality_profit_harvest", proceeds,
+                        signal_drawdown, float(spy_drawdown.iloc[position]),
+                        f"{lot.ticker}; harvest {quality_harvest_share:.0%} "
+                        f"of current shares at rung {lot.harvest_count}; "
+                        f"signal ${float(signal_stock_price):.4f}",
+                    ))
+
+                held_years = (
+                    (spy.index[signal_position] - lot.entry_date).days / 365.2425
+                )
+                if held_years >= args.max_quality_hold_years:
+                    trailing_cagr = rolling_total_return_cagr_as_of(
+                        prices[lot.ticker], signal_position,
+                        args.max_quality_hold_years,
+                    )
+                    fundamental = earnings_quality_as_of(
+                        earnings_histories.get(
+                            lot.ticker,
+                            pd.DataFrame(columns=["reported_eps"]),
+                        ),
+                        spy.index[signal_position],
+                    )
+                    if (trailing_cagr is not None
+                            and trailing_cagr < compounder_cagr
+                            and fundamental["broken"] is True):
+                        forced_kind = "quality_compounder_exit"
+                        forced_detail = (
+                            f"{lot.ticker}; 5y CAGR {trailing_cagr:.2%} < "
+                            f"{compounder_cagr:.2%}; fundamentals "
+                            f"{fundamental['reason']}; latest report "
+                            f"{fundamental.get('latest_reported_date')}"
+                        )
+            else:
+                if exit_policy == "signal_rebound":
+                    recovery_multiple = recovery_signal_reference / lot.entry_reference
+                    required_multiple = lambda rung: 1.0 + rung * 0.10
+                    exit_label = signal_source
+                else:
+                    recovery_multiple = signal_spy_price / lot.recovery_spy
+                    required_multiple = lambda rung: 1.0 + (rung - 1) * 0.10
+                    exit_label = "SPY recovery high"
+
+                while (lot.next_sale_rung <= 10
+                       and recovery_multiple
+                       >= required_multiple(lot.next_sale_rung) - 1e-12):
+                    shares = min(lot.original_shares * 0.10, lot.remaining_shares)
+                    proceeds = shares * float(stock_price) * (1.0 - cost_rate)
+                    lot.remaining_shares -= shares
+                    if lot.remaining_shares <= lot.original_shares * 1e-10:
+                        lot.remaining_shares = 0.0
+                    reserve += proceeds
+                    events.append(Event(
+                        stamp.date().isoformat(), name, "quality_sale", proceeds,
+                        signal_drawdown,
+                        float(spy_drawdown.iloc[position]),
+                        f"{lot.ticker}; {exit_label}; sale rung "
+                        f"{lot.next_sale_rung}/10",
+                    ))
+                    lot.next_sale_rung += 1
+
+                if lot.remaining_shares <= 0.0:
+                    lot.exit_date = stamp
+                    continue
+                if exit_policy == "spy_recovery_ladder_sunset":
+                    maximum_holding_days = args.max_quality_hold_years * 365.2425
+                    if (stamp - lot.entry_date).days >= maximum_holding_days:
+                        forced_kind = "quality_sunset_sale"
+                elif (exit_policy == "spy_recovery_ladder_trend"
+                      and signal_spy_price >= lot.recovery_spy
+                      and signal_position >= args.trend_exit_days):
+                    prior_window = prices[lot.ticker].iloc[
+                        signal_position - args.trend_exit_days:signal_position
+                    ].dropna()
+                    signal_stock_price = prices[lot.ticker].iloc[signal_position]
+                    if (len(prior_window) == args.trend_exit_days
+                            and pd.notna(signal_stock_price)
+                            and float(signal_stock_price) < float(prior_window.min())):
+                        forced_kind = "quality_trend_sale"
 
             if forced_kind is not None:
                 proceeds = (
@@ -417,7 +595,7 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
                 events.append(Event(
                     stamp.date().isoformat(), name, forced_kind, proceeds,
                     signal_drawdown, float(spy_drawdown.iloc[position]),
-                    f"{lot.ticker}; residual position closed",
+                    forced_detail,
                 ))
 
         if staging:
@@ -472,6 +650,7 @@ def simulate(prices: pd.DataFrame, rates: pd.Series, args, name: str,
                         recovery_spy=float(spy.iloc[:position + 1].max()),
                         next_sale_rung=1,
                         cost=cash,
+                        last_harvest_price=stock_price,
                     ))
                 events.append(Event(
                     stamp.date().isoformat(), name, "deploy_quality", deployed,
@@ -738,6 +917,9 @@ def main(argv=None) -> int:
         raise ValueError("--spy-share must be between zero and one")
     prices, coverage = load_prices(args)
     rates = load_rates(prices.index)
+    earnings_histories = load_earnings_histories(
+        args.fundamentals, [ticker for ticker in prices.columns if ticker != "SPY"]
+    )
 
     variants = {
         "static_3x_80_20": (
@@ -765,6 +947,10 @@ def main(argv=None) -> int:
             "step_3_2_1", True, True, args.harvest, "portfolio",
             "spy_recovery_ladder_trend"
         ),
+        "quality_portfolio_compounder": (
+            "step_3_2_1", True, True, args.harvest, "portfolio",
+            "compounder_guardrail"
+        ),
         "quality_late": (
             "late_3_to_1", True, True, args.harvest, "spy", "signal_rebound"
         ),
@@ -776,6 +962,7 @@ def main(argv=None) -> int:
             prices, rates, args, name, policy, staging, quality, harvest,
             signal_source=signal_source,
             exit_policy=exit_policy,
+            earnings_histories=earnings_histories,
         )
         paths[name], event_sets[name] = path, events
         summaries[name] = metrics(path["wealth"], rates)
@@ -794,7 +981,8 @@ def main(argv=None) -> int:
             "quality_sale_proceeds": float(sum(
                 event.amount for event in events
                 if event.kind in {
-                    "quality_sale", "quality_sunset_sale", "quality_trend_sale"
+                    "quality_sale", "quality_sunset_sale", "quality_trend_sale",
+                    "quality_profit_harvest", "quality_compounder_exit",
                 }
             )),
         })
