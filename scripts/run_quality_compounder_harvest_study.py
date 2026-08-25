@@ -176,12 +176,25 @@ def rolling_study(prices, rates, args, earnings):
     frame = pd.DataFrame(records)
     summaries = {}
     for name, group in frame.groupby("variant"):
+        active = group.loc[group["quality_deployments"] > 0].copy()
+        active["excess_cagr"] = active["cagr"] - active["spy_cagr"]
         summaries[name] = {
             "cohorts": len(group),
             "cagr": core.quantiles(group["cagr"]),
             "max_drawdown": core.quantiles(group["max_drawdown"]),
             "beats_spy_share": float(
                 (group["terminal"] > group["spy_terminal"]).mean()
+            ),
+            "quality_active_cohorts": len(active),
+            "quality_active_median_cagr": (
+                float(active["cagr"].median()) if len(active) else None
+            ),
+            "quality_active_median_excess_cagr": (
+                float(active["excess_cagr"].median()) if len(active) else None
+            ),
+            "quality_active_beats_spy_share": (
+                float((active["terminal"] > active["spy_terminal"]).mean())
+                if len(active) else None
             ),
             "median_profit_harvests": float(group["profit_harvests"].median()),
             "total_compounder_exits": int(group["compounder_exits"].sum()),
@@ -214,16 +227,28 @@ def main(argv=None) -> int:
     rolling_frame, rolling_summaries = rolling_study(
         prices, rates, sim_args, earnings,
     )
+    spy_path = args.initial * prices["SPY"] / prices["SPY"].iloc[0]
+    spy_summary = core.metrics(spy_path, rates)
     ranking = sorted(
         ({
             "variant": name,
             "median_20y_cagr": values["cagr"]["median"],
             "median_20y_max_drawdown": values["max_drawdown"]["median"],
             "beats_spy_share": values["beats_spy_share"],
+            "quality_active_cohorts": values["quality_active_cohorts"],
+            "quality_active_median_excess_cagr": (
+                values["quality_active_median_excess_cagr"]
+            ),
+            "quality_active_beats_spy_share": (
+                values["quality_active_beats_spy_share"]
+            ),
             "full_period_cagr": full_summaries[name]["cagr"],
+            "full_period_excess_cagr": (
+                full_summaries[name]["cagr"] - spy_summary["cagr"]
+            ),
             "full_period_max_drawdown": full_summaries[name]["max_drawdown"],
         } for name, values in rolling_summaries.items()),
-        key=lambda row: row["median_20y_cagr"], reverse=True,
+        key=lambda row: row["quality_active_median_excess_cagr"], reverse=True,
     )
 
     bias_audit = {
@@ -258,9 +283,15 @@ def main(argv=None) -> int:
             "sessions": len(prices),
         },
         "policy": {
+            "initial": args.initial,
+            "starting_spy_share": args.spy_share,
+            "starting_reserve_share": 1.0 - args.spy_share,
             "profit_harvest": (
                 "sell the configured fraction of current shares after each "
                 "configured multiplicative increase from the last harvest level"
+            ),
+            "profit_harvest_signal": (
+                "adjusted-close total-return price at prior close"
             ),
             "maximum_holding_years_before_review": args.max_quality_hold_years,
             "compounder_threshold": args.compounder_cagr,
@@ -281,6 +312,7 @@ def main(argv=None) -> int:
         "coverage": coverage,
         "bias_audit": bias_audit,
         "full_period": full_summaries,
+        "benchmark": {"spy_1x": spy_summary},
         "rolling": {
             "years": args.rolling_years,
             "cohort_frequency": args.cohort_frequency,
@@ -304,7 +336,7 @@ def main(argv=None) -> int:
     ]
     pd.DataFrame(all_events).to_csv(args.out / "events.csv", index=False)
     daily = pd.DataFrame(index=prices.index)
-    daily["spy_1x"] = args.initial * prices["SPY"] / prices["SPY"].iloc[0]
+    daily["spy_1x"] = spy_path
     for name, path in full_paths.items():
         daily[name] = path["wealth"]
         daily[f"{name}_reserve"] = path["reserve"]

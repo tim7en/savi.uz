@@ -1047,6 +1047,20 @@ def main(argv=None) -> int:
                 f"after SPY recovery, close residual stock below its prior "
                 f"{args.trend_exit_days}-session low"
             ),
+            "quality_compounder_policy": {
+                "harvest_share_of_current_position": args.quality_harvest_share,
+                "multiplicative_total_return_step": args.quality_harvest_step,
+                "review_after_years": args.max_quality_hold_years,
+                "compounder_cagr_threshold": args.compounder_cagr,
+                "exit_requires": (
+                    "trailing total-return CAGR below threshold AND a broken "
+                    "point-in-time earnings guardrail"
+                ),
+                "earnings_availability": (
+                    "before-open report on reportedDate; after-close or unknown "
+                    "report time on the next calendar day"
+                ),
+            },
             "risk_per_stock": args.risk_per_stock,
             "stock_tail_loss_assumption": args.stock_tail_loss,
             "minimum_price_history_years_at_purchase": args.min_history_years,
@@ -1057,8 +1071,10 @@ def main(argv=None) -> int:
             "dividends": "reinvested through adjusted-close total returns",
             "taxes": "omitted",
             "quality_bias_warning": (
-                "Static present-day quality basket and present-day earnings "
-                "coverage create survivorship and look-ahead bias."
+                "Trade decisions are point-in-time, but the static present-day "
+                "candidate basket, present-day coverage filter, missing delisted "
+                "returns, and non-vintage fundamentals prevent a survivor-free "
+                "stock-selection claim."
             ),
         },
         "sample": {
