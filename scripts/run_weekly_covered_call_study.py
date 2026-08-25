@@ -206,13 +206,63 @@ def strategy_frame(path: Path, prefix: str) -> pd.DataFrame:
     })
 
 
+def load_regimes(path: Path, volatility_column: str) -> pd.DataFrame:
+    frame = pd.read_csv(
+        path, usecols=["date", "cape_known", volatility_column],
+        parse_dates=["date"],
+    ).set_index("date").sort_index()
+    return frame.rename(columns={volatility_column: "volatility_percentile"}).astype(float)
+
+
+def regime_is_eligible(cape: float | None, volatility_percentile: float | None,
+                       policy: str) -> bool:
+    cape_high = cape is not None and not pd.isna(cape) and cape >= 25.0
+    cape_extreme = cape is not None and not pd.isna(cape) and cape > 35.0
+    volatility_calm = (
+        volatility_percentile is not None
+        and not pd.isna(volatility_percentile)
+        and volatility_percentile < 0.70
+    )
+    choices = {
+        "always": True,
+        "cape_high": cape_high,
+        "cape_extreme": cape_extreme,
+        "vix_calm": volatility_calm,
+        "cape_high_or_vix_calm": cape_high or volatility_calm,
+        "cape_extreme_or_vix_calm": cape_extreme or volatility_calm,
+        "cape_high_and_vix_calm": cape_high and volatility_calm,
+        "cape_extreme_and_vix_calm": cape_extreme and volatility_calm,
+    }
+    if policy not in choices:
+        raise ValueError(f"unknown covered-call regime policy: {policy}")
+    return choices[policy]
+
+
+def filter_trades_by_regime(trades: list[CallTrade], regimes: pd.DataFrame,
+                            policy: str) -> list[CallTrade]:
+    selected = []
+    for trade in trades:
+        known = regimes.loc[:pd.Timestamp(trade.issue_date)].dropna(how="all")
+        if known.empty:
+            cape = volatility = None
+        else:
+            cape = known["cape_known"].iloc[-1]
+            volatility = known["volatility_percentile"].iloc[-1]
+        if regime_is_eligible(cape, volatility, policy):
+            selected.append(trade)
+    return selected
+
+
 def apply_overlay(base: pd.DataFrame, trades: list[CallTrade],
                   prices: pd.DataFrame, assignment_cost_bp: float,
-                  round_contracts: bool) -> tuple[pd.DataFrame, dict]:
-    if not trades:
-        raise ValueError("trades are required")
-    start = pd.Timestamp(trades[0].issue_date)
-    end = min(pd.Timestamp(trades[-1].expiration), base.index[-1])
+                  round_contracts: bool, *,
+                  period_start: str | pd.Timestamp | None = None,
+                  period_end: str | pd.Timestamp | None = None) -> tuple[pd.DataFrame, dict]:
+    if not trades and (period_start is None or period_end is None):
+        raise ValueError("trades or an explicit period are required")
+    start = pd.Timestamp(period_start) if period_start is not None else pd.Timestamp(trades[0].issue_date)
+    requested_end = pd.Timestamp(period_end) if period_end is not None else pd.Timestamp(trades[-1].expiration)
+    end = min(requested_end, base.index[-1])
     base = base.loc[start:end].copy()
     trades_by_issue = {pd.Timestamp(row.issue_date): row for row in trades}
     active: dict[pd.Timestamp, tuple[CallTrade, float]] = {}
@@ -289,13 +339,14 @@ def main(argv=None) -> int:
     args = parse_args(argv)
     deltas = [float(value) for value in args.deltas.split(",")]
     strategy_specs = {
-        "SPY": (
-            args.spy_daily, "quality_dual_guard_vix_sma60",
-        ),
-        "QQQ": (
-            args.qqq_daily, "dashboard_quality_annual",
-        ),
+        "SPY": (args.spy_daily, "quality_dual_guard_vix_sma60", "vix_sma60_percentile"),
+        "QQQ": (args.qqq_daily, "dashboard_quality_annual", "vxn_sma60_percentile"),
     }
+    regime_policies = [
+        "always", "cape_high", "cape_extreme", "vix_calm",
+        "cape_high_or_vix_calm", "cape_extreme_or_vix_calm",
+        "cape_high_and_vix_calm", "cape_extreme_and_vix_calm",
+    ]
     result = {
         "sample": {"start": args.start, "end": args.end},
         "rules": {
@@ -305,8 +356,11 @@ def main(argv=None) -> int:
             "eligibility": "cover only the unleveraged index sleeve; leveraged injection lots and individual quality stocks are excluded",
             "premium_routing": "gross option premium attributed to Treasury",
             "assignment_cost": f"{args.assignment_cost_bp:g} bp of covered notional when the call expires ITM",
+            "conditional_gate": "sell only when the selected CAPE/VIX regime is true at the issue date",
+            "cape_high": "CAPE >= 25; extreme means CAPE > 35",
+            "volatility_calm": "prior-known 60-session VIX/VXN percentile < 70%",
         },
-        "chains": {}, "strategy_overlays": {}, "warnings": [
+        "chains": {}, "strategy_overlays": {}, "conditional": {}, "warnings": [
             "A standard ETF option contract represents 100 shares; fractional-notional results are not executable in a $10,000 SPY or QQQ account.",
             "ETF options are American-style; early assignment and ex-dividend exercise are omitted.",
             "Using the historical bid captures the entry spread, but commissions, taxes and stock repurchase slippage beyond the fixed assignment cost are omitted.",
@@ -315,12 +369,15 @@ def main(argv=None) -> int:
     }
     args.out.mkdir(parents=True, exist_ok=True)
     overlay_daily = []
+    conditional_daily = []
     all_trade_rows = []
-    for symbol, (daily_path, prefix) in strategy_specs.items():
+    for symbol, (daily_path, prefix, volatility_column) in strategy_specs.items():
         price_frame = load_price_frame(symbol, args.price_cache)
         base = strategy_frame(daily_path, prefix)
+        regimes = load_regimes(daily_path, volatility_column)
         result["chains"][symbol] = {}
         result["strategy_overlays"][symbol] = {}
+        result["conditional"][symbol] = {}
         for delta in deltas:
             key = f"delta_{int(round(delta * 100)):02d}"
             trades = select_weekly_calls(
@@ -353,6 +410,33 @@ def main(argv=None) -> int:
                 "fractional": fractional,
                 "whole_contracts": rounded,
             }
+            comparison_start = pd.Timestamp(trades[0].issue_date)
+            comparison_end = pd.Timestamp(trades[-1].expiration)
+            result["conditional"][symbol][key] = {}
+            for policy in regime_policies:
+                conditional_trades = filter_trades_by_regime(trades, regimes, policy)
+                _, conditional_fractional = apply_overlay(
+                    base, conditional_trades, price_frame, args.assignment_cost_bp, False,
+                    period_start=comparison_start, period_end=comparison_end,
+                )
+                conditional_path, conditional_rounded = apply_overlay(
+                    base, conditional_trades, price_frame, args.assignment_cost_bp, True,
+                    period_start=comparison_start, period_end=comparison_end,
+                )
+                result["conditional"][symbol][key][policy] = {
+                    "active_weeks": len(conditional_trades),
+                    "share_of_available_weeks": len(conditional_trades) / len(trades),
+                    "chain": summarize_trades(conditional_trades, args.assignment_cost_bp),
+                    "fractional": conditional_fractional,
+                    "whole_contracts": conditional_rounded,
+                }
+                if abs(delta - 0.05) < 1e-12:
+                    conditional_daily.append(pd.DataFrame({
+                        "date": conditional_path.index,
+                        "symbol": symbol, "delta": delta, "policy": policy,
+                        "whole_contract_wealth": conditional_path["wealth"].to_numpy(),
+                        "baseline_wealth": base.loc[conditional_path.index, "wealth"].to_numpy(),
+                    }))
             overlay_daily.append(pd.DataFrame({
                 "date": fractional_path.index,
                 "symbol": symbol, "delta": delta,
@@ -366,6 +450,9 @@ def main(argv=None) -> int:
         ["symbol", "issue_date", "target_delta"]
     ).to_csv(args.out / "trades.csv", index=False)
     pd.concat(overlay_daily, ignore_index=True).to_csv(args.out / "daily.csv", index=False)
+    pd.concat(conditional_daily, ignore_index=True).to_csv(
+        args.out / "conditional_daily.csv", index=False
+    )
     print(json.dumps({"chains": result["chains"], "overlays": result["strategy_overlays"]}, indent=2))
     return 0
 

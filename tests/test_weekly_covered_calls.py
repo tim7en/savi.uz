@@ -28,6 +28,23 @@ def trade(**changes):
 
 
 class WeeklyCoveredCallTests(unittest.TestCase):
+    def test_conditional_regime_boundaries(self):
+        self.assertTrue(MODULE.regime_is_eligible(30.0, 0.80, "cape_high"))
+        self.assertFalse(MODULE.regime_is_eligible(30.0, 0.80, "cape_extreme"))
+        self.assertFalse(MODULE.regime_is_eligible(30.0, 0.80, "vix_calm"))
+        self.assertTrue(MODULE.regime_is_eligible(30.0, 0.80, "cape_high_or_vix_calm"))
+        self.assertFalse(MODULE.regime_is_eligible(30.0, 0.80, "cape_high_and_vix_calm"))
+        self.assertTrue(MODULE.regime_is_eligible(36.0, 0.50, "cape_extreme_and_vix_calm"))
+
+    def test_trade_filter_uses_issue_date_regime(self):
+        regimes = pd.DataFrame({
+            "cape_known": [24.0, 30.0],
+            "volatility_percentile": [0.80, 0.60],
+        }, index=pd.to_datetime(["2020-01-03", "2020-01-10"]))
+        rows = [trade(), trade(issue_date="2020-01-10", expiration="2020-01-17")]
+        selected = MODULE.filter_trades_by_regime(rows, regimes, "cape_high_or_vix_calm")
+        self.assertEqual([row.issue_date for row in selected], ["2020-01-10"])
+
     def test_worthless_rate_and_upside_paid_are_separate(self):
         rows = [
             trade(),

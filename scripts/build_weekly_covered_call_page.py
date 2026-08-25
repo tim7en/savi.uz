@@ -25,6 +25,9 @@ def main(argv=None) -> int:
     args = parse_args(argv)
     result = json.loads((args.input / "results.json").read_text(encoding="utf-8"))
     daily = pd.read_csv(args.input / "daily.csv", parse_dates=["date"])
+    conditional_daily = pd.read_csv(
+        args.input / "conditional_daily.csv", parse_dates=["date"]
+    )
     trades = pd.read_csv(args.input / "trades.csv")
     latest = {
         symbol: float(price_io.load_spy(args.price_cache / f"{symbol}.json")["close"].iloc[-1])
@@ -56,8 +59,43 @@ def main(argv=None) -> int:
                 f'<td>{money(whole["upside_paid_away"])}</td><td>{money(whole["net_option_pnl"])}</td></tr>'
             )
 
+    policy_labels = {
+        "always": "Always sell (reference)",
+        "cape_high": "CAPE ≥25 only",
+        "cape_extreme": "CAPE >35 only",
+        "vix_calm": "Calm VIX/VXN only",
+        "cape_high_or_vix_calm": "Requested: CAPE ≥25 OR calm vol",
+        "cape_extreme_or_vix_calm": "CAPE >35 OR calm vol",
+        "cape_high_and_vix_calm": "CAPE ≥25 AND calm vol",
+        "cape_extreme_and_vix_calm": "CAPE >35 AND calm vol",
+    }
+    policy_order = [
+        "always", "cape_high_or_vix_calm", "cape_extreme_or_vix_calm",
+        "vix_calm", "cape_high_and_vix_calm", "cape_extreme_and_vix_calm",
+        "cape_high", "cape_extreme",
+    ]
+    conditional_rows = []
+    for symbol in ("SPY", "QQQ"):
+        baseline = result["strategy_overlays"][symbol]["delta_05"]["baseline"]
+        for policy in policy_order:
+            conditional = result["conditional"][symbol]["delta_05"][policy]
+            whole = conditional["whole_contracts"]
+            conditional_rows.append(
+                f'<tr class="{"featured" if policy in ("cape_high_or_vix_calm", "vix_calm") else ""}">'
+                f'<td><strong>{symbol}</strong> {policy_labels[policy]}</td>'
+                f'<td>{conditional["active_weeks"]}</td>'
+                f'<td>{pct(conditional["share_of_available_weeks"],1)}</td>'
+                f'<td>{whole["assigned_calls"]}</td>'
+                f'<td>{money(whole["terminal_wealth"])}</td>'
+                f'<td>{pct(whole["terminal_wealth"] / baseline["terminal_wealth"] - 1,2)}</td>'
+                f'<td>{money(whole["gross_premium_to_treasury"])}</td>'
+                f'<td>{money(whole["upside_paid_away"])}</td>'
+                f'<td>{money(whole["net_option_pnl"])}</td></tr>'
+            )
+
     colors = {
-        "baseline": "var(--ink)", "delta5": "var(--teal)", "delta10": "var(--red)"
+        "baseline": "var(--ink)", "delta5": "var(--teal)", "delta10": "var(--red)",
+        "requested": "var(--amber)", "calm": "var(--teal)",
     }
     charts = {}
     for symbol in ("SPY", "QQQ"):
@@ -74,6 +112,23 @@ def main(argv=None) -> int:
         frame = base.merge(d5, on="date").merge(d10, on="date")
         charts[symbol] = line_chart(frame, ["baseline", "delta5", "delta10"], colors)
 
+    conditional_charts = {}
+    for symbol in ("SPY", "QQQ"):
+        subset = conditional_daily[conditional_daily["symbol"] == symbol]
+        base = subset[subset["policy"] == "always"][["date", "baseline_wealth"]].rename(
+            columns={"baseline_wealth": "baseline"}
+        )
+        requested = subset[subset["policy"] == "cape_high_or_vix_calm"][
+            ["date", "whole_contract_wealth"]
+        ].rename(columns={"whole_contract_wealth": "requested"})
+        calm = subset[subset["policy"] == "vix_calm"][["date", "whole_contract_wealth"]].rename(
+            columns={"whole_contract_wealth": "calm"}
+        )
+        frame = base.merge(requested, on="date").merge(calm, on="date")
+        conditional_charts[symbol] = line_chart(
+            frame, ["baseline", "requested", "calm"], colors
+        )
+
     worst_rows = []
     for symbol in ("SPY", "QQQ"):
         selected = trades[(trades["symbol"] == symbol) & (trades["target_delta"] == 0.05)]
@@ -88,29 +143,40 @@ def main(argv=None) -> int:
     qqq5 = result["chains"]["QQQ"]["delta_05"]
     spy_overlay = result["strategy_overlays"]["SPY"]["delta_05"]["whole_contracts"]
     qqq_overlay = result["strategy_overlays"]["QQQ"]["delta_05"]["whole_contracts"]
+    spy_requested = result["conditional"]["SPY"]["delta_05"]["cape_high_or_vix_calm"]
+    qqq_requested = result["conditional"]["QQQ"]["delta_05"]["cape_high_or_vix_calm"]
+    spy_calm = result["conditional"]["SPY"]["delta_05"]["vix_calm"]
+    qqq_calm = result["conditional"]["QQQ"]["delta_05"]["vix_calm"]
     legend = ('<span><i style="--swatch:var(--ink)"></i>No calls</span>'
               '<span><i style="--swatch:var(--teal)"></i>5-delta weekly</span>'
               '<span><i style="--swatch:var(--red)"></i>10-delta weekly</span>')
+    conditional_legend = (
+        '<span><i style="--swatch:var(--ink)"></i>No calls</span>'
+        '<span><i style="--swatch:var(--amber)"></i>CAPE ≥25 OR calm vol</span>'
+        '<span><i style="--swatch:var(--teal)"></i>Calm vol only</span>'
+    )
 
     page = f'''<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Weekly covered-call study</title>
 <style>
 :root{{--bg:#edf1ed;--paper:#fbfcf9;--ink:#182321;--muted:#5c6c68;--faint:#7d8a87;--line:#cad4cf;--teal:#118578;--soft:#dceee9;--amber:#a46c00;--amberSoft:#f5ead1;--red:#b3483e;--redSoft:#f5dfdc;--mono:"Cascadia Mono",Consolas,monospace;--serif:Georgia,"Times New Roman",serif;--sans:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}}*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:16px/1.58 var(--sans)}}main{{width:min(1160px,calc(100% - 32px));margin:auto;padding:46px 0 76px}}header{{border-bottom:2px solid var(--ink);padding-bottom:30px}}.eyebrow{{font:700 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--teal)}}h1{{font:600 clamp(42px,7vw,76px)/1 var(--serif);letter-spacing:-.05em;max-width:15ch;margin:12px 0 18px}}h2{{font:600 31px/1.17 var(--serif);letter-spacing:-.025em;margin:0 0 12px}}h3{{font:600 21px/1.25 var(--serif);margin:25px 0 9px}}.standfirst{{max-width:72ch;color:var(--muted);font:21px/1.45 var(--serif)}}section{{margin-top:48px}}p{{margin:0 0 16px}}.cards{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:24px 0}}.card{{background:var(--paper);border-top:4px solid var(--teal);padding:18px}}.card.warn{{border-color:var(--amber)}}.card.stop{{border-color:var(--red)}}.card b{{display:block;font:700 24px var(--mono)}}.card span{{display:block;color:var(--muted);font-size:12px;margin-top:6px}}.note{{background:var(--soft);border-left:3px solid var(--teal);padding:17px 19px;color:var(--muted)}}.caution{{background:var(--amberSoft);border-left-color:var(--amber)}}.warning{{background:var(--redSoft);border-left-color:var(--red)}}.grid2{{display:grid;grid-template-columns:1fr 1fr;gap:16px}}figure{{margin:22px 0}}.figureHead{{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:8px;color:var(--muted);font-size:12px}}.plate{{background:var(--paper);border:1px solid var(--line);padding:12px;overflow:auto;margin-top:10px}}svg{{display:block;width:100%;min-width:720px}}.frame{{fill:none;stroke:var(--line)}}.grid{{stroke:var(--line)}}.axis{{font:10px var(--mono);fill:var(--faint)}}.axis-title{{font:12px var(--sans);fill:var(--ink)}}.legend{{display:flex;gap:20px;flex-wrap:wrap;padding:9px 3px 0;color:var(--muted);font-size:11px}}.legend span{{display:flex;align-items:center;gap:7px}}.legend i{{width:22px;border-top:2px solid var(--swatch)}}.scroll{{overflow:auto;border:1px solid var(--line);background:var(--paper)}}table{{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}}th,td{{padding:11px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}}th{{font:700 10px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}}th:first-child,td:first-child{{text-align:left}}td strong{{display:block}}tr.featured{{background:var(--soft)}}.rules{{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}}.rule{{background:var(--paper);border-top:3px solid var(--teal);padding:15px}}.rule b{{display:block;font:700 17px var(--mono)}}.rule span{{display:block;color:var(--muted);font-size:12px;margin-top:5px}}footer{{border-top:1px solid var(--line);padding-top:18px;margin-top:50px;color:var(--faint);font-size:11px}}a{{color:var(--teal)}}code{{font-family:var(--mono)}}@media(max-width:760px){{.cards,.rules{{grid-template-columns:1fr 1fr}}.grid2{{grid-template-columns:1fr}}}}@media(max-width:480px){{.cards,.rules{{grid-template-columns:1fr}}}}
 </style></head><body><main>
-<header><div class="eyebrow">Actual option-chain test · {result['sample']['start']} to {result['sample']['end']}</div><h1>Worthless 95% of the time. Not free money.</h1><p class="standfirst">Far-out-of-the-money weekly calls usually expired harmlessly, but their premiums were tiny. Moving premium to Treasury worked only at approximately 5 delta in this sample; selling closer strikes repeatedly surrendered too much rebound upside.</p></header>
-<div class="cards"><article class="card"><b>{pct(spy5['worthless_rate'],1)}</b><span>SPY 5-delta calls expired worthless; {spy5['assigned_or_itm']} upside-cap weeks</span></article><article class="card"><b>{pct(qqq5['worthless_rate'],1)}</b><span>QQQ 5-delta calls expired worthless; {qqq5['assigned_or_itm']} upside-cap weeks</span></article><article class="card warn"><b>{spy5['median_premium_bp']:.1f} bp</b><span>median weekly SPY premium; QQQ {qqq5['median_premium_bp']:.1f} bp</span></article><article class="card stop"><b>100 shares</b><span>required by one standard ETF option contract</span></article></div>
+<header><div class="eyebrow">Actual option-chain test · {result['sample']['start']} to {result['sample']['end']}</div><h1>The regime gate matters—but “OR” barely gates.</h1><p class="standfirst">We retested 5-delta weekly calls only when CAPE was high or extreme, or smoothed VIX/VXN was calm. The requested CAPE ≥25 OR calm-volatility rule was active in almost every week. Calm volatility alone was genuinely more selective and tested better than always selling, but this remains one short regime.</p></header>
+<div class="cards"><article class="card warn"><b>{pct(spy_requested['share_of_available_weeks'],1)}</b><span>of SPY weeks passed the requested CAPE ≥25 OR calm-vol gate</span></article><article class="card"><b>{pct(spy_calm['share_of_available_weeks'],1)}</b><span>of SPY weeks passed calm VIX alone; QQQ {pct(qqq_calm['share_of_available_weeks'],1)}</span></article><article class="card"><b>{pct(spy5['worthless_rate'],1)}</b><span>SPY 5-delta calls expired worthless; QQQ {pct(qqq5['worthless_rate'],1)}</span></article><article class="card stop"><b>100 shares</b><span>required by one standard ETF option contract</span></article></div>
 
 <section><div class="eyebrow">I · Is it realistic now?</div><h2>Not with the present $10,000 account.</h2><p>One standard covered call requires 100 shares. At the latest local closes, one fully covered SPY contract needs approximately {money(latest['SPY']*100)} of SPY and one QQQ contract needs {money(latest['QQQ']*100)} of QQQ. A $10,000 account holds only about {10_000/latest['SPY']:.1f} SPY shares or {10_000/latest['QQQ']:.1f} QQQ shares.</p><p class="warning note"><strong>Do not solve the sizing problem with naked calls.</strong> XSP, call spreads, or broker-specific fractional option products are different strategies with basis, liquidity, settlement, and tail-risk differences. They should not be described as ordinary covered calls.</p></section>
 
 <section><div class="eyebrow">II · Actual weekly calls</div><h2>“Target worthless” means accepting almost no premium.</h2><p>Calls were sold at the historical bid on the last quoted session of each week, using the closest next-week expiration and strike nearest the requested delta. Intrinsic value at expiration is the upside surrendered. A 2 bp stock turnover allowance is charged when the option expires in the money.</p><div class="scroll"><table><thead><tr><th>Underlying / target</th><th>Weeks</th><th>Worthless</th><th>ITM weeks</th><th>Median premium</th><th>Premium sum</th><th>Upside paid</th><th>CAGR effect</th></tr></thead><tbody>{''.join(chain_rows)}</tbody></table></div><p class="caution note" style="margin-top:15px"><strong>The trade-off is nonlinear:</strong> moving from 5 to 10 delta roughly doubled the frequency of upside caps, while the larger premiums still failed to compensate for sharp rebound weeks. At 20 delta, more than one quarter of weekly calls finished in the money.</p></section>
 
-<section><div class="eyebrow">III · Applied to the two strategies</div><h2>Only unleveraged index exposure was covered.</h2><div class="scroll"><table><thead><tr><th>Strategy overlay</th><th>Baseline terminal</th><th>With calls</th><th>Difference</th><th>Base XIRR</th><th>Call XIRR</th><th>Gross premium</th><th>Upside paid</th><th>Net option P&amp;L</th></tr></thead><tbody>{''.join(overlay_rows)}</tbody></table></div><p>At 5 delta, whole-contract execution increased the SPY strategy endpoint by {pct(spy_overlay['terminal_wealth']/result['strategy_overlays']['SPY']['delta_05']['baseline']['terminal_wealth']-1,2)} and the QQQ endpoint by {pct(qqq_overlay['terminal_wealth']/result['strategy_overlays']['QQQ']['delta_05']['baseline']['terminal_wealth']-1,2)}. That is modest evidence—not a stable expected return estimate from one 7¾-year regime.</p><p class="warning note"><strong>Gross premium is not spendable profit.</strong> The SPY sleeve received {money(spy_overlay['gross_premium_to_treasury'])} of premium but surrendered {money(spy_overlay['upside_paid_away'])} of upside plus assignment costs. QQQ received {money(qqq_overlay['gross_premium_to_treasury'])} and surrendered {money(qqq_overlay['upside_paid_away'])}. Treasury accounting must retain enough liquidity for assignment or repurchase.</p></section>
+<section><div class="eyebrow">III · CAPE and volatility gates</div><h2>Your OR rule is almost the same as always selling.</h2><p>“High CAPE” is CAPE ≥25, “extreme” is CAPE &gt;35, and “calm” means the prior-known 60-session VIX or VXN percentile is below 70%. Those definitions use only information available on the call-sale date. Because CAPE was at least 25 in 392 of 395 option weeks, <strong>CAPE ≥25 OR calm volatility</strong> passed {pct(spy_requested['share_of_available_weeks'],1)} of the sample.</p><div class="scroll"><table><thead><tr><th>5-delta rule</th><th>Calls</th><th>Active weeks</th><th>ITM</th><th>Terminal wealth</th><th>vs no calls</th><th>Gross premium</th><th>Upside paid</th><th>Net option P&amp;L</th></tr></thead><tbody>{''.join(conditional_rows)}</tbody></table></div><p class="note" style="margin-top:15px"><strong>What the test says:</strong> calm volatility alone passed {spy_calm['active_weeks']} SPY weeks and {qqq_calm['active_weeks']} QQQ weeks. It lifted the tested SPY endpoint by {pct(spy_calm['whole_contracts']['terminal_wealth']/result['strategy_overlays']['SPY']['delta_05']['baseline']['terminal_wealth']-1,2)} and QQQ by {pct(qqq_calm['whole_contracts']['terminal_wealth']/result['strategy_overlays']['QQQ']['delta_05']['baseline']['terminal_wealth']-1,2)} versus no calls. That is a historical attribution, not evidence that the threshold will persist out of sample.</p><div class="grid2"><figure><div class="figureHead"><strong>SPY conditional 5-delta overlay</strong><span>whole contracts</span></div><div class="plate">{conditional_charts['SPY']}<div class="legend">{conditional_legend}</div></div></figure><figure><div class="figureHead"><strong>QQQ conditional 5-delta overlay</strong><span>whole contracts</span></div><div class="plate">{conditional_charts['QQQ']}<div class="legend">{conditional_legend}</div></div></figure></div><p class="caution note"><strong>Do not select the rule only because it won this sample.</strong> The result is sensitive to a handful of rebound weeks. A defensible live rule should be frozen before trading and evaluated on later data.</p></section>
 
-<section><div class="eyebrow">IV · Equity curves</div><h2>Ten delta visibly drags both recovery paths.</h2><div class="grid2"><figure><div class="figureHead"><strong>SPY dual-guard strategy</strong><span>whole contracts</span></div><div class="plate">{charts['SPY']}<div class="legend">{legend}</div></div></figure><figure><div class="figureHead"><strong>QQQ dashboard guard</strong><span>whole contracts</span></div><div class="plate">{charts['QQQ']}<div class="legend">{legend}</div></div></figure></div></section>
+<section><div class="eyebrow">IV · Unconditional reference</div><h2>Only unleveraged index exposure was covered.</h2><div class="scroll"><table><thead><tr><th>Strategy overlay</th><th>Baseline terminal</th><th>With calls</th><th>Difference</th><th>Base XIRR</th><th>Call XIRR</th><th>Gross premium</th><th>Upside paid</th><th>Net option P&amp;L</th></tr></thead><tbody>{''.join(overlay_rows)}</tbody></table></div><p>This table deliberately keeps the always-sell reference. At 5 delta, whole-contract execution increased the SPY strategy endpoint by {pct(spy_overlay['terminal_wealth']/result['strategy_overlays']['SPY']['delta_05']['baseline']['terminal_wealth']-1,2)} and the QQQ endpoint by {pct(qqq_overlay['terminal_wealth']/result['strategy_overlays']['QQQ']['delta_05']['baseline']['terminal_wealth']-1,2)}. That is modest evidence—not a stable expected return estimate from one 7¾-year regime.</p><p class="warning note"><strong>Gross premium is not spendable profit.</strong> The SPY sleeve received {money(spy_overlay['gross_premium_to_treasury'])} of premium but surrendered {money(spy_overlay['upside_paid_away'])} of upside plus assignment costs. QQQ received {money(qqq_overlay['gross_premium_to_treasury'])} and surrendered {money(qqq_overlay['upside_paid_away'])}. Treasury accounting must retain enough liquidity for assignment or repurchase.</p></section>
 
-<section><div class="eyebrow">V · When did we miss upside?</div><h2>The damage is concentrated in sudden rebounds.</h2><p>A 5-delta call capped upside {spy5['assigned_or_itm']} times in 395 SPY weeks and {qqq5['assigned_or_itm']} times in 395 QQQ weeks—roughly once every {395/spy5['assigned_or_itm']:.0f} and {395/qqq5['assigned_or_itm']:.0f} weeks. These were the largest misses:</p><div class="scroll"><table><thead><tr><th>Asset</th><th>Sold</th><th>Expired</th><th>Underlying week</th><th>Strike</th><th>Premium</th><th>Upside surrendered</th></tr></thead><tbody>{''.join(worst_rows)}</tbody></table></div><p>The worst SPY miss followed the April 3, 2020 sale: SPY rallied about 12.1% in the shortened week, while the 5-delta premium was about 9.7 bp and the call surrendered 4.11% of notional. One such rebound consumed roughly forty-two median SPY premiums.</p></section>
+<section><div class="eyebrow">V · Unconditional equity curves</div><h2>Ten delta visibly drags both recovery paths.</h2><div class="grid2"><figure><div class="figureHead"><strong>SPY dual-guard strategy</strong><span>whole contracts</span></div><div class="plate">{charts['SPY']}<div class="legend">{legend}</div></div></figure><figure><div class="figureHead"><strong>QQQ dashboard guard</strong><span>whole contracts</span></div><div class="plate">{charts['QQQ']}<div class="legend">{legend}</div></div></figure></div></section>
 
-<section><div class="eyebrow">VI · Operating rule if tested live</div><h2>Five delta only—and treat it as experimental.</h2><div class="rules"><article class="rule"><b>Eligibility</b><span>Sell only against a fully paid, unleveraged 100-share index lot. Never count leveraged shares twice.</span></article><article class="rule"><b>Strike</b><span>Closest listed weekly call near 5 delta; skip the week if bid, spread, or strike quality is poor.</span></article><article class="rule"><b>Size</b><span>Cover no more than 25–50% of eligible shares initially; keep the rest uncapped for rebounds.</span></article><article class="rule"><b>Premium</b><span>Credit gross premium to Treasury, but separately reserve expected assignment/repurchase liquidity.</span></article><article class="rule"><b>No rolling rescue</b><span>Do not buy back a losing call merely to avoid assignment unless that rule is independently tested.</span></article><article class="rule"><b>Stop condition</b><span>Review after 52 trades; compare net option P&amp;L and total portfolio return, not win rate or premium alone.</span></article></div><p class="note" style="margin-top:15px"><strong>My conclusion:</strong> a small 5-delta overlay can be realistic once the account owns full 100-share lots, but it is a minor Treasury-harvesting sleeve—not the engine of the strategy. Ten- and twenty-delta weekly overwriting are rejected by this sample.</p></section>
+<section><div class="eyebrow">VI · When did we miss upside?</div><h2>The damage is concentrated in sudden rebounds.</h2><p>A 5-delta call capped upside {spy5['assigned_or_itm']} times in 395 SPY weeks and {qqq5['assigned_or_itm']} times in 395 QQQ weeks—roughly once every {395/spy5['assigned_or_itm']:.0f} and {395/qqq5['assigned_or_itm']:.0f} weeks. These were the largest misses:</p><div class="scroll"><table><thead><tr><th>Asset</th><th>Sold</th><th>Expired</th><th>Underlying week</th><th>Strike</th><th>Premium</th><th>Upside surrendered</th></tr></thead><tbody>{''.join(worst_rows)}</tbody></table></div><p>The worst SPY miss followed the April 3, 2020 sale: SPY rallied about 12.1% in the shortened week, while the 5-delta premium was about 9.7 bp and the call surrendered 4.11% of notional. One such rebound consumed roughly forty-two median SPY premiums.</p></section>
+
+<section><div class="eyebrow">VII · Operating rule if tested live</div><h2>Five delta, calm volatility, and partial coverage.</h2><div class="rules"><article class="rule"><b>Regime</b><span>Use prior-known 60-session VIX/VXN percentile below 70%. Do not use CAPE ≥25 OR calm: it was active 99.2% of this sample.</span></article><article class="rule"><b>Eligibility</b><span>Sell only against a fully paid, unleveraged 100-share index lot. Never count leveraged shares twice.</span></article><article class="rule"><b>Strike</b><span>Closest listed weekly call near 5 delta; skip the week if bid, spread, or strike quality is poor.</span></article><article class="rule"><b>Size</b><span>Cover no more than 25–50% of eligible shares initially; keep the rest uncapped for rebounds.</span></article><article class="rule"><b>Premium</b><span>Credit gross premium to Treasury, but separately reserve expected assignment/repurchase liquidity.</span></article><article class="rule"><b>Stop condition</b><span>Freeze the rule for 52 trades; compare net option P&amp;L and total portfolio return, not win rate or premium alone.</span></article></div><p class="note" style="margin-top:15px"><strong>My conclusion:</strong> your regime-conditioned idea is more sensible than continuous overwriting. The cleanest candidate is calm-volatility-only, not CAPE-high OR calm, because the OR formulation scarcely filters. Even then, this is a small experimental Treasury sleeve—not the strategy engine. Ten- and twenty-delta weekly overwriting remain rejected by this sample.</p></section>
 
 <footer>Historical simulation, not investment advice. Actual chain fields come from the local Alpha Vantage historical-options database; calls are sold at bid and held to intrinsic settlement. Standard contract deliverables and covered-call mechanics: <a href="https://www.optionseducation.org/strategies/all-strategies/covered-call-buy-write">Options Industry Council</a>. QQQ fund information: <a href="https://www.invesco.com/qqq-etf/en/home.html">Invesco</a>; SPY: <a href="https://www.ssga.com/us/en/intermediary/etfs/state-street-spdr-sp-500-etf-trust-spy">State Street</a>. American early exercise, ex-dividend assignment, tax, commissions and recursive strategy changes are omitted. Generated by <code>scripts/run_weekly_covered_call_study.py</code>.</footer>
 </main></body></html>'''
