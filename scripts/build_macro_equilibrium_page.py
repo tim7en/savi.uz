@@ -69,11 +69,12 @@ def exposure_chart(frame: pd.DataFrame) -> str:
     left, right, top, bottom = 60, 24, 20, 40
     plot_w, plot_h = width - left - right, height - top - bottom
     sampled = frame.set_index("date")["target_exposure"].resample("W").last().ffill().dropna()
-    ticks = [0.0, 0.20, 0.45, 0.70, 1.0]
+    ticks = [0.0, 0.30, 0.65, 1.0, 1.5, 2.0]
+    high = 2.0
     start, end = sampled.index[0], sampled.index[-1]
     span = max((end - start).days, 1)
     x = lambda stamp: left + (stamp - start).days / span * plot_w
-    y = lambda v: top + (1.0 - v) * plot_h
+    y = lambda v: top + (high - v) / high * plot_h
     parts = [
         f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="Target equity exposure over time">',
         f'<rect x="{left}" y="{top}" width="{plot_w}" height="{plot_h}" class="frame"/>',
@@ -82,6 +83,8 @@ def exposure_chart(frame: pd.DataFrame) -> str:
         yy = y(tick)
         parts.append(f'<line x1="{left}" x2="{width-right}" y1="{yy:.1f}" y2="{yy:.1f}" class="grid"/>')
         parts.append(f'<text x="{left-8}" y="{yy+4:.1f}" text-anchor="end" class="axis">{tick:.0%}</text>')
+    leverage_y = y(1.0)
+    parts.append(f'<line x1="{left}" x2="{width-right}" y1="{leverage_y:.1f}" y2="{leverage_y:.1f}" class="target"/>')
     for year in range(((start.year + 4) // 5) * 5, end.year + 1, 5):
         xx = x(pd.Timestamp(year, 1, 1))
         parts.append(f'<line x1="{xx:.1f}" x2="{xx:.1f}" y1="{top}" y2="{height-bottom}" class="grid"/>')
@@ -92,6 +95,7 @@ def exposure_chart(frame: pd.DataFrame) -> str:
     parts.append(f'<polyline points="{points}" fill="none" stroke="var(--teal)" stroke-width="1.8" vector-effect="non-scaling-stroke"/>')
     parts.append('</svg>')
     return "".join(parts)
+
 
 
 def episode_row(peak_date: str, episode: dict) -> str:
@@ -144,8 +148,11 @@ def main(argv=None):
         f"<tr><td>{pct(level, 0)}</td><td>{pct(share, 1)}</td></tr>"
         for level, share in time_at_exposure
     )
-    full_share = time_at_exposure[0][1]
-    below_70_share = sum(share for level, share in time_at_exposure if level < 0.70)
+    leveraged_share = sum(share for level, share in time_at_exposure if level > 1.0)
+    unlevered_share = sum(share for level, share in time_at_exposure if level == 1.0)
+    derisked_share = sum(share for level, share in time_at_exposure if level < 1.0)
+    max_tier_share = time_at_exposure[0][1]
+    nested_gfc = result["nested_2008_episode"]
 
     pillars = result["pillars"]
 
@@ -232,21 +239,21 @@ def main(argv=None):
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Macro Equilibrium Overlay - backtest</title>
 <style>
 :root{{--bg:#f1f4f2;--paper:#fcfdfc;--ink:#14201d;--muted:#53635f;--faint:#778681;--line:#ccd7d3;--teal:#087f72;--blue:#356da6;--amber:#9a6a00;--soft:#dcefea;--brick:#b84138;--warn:#f5dfdc;--gold:#f5ecd0;--mono:"Cascadia Mono",Consolas,monospace;--serif:Georgia,"Times New Roman",serif;--sans:system-ui,-apple-system,"Segoe UI",sans-serif}}
-*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:17px/1.62 var(--serif)}}main{{width:min(1100px,calc(100% - 34px));margin:auto;padding:52px 0 80px}}header{{border-bottom:2px solid var(--ink);padding-bottom:34px}}.eyebrow{{font:700 11px var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--teal)}}h1{{font:650 clamp(40px,7vw,72px)/1.02 var(--serif);letter-spacing:-.045em;max-width:16ch;margin:13px 0 20px}}h1 em{{color:var(--teal)}}.standfirst{{font-size:22px;line-height:1.43;color:var(--muted);max-width:66ch}}section{{padding-top:48px;max-width:880px}}section.wide{{max-width:none}}h2{{font:650 31px/1.18 var(--serif);letter-spacing:-.025em;margin:0 0 14px}}h3{{font:650 21px/1.3 var(--serif);margin:30px 0 10px}}p{{margin:0 0 18px}}.cards{{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);margin-top:28px}}.card{{background:var(--paper);padding:17px;border-right:1px solid var(--line)}}.card:last-child{{border:0}}.card b{{display:block;font:700 22px var(--mono)}}.card span{{display:block;font:12px/1.4 var(--sans);color:var(--faint);margin-top:7px}}.rule{{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:23px 0}}.step{{background:var(--paper);border-top:3px solid var(--teal);padding:15px}}.step:nth-child(even){{border-color:var(--blue)}}.step b{{display:block;font:700 15px var(--mono)}}.step span{{font:12px/1.45 var(--sans);color:var(--faint)}}.note{{background:var(--soft);border-left:3px solid var(--teal);padding:18px 20px;color:var(--muted)}}.warning{{background:var(--warn);border-left-color:var(--brick)}}.caution{{background:var(--gold);border-left-color:var(--amber)}}.scroll{{overflow:auto;border:1px solid var(--line);background:var(--paper);margin-top:22px}}table{{border-collapse:collapse;width:100%;font:13px/1.4 var(--sans);font-variant-numeric:tabular-nums}}th,td{{padding:12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}}th{{font:700 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--faint)}}tbody tr:last-child td{{border-bottom:0}}tr.featured td{{background:var(--soft);font-weight:700}}figure{{margin:22px 0 0}}.figure-head{{display:flex;justify-content:space-between;align-items:baseline;font:13px var(--sans);color:var(--faint);margin-bottom:8px}}.figure-head strong{{color:var(--ink);font-size:15px}}.plate{{border:1px solid var(--line);background:var(--paper);padding:8px}}.frame{{fill:none;stroke:var(--line)}}.grid{{stroke:var(--line);stroke-dasharray:2 3}}.axis{{font:10px var(--mono);fill:var(--faint)}}.axis-title{{font:11px var(--sans);fill:var(--faint)}}.legend{{display:flex;gap:18px;flex-wrap:wrap;font:12px var(--sans);color:var(--muted);margin-top:10px}}.legend span{{display:inline-flex;align-items:center;gap:6px}}.legend i{{width:12px;height:3px;background:var(--swatch);display:inline-block}}
+*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:17px/1.62 var(--serif)}}main{{width:min(1100px,calc(100% - 34px));margin:auto;padding:52px 0 80px}}header{{border-bottom:2px solid var(--ink);padding-bottom:34px}}.eyebrow{{font:700 11px var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--teal)}}h1{{font:650 clamp(40px,7vw,72px)/1.02 var(--serif);letter-spacing:-.045em;max-width:16ch;margin:13px 0 20px}}h1 em{{color:var(--teal)}}.standfirst{{font-size:22px;line-height:1.43;color:var(--muted);max-width:66ch}}section{{padding-top:48px;max-width:880px}}section.wide{{max-width:none}}h2{{font:650 31px/1.18 var(--serif);letter-spacing:-.025em;margin:0 0 14px}}h3{{font:650 21px/1.3 var(--serif);margin:30px 0 10px}}p{{margin:0 0 18px}}.cards{{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);margin-top:28px}}.card{{background:var(--paper);padding:17px;border-right:1px solid var(--line)}}.card:last-child{{border:0}}.card b{{display:block;font:700 22px var(--mono)}}.card span{{display:block;font:12px/1.4 var(--sans);color:var(--faint);margin-top:7px}}.rule{{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:23px 0}}.step{{background:var(--paper);border-top:3px solid var(--teal);padding:15px}}.step:nth-child(even){{border-color:var(--blue)}}.step b{{display:block;font:700 15px var(--mono)}}.step span{{font:12px/1.45 var(--sans);color:var(--faint)}}.note{{background:var(--soft);border-left:3px solid var(--teal);padding:18px 20px;color:var(--muted)}}.warning{{background:var(--warn);border-left-color:var(--brick)}}.caution{{background:var(--gold);border-left-color:var(--amber)}}.scroll{{overflow:auto;border:1px solid var(--line);background:var(--paper);margin-top:22px}}table{{border-collapse:collapse;width:100%;font:13px/1.4 var(--sans);font-variant-numeric:tabular-nums}}th,td{{padding:12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}}th{{font:700 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--faint)}}tbody tr:last-child td{{border-bottom:0}}tr.featured td{{background:var(--soft);font-weight:700}}figure{{margin:22px 0 0}}.figure-head{{display:flex;justify-content:space-between;align-items:baseline;font:13px var(--sans);color:var(--faint);margin-bottom:8px}}.figure-head strong{{color:var(--ink);font-size:15px}}.plate{{border:1px solid var(--line);background:var(--paper);padding:8px}}.frame{{fill:none;stroke:var(--line)}}.grid{{stroke:var(--line);stroke-dasharray:2 3}}.target{{stroke:var(--brick);stroke-dasharray:5 4}}.axis{{font:10px var(--mono);fill:var(--faint)}}.axis-title{{font:11px var(--sans);fill:var(--faint)}}.legend{{display:flex;gap:18px;flex-wrap:wrap;font:12px var(--sans);color:var(--muted);margin-top:10px}}.legend span{{display:inline-flex;align-items:center;gap:6px}}.legend i{{width:12px;height:3px;background:var(--swatch);display:inline-block}}
 </style></head><body><main>
 
 <header><div class="eyebrow">Regime overlay - {result['sample']['trading_start']} to {result['sample']['trading_end']} - signal live from {result['sample']['signal_start']}</div>
-<h1>Six crashes, one score: <em>how many macro pillars were out of balance?</em></h1>
-<p class="standfirst">Every crash in the record had a distinct trigger, but five point-in-time macro pillars — labor, inflation, policy, financial conditions, and volatility — were combined into a single stress count. The number of simultaneously stressed pillars sets a target equity weight; the rest sits in cash earning the prior-known fed funds rate. This is a de-risking overlay tested against real history, not a market-timing forecast.</p>
+<h1>Six crashes, one score: <em>how much leverage does balance earn?</em></h1>
+<p class="standfirst">Five point-in-time macro pillars — labor, inflation, policy, financial conditions, and volatility — are combined into a single stress count. A fully balanced regime (0-1 stressed pillars) now borrows to 1.5x-2x; each additional stressed pillar steps exposure down, to 0% at 5/5. Borrowed notional costs DFF + {result['borrow_spread_bp']:.0f}bp; de-risked cash earns DFF flat. Leverage raises the return and Sharpe edge substantially — and raises max drawdown right along with it.</p>
 <div class="cards">
 <div class="card"><b>{money(spy_regime['terminal_wealth'])}</b><span>SPY overlay terminal wealth; buy-and-hold {money(spy_buyhold['terminal_wealth'])}</span></div>
 <div class="card"><b>{pct(spy_regime['max_drawdown'],1)}</b><span>SPY overlay max drawdown; buy-and-hold {pct(spy_buyhold['max_drawdown'],1)}</span></div>
 <div class="card"><b>{money(ndx_regime['terminal_wealth'])}</b><span>QQQ-proxy overlay terminal wealth; buy-and-hold {money(ndx_buyhold['terminal_wealth'])}</span></div>
-<div class="card"><b>45%</b><span>equity weight the model held on 2007-10-31, the GFC peak</span></div>
+<div class="card"><b>{pct(nested_gfc['exposure_at_peak'],0)}</b><span>equity weight the model held on 2007-10-31, the GFC peak</span></div>
 </div></header>
 
 <section><div class="eyebrow">I - The five pillars</div><h2>Balance is a count of what is simultaneously stressed.</h2>
-<p>Each pillar uses only data that would have been publicly known on the trading date (publication lags noted). A pillar flips to "stressed" on its own threshold; the day's exposure comes from how many of the five are stressed at once.</p>
+<p>Each pillar uses only data that would have been publicly known on the trading date (publication lags noted). A pillar flips to "stressed" on its own threshold; the day's exposure — which can now exceed 100% — comes from how many of the five are stressed at once.</p>
 <div class="rule">
 <div class="step"><b>Labor</b><span>{pillars['labor']}</span></div>
 <div class="step"><b>Inflation</b><span>{pillars['inflation']}</span></div>
@@ -255,10 +262,10 @@ def main(argv=None):
 <div class="step"><b>Volatility</b><span>{pillars['volatility']}</span></div>
 </div>
 <div class="scroll"><table><thead><tr><th style="text-align:left">Stressed pillars</th><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr></thead>
-<tbody><tr><td style="text-align:left">Target equity weight</td><td>100%</td><td>100%</td><td>70%</td><td>45%</td><td>20%</td><td>0%</td></tr></tbody></table></div>
-<p class="note">One stressed pillar is tolerated at full exposure; the ladder only bites once two or more macro dimensions are strained at the same time. Rebalancing between the five bands costs {result['switch_cost_bp']:.0f}bp of the amount moved.</p></section>
+<tbody><tr><td style="text-align:left">Target equity weight</td><td>200%</td><td>150%</td><td>100%</td><td>65%</td><td>30%</td><td>0%</td></tr></tbody></table></div>
+<p class="note">A fully balanced regime borrows to 2x; one stressed pillar still borrows, at 1.5x. The ladder only drops to plain, unlevered 100% once two pillars are stressed at once, and only reaches cash at all five. Rebalancing between bands costs {result['switch_cost_bp']:.0f}bp of the amount moved; borrowed notional is charged DFF + {result['borrow_spread_bp']:.0f}bp.</p></section>
 
-<section class="wide"><div class="eyebrow">II - Full backtest</div><h2>SPY got safer and slightly richer. QQQ did not get safer.</h2>
+<section class="wide"><div class="eyebrow">II - Full backtest</div><h2>Leverage bought return and Sharpe. It also bought drawdown.</h2>
 <figure><div class="figure-head"><strong>SPY proxy (S&amp;P 500 total return)</strong><span>overlay vs. buy-and-hold, log scale</span></div><div class="plate">{spy_chart}</div></figure>
 <div class="legend"><span><i style="--swatch:var(--teal)"></i>Regime overlay</span><span><i style="--swatch:var(--ink)"></i>Buy-and-hold</span></div>
 <figure><div class="figure-head"><strong>QQQ proxy (Nasdaq-100 price index)</strong><span>overlay vs. buy-and-hold, log scale</span></div><div class="plate">{ndx_chart}</div></figure>
@@ -269,26 +276,26 @@ def main(argv=None):
 <tr class="featured"><td style="text-align:left"><strong>QQQ proxy + regime overlay</strong></td><td>{money(ndx_regime['terminal_wealth'])}</td><td>{pct(ndx_regime['cagr'])}</td><td>{pct(ndx_regime['max_drawdown'],1)}</td><td>{pct(ndx_regime['annual_volatility'],1)}</td><td>{ndx_regime['sharpe']:.2f}</td></tr>
 <tr><td style="text-align:left">QQQ proxy buy-and-hold</td><td>{money(ndx_buyhold['terminal_wealth'])}</td><td>{pct(ndx_buyhold['cagr'])}</td><td>{pct(ndx_buyhold['max_drawdown'],1)}</td><td>{pct(ndx_buyhold['annual_volatility'],1)}</td><td>{ndx_buyhold['sharpe']:.2f}</td></tr>
 </tbody></table></div>
-<p class="warning note">On SPY the overlay added {pct(spy_regime['cagr']-spy_buyhold['cagr'])} of CAGR while cutting max drawdown by {pct(spy_buyhold['max_drawdown']-spy_regime['max_drawdown'],1)} and raising Sharpe from {spy_buyhold['sharpe']:.2f} to {spy_regime['sharpe']:.2f}. On the QQQ proxy the same score gave back {pct(ndx_buyhold['cagr']-ndx_regime['cagr'])} of CAGR for almost no drawdown improvement ({pct(ndx_buyhold['max_drawdown'],1)} to {pct(ndx_regime['max_drawdown'],1)}) — concentrated growth-stock risk is not neutralized by a broad macro overlay.</p></section>
+<p class="warning note">Leverage adds {pct(spy_regime['cagr']-spy_buyhold['cagr'])} of CAGR to SPY and {pct(ndx_regime['cagr']-ndx_buyhold['cagr'])} to the QQQ proxy, raising Sharpe on both (SPY {spy_buyhold['sharpe']:.2f}→{spy_regime['sharpe']:.2f}, QQQ proxy {ndx_buyhold['sharpe']:.2f}→{ndx_regime['sharpe']:.2f}). The cost: max drawdown gets <em>worse</em> than buy-and-hold on both — SPY {pct(spy_buyhold['max_drawdown'],1)}→{pct(spy_regime['max_drawdown'],1)}, QQQ proxy {pct(ndx_buyhold['max_drawdown'],1)}→{pct(ndx_regime['max_drawdown'],1)} — because the ladder is leveraged up precisely when pillars look calm, and calm does not mean safe.</p></section>
 
-<section class="wide"><div class="eyebrow">III - Exposure through time</div><h2>The model spent {pct(full_share,0)} of days fully invested.</h2>
-<figure><div class="figure-head"><strong>Target equity weight</strong><span>weekly, since {result['sample']['signal_start']}</span></div><div class="plate">{exposure_svg}</div></figure>
+<section class="wide"><div class="eyebrow">III - Exposure through time</div><h2>The model was leveraged {pct(leveraged_share,0)} of the time.</h2>
+<figure><div class="figure-head"><strong>Target equity weight</strong><span>weekly, since {result['sample']['signal_start']}; dashed line = 1x (unlevered)</span></div><div class="plate">{exposure_svg}</div></figure>
 <div class="scroll"><table><thead><tr><th>Equity weight</th><th>Share of trading days</th></tr></thead><tbody>{exposure_rows}</tbody></table></div>
-<p>De-risking below 70% equity happened on {pct(below_70_share,1)} of trading days since the signal went live — a rare, not a routine, event.</p></section>
+<p>Above 1x (borrowing) accounts for {pct(leveraged_share,1)} of trading days since the signal went live; plain unlevered 100% for {pct(unlevered_share,1)}; below 1x (de-risked) for only {pct(derisked_share,1)}. This ladder is a leverage strategy that occasionally de-risks, not a de-risking strategy that occasionally leans in.</p></section>
 
-<section class="wide"><div class="eyebrow">IV - Did the score see it coming?</div><h2>One slow-building crisis, de-risked in advance. The rest, not.</h2>
-<p>The pasted history names six shocks. The scan of the full record finds all six independently, plus a seventh (2015-16). For each, here is what the five pillars showed on the exact peak trading day.</p>
+<section class="wide"><div class="eyebrow">IV - Did the score see it coming?</div><h2>It de-risked into the GFC. It was maximally leveraged into COVID and 2018.</h2>
+<p>The pasted history names six shocks. The scan of the full record finds all six independently, plus a seventh (2015-16). For each, here is what the five pillars showed, and how much the model had borrowed, on the exact peak trading day.</p>
 <div class="scroll"><table><thead><tr><th style="text-align:left">Shock</th><th>Peak</th><th>Trough</th><th>Depth (QQQ proxy)</th><th>Recovered</th><th>Stressed at peak</th><th>Which pillars</th><th>Exposure at peak</th><th>Advance warning?</th></tr></thead>
 <tbody>{episode_rows}</tbody></table></div>
-<p class="note"><strong>The Global Financial Crisis is the only genuine advance warning in the sample.</strong> By 2007-10-31 the policy, financial-conditions, and volatility pillars were all stressed at once, and the model had already been sitting at 45% equity for 139 consecutive sessions — before the S&amp;P and Nasdaq peaks that month. Every other shock shows 100% exposure at the peak: the dot-com top (2000) predates the score entirely (CPI's first full year of history was still loading); COVID and the 2018 Q4 selloff were fast, headline-driven shocks with zero pillars stressed at the top; 2015-16, 2022, and 2025 each had exactly one pillar lit (financial conditions, then inflation, then policy) — enough to be noted, not enough to trip this ladder's one-free-pillar tolerance.</p>
+<p class="note"><strong>The Global Financial Crisis is the only genuine advance warning in the sample.</strong> By 2007-10-31 the policy, financial-conditions, and volatility pillars were all stressed at once, and the model had already been de-risked to {pct(nested_gfc['exposure_at_peak'],0)} for 139 consecutive sessions — before the S&amp;P and Nasdaq peaks that month. Every other shock shows the model at or above 100% at the peak, and two of them — COVID and the 2018 Q4 selloff — show it at the maximum <strong>200%</strong>: zero pillars were stressed on the day each crash began, so the ladder had borrowed all the way up right before the fastest declines in the sample. 2015-16, 2022, and 2025 each had exactly one pillar lit (financial conditions, then inflation, then policy) and were still leveraged 150% at their peaks.</p>
 <p class="warning note">The dot-com and 2015-16 troughs never independently regained their own prior high before the next decline started: the Nasdaq-100 did not durably clear its March 2000 level until November 2015. The 2007-2009 crash is nested entirely inside that 15-year drawdown — it is reported separately above only because its own local peak and trough are well known and worth stress-testing on their own terms.</p></section>
 
-<section><div class="eyebrow">V - What this overlay is and is not</div><h2>A diversification rule, not a crash forecaster.</h2>
-<p>The five pillars are slow, monthly-to-quarterly-refresh macro series. They describe whether the economy and policy stance are stretched, not whether next week's price will fall. That is why they caught the one multi-quarter tightening cycle they were alive for (the GFC) and missed the fast, headline-driven shocks (COVID, 2018, 2025) as well as the pre-signal dot-com top. Sizing the overlay for QQQ specifically does not help: concentrated single-sector exposure carries idiosyncratic risk this macro-only score was never built to see.</p>
-<p class="caution note">Thresholds (4% CPI, 1pp real rate, NFCI &gt; 0, 70th percentile VIX, 0.50pp Sahm-style labor gap) were chosen from macro convention, not fit to these six dates. They are not re-optimized per crash, but they were chosen with the crash record already known, which is an in-sample bias worth weighing against the out-of-sample GFC hit.</p>
-<p class="warning note">Nasdaq-100 (^NDX) excludes dividends; the true QQQ total return is understated by roughly its ~0.5-0.8% historical yield, compounding to a modest understatement of both overlay and buy-and-hold terminal wealth. No taxes, bid/ask spreads, or slippage are modeled; the cash sleeve earns the prior-known effective fed funds rate (DFF), not a bank deposit rate.</p></section>
+<section><div class="eyebrow">V - What this overlay is and is not</div><h2>A leverage rule that trusts calm macro data more than it should.</h2>
+<p>The five pillars are slow, monthly-to-quarterly-refresh macro series. They describe whether the economy and policy stance are stretched, not whether next week's price will fall — and "not stretched" is not the same claim as "safe to lever to 2x." That distinction is exactly what COVID and the 2018 Q4 selloff expose: both were fast, headline-driven shocks with zero pillars stressed at the top, and the ladder's response to "nothing looks wrong" was maximum leverage, not caution. Sizing the overlay for QQQ specifically does not help either: concentrated single-sector exposure carries idiosyncratic risk this macro-only score was never built to see.</p>
+<p class="caution note">Thresholds (4% CPI, 1pp real rate, NFCI &gt; 0, 70th percentile VIX, 0.50pp Sahm-style labor gap) and the leverage ladder itself (2x/1.5x/1x/0.65x/0.3x/0x) were chosen from macro convention and the repo's other drawdown-ladder strategies, not fit to these six dates. They are not re-optimized per crash, but they were chosen with the crash record already known, which is an in-sample bias worth weighing against the out-of-sample GFC hit.</p>
+<p class="warning note">Nasdaq-100 (^NDX) excludes dividends; the true QQQ total return is understated by roughly its ~0.5-0.8% historical yield, compounding to a modest understatement of both overlay and buy-and-hold terminal wealth. No taxes, bid/ask spreads, margin-call liquidation, or changing broker leverage limits are modeled; the cash sleeve earns the prior-known effective fed funds rate (DFF) flat, and borrowed notional pays DFF + {result['borrow_spread_bp']:.0f}bp.</p></section>
 {extra_sections}
-<footer>Historical simulation, not investment advice. {result['sample']['sessions']:,} trading sessions, {result['sample']['trading_start']} to {result['sample']['trading_end']}; regime signal live from {result['sample']['signal_start']}. Publication lags: UNRATE 40 days, CPI 45 days, NFCI 9 days, daily market series 2 days. Rebalancing costs {result['switch_cost_bp']:.0f}bp of notional moved between exposure bands. Data: FRED (macro.db) and equity.db (^SP500TR, ^NDX, Shiller monthly). Generated by <code>scripts/run_macro_equilibrium_strategy.py</code>, <code>scripts/run_valuation_regime_regression.py</code>, <code>scripts/run_macro_pca_explained_variance.py</code> and <code>scripts/build_macro_equilibrium_page.py</code>.</footer>
+<footer>Historical simulation, not investment advice. {result['sample']['sessions']:,} trading sessions, {result['sample']['trading_start']} to {result['sample']['trading_end']}; regime signal live from {result['sample']['signal_start']}. Publication lags: UNRATE 40 days, CPI 45 days, NFCI 9 days, daily market series 2 days. Rebalancing costs {result['switch_cost_bp']:.0f}bp of notional moved between exposure bands; borrowed notional (exposure above 1x) is charged DFF + {result['borrow_spread_bp']:.0f}bp. Data: FRED (macro.db) and equity.db (^SP500TR, ^NDX, Shiller monthly). Generated by <code>scripts/run_macro_equilibrium_strategy.py</code>, <code>scripts/run_valuation_regime_regression.py</code>, <code>scripts/run_macro_pca_explained_variance.py</code> and <code>scripts/build_macro_equilibrium_page.py</code>.</footer>
 </main></body></html>
 """
 
