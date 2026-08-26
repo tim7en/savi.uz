@@ -1,13 +1,17 @@
-"""Backtest a macro-equilibrium regime overlay on SPY and QQQ.
+"""Backtest a leverage-and-de-risking macro-equilibrium regime overlay on SPY and QQQ.
 
 Five point-in-time macro pillars (labor, inflation, policy, financial
 conditions, volatility) are each flagged "stressed" or "balanced" using only
 data that would have been publicly known on the trading date (publication
 lags below). The number of simultaneously stressed pillars maps to a target
-equity weight; the rest sits in cash earning the prior-known effective fed
-funds rate (DFF). This is a diversification/de-risking overlay, not a market
-call: it holds less when several macro dimensions are stretched at once and
-full exposure when the regime looks balanced.
+equity weight that can go above 100%: a fully balanced regime (0-1 stressed
+pillars) borrows to reach 1.5x-2x exposure, and each additional stressed
+pillar steps exposure down, to 0% at 5/5. Borrowed notional (target above
+1.0x) is charged the prior-known effective fed funds rate (DFF) plus a
+spread; de-risked cash (target below 1.0x) earns DFF flat. This is a
+leverage-and-de-risking overlay, not a market call: it borrows more when
+macro dimensions are simultaneously calm and de-risks when several are
+stretched at once.
 
 Nasdaq-100 (^NDX) is a price index (no dividend reinvestment) and is used as
 the QQQ proxy; S&P 500 total return (^SP500TR) is used as the SPY proxy.
@@ -31,6 +35,7 @@ def parse_args(argv=None):
     parser.add_argument("--out", type=Path, default=Path("out/strategy/macro_equilibrium"))
     parser.add_argument("--initial", type=float, default=100_000.0)
     parser.add_argument("--switch-cost-bp", type=float, default=2.0)
+    parser.add_argument("--borrow-spread-bp", type=float, default=100.0)
     parser.add_argument("--episode-threshold", type=float, default=-0.15)
     return parser.parse_args(argv)
 
@@ -47,7 +52,7 @@ PUBLICATION_LAG_DAYS = {
     "VIXCLS": 2,
 }
 
-EXPOSURE_BY_STRESS = {0: 1.00, 1: 1.00, 2: 0.70, 3: 0.45, 4: 0.20, 5: 0.00}
+EXPOSURE_BY_STRESS = {0: 2.00, 1: 1.50, 2: 1.00, 3: 0.65, 4: 0.30, 5: 0.00}
 
 
 def load_macro_series(connection, series_id):
@@ -142,7 +147,7 @@ def build_pillars(trading_dates: pd.DatetimeIndex, macro: dict) -> pd.DataFrame:
 
 
 def simulate(price: pd.Series, target_exposure: pd.Series, cash_rate: pd.Series,
-             initial: float, switch_cost_bp: float) -> pd.Series:
+             initial: float, switch_cost_bp: float, borrow_spread_bp: float) -> pd.Series:
     dates = price.index
     wealth = np.empty(len(dates))
     equity_value = initial * target_exposure.iloc[0]
@@ -153,7 +158,12 @@ def simulate(price: pd.Series, target_exposure: pd.Series, cash_rate: pd.Series,
         ret = price.iloc[i] / price.iloc[i - 1] - 1.0
         equity_value *= (1.0 + ret)
         days = (dates[i] - dates[i - 1]).days
-        cash *= (1.0 + (cash_rate.iloc[i - 1] / 100.0) * days / 365.0)
+        # Borrowed (negative) cash costs a spread over the reserve rate; a
+        # positive cash reserve earns the reserve rate flat.
+        rate = cash_rate.iloc[i - 1] / 100.0
+        if cash < 0:
+            rate += borrow_spread_bp / 10_000.0
+        cash *= (1.0 + rate * days / 365.0)
         total = equity_value + cash
         target = target_exposure.iloc[i]
         if target != prev_target:
@@ -311,8 +321,8 @@ def main(argv=None):
 
     cash_rate = pillars["dff"]
 
-    spy_regime = simulate(spy, target_exposure, cash_rate, args.initial, args.switch_cost_bp)
-    ndx_regime = simulate(ndx, target_exposure, cash_rate, args.initial, args.switch_cost_bp)
+    spy_regime = simulate(spy, target_exposure, cash_rate, args.initial, args.switch_cost_bp, args.borrow_spread_bp)
+    ndx_regime = simulate(ndx, target_exposure, cash_rate, args.initial, args.switch_cost_bp, args.borrow_spread_bp)
     spy_buyhold = args.initial * spy / spy.iloc[0]
     ndx_buyhold = args.initial * ndx / ndx.iloc[0]
 
@@ -344,6 +354,7 @@ def main(argv=None):
         },
         "exposure_ladder": EXPOSURE_BY_STRESS,
         "switch_cost_bp": args.switch_cost_bp,
+        "borrow_spread_bp": args.borrow_spread_bp,
         "time_at_exposure": {f"{k:.2f}": v for k, v in time_at_exposure.items()},
         "variants": {
             "ndx_regime": metrics(ndx_regime, cash_rate),

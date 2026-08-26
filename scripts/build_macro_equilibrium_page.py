@@ -14,6 +14,8 @@ from build_contribution_quality_page import line_chart, money, pct
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, default=Path("out/strategy/macro_equilibrium"))
+    parser.add_argument("--valuation-input", type=Path, default=Path("out/strategy/valuation_regression"))
+    parser.add_argument("--pca-input", type=Path, default=Path("out/strategy/macro_pca"))
     parser.add_argument("--output", type=Path, default=Path("docs/macro-equilibrium-strategy.html"))
     return parser.parse_args(argv)
 
@@ -27,6 +29,39 @@ NARRATIVE = {
     "2025-02-19": ("2025 tariff selloff", "Renewed tariff policy reignited trade tension and delayed expected rate cuts."),
     "2015-11-03": ("2015-16 growth scare", "China devaluation and an oil-price collapse (not in the original six, found by the same scan)."),
 }
+
+
+PC_LABELS = {
+    "PC1": "Policy cycle &amp; curve shape",
+    "PC2": "Inflation &amp; liquidity regime",
+    "PC3": "Real rates &amp; financial conditions",
+    "PC4": "Labor-market shocks",
+    "PC5": "Residual",
+}
+
+
+def scree_chart(ratios: list[float]) -> str:
+    width, height = 560, 220
+    left, right, top, bottom = 50, 20, 16, 36
+    plot_w, plot_h = width - left - right, height - top - bottom
+    n = len(ratios)
+    bar_w = plot_w / n * 0.6
+    high = 0.5
+    parts = [
+        f'<svg viewBox="0 0 {width} {height}" role="img" aria-label="Explained variance by component">',
+        f'<rect x="{left}" y="{top}" width="{plot_w}" height="{plot_h}" class="frame"/>',
+    ]
+    for tick in (0, 0.25, 0.5):
+        yy = top + (high - tick) / high * plot_h
+        parts.append(f'<line x1="{left}" x2="{width-right}" y1="{yy:.1f}" y2="{yy:.1f}" class="grid"/>')
+        parts.append(f'<text x="{left-8}" y="{yy+4:.1f}" text-anchor="end" class="axis">{tick:.0%}</text>')
+    for i, ratio in enumerate(ratios):
+        cx = left + plot_w * (i + 0.5) / n
+        bar_h = min(ratio, high) / high * plot_h
+        parts.append(f'<rect x="{cx-bar_w/2:.1f}" y="{top+plot_h-bar_h:.1f}" width="{bar_w:.1f}" height="{bar_h:.1f}" fill="var(--teal)"/>')
+        parts.append(f'<text x="{cx:.1f}" y="{height-14}" text-anchor="middle" class="axis">PC{i+1}</text>')
+    parts.append('</svg>')
+    return "".join(parts)
 
 
 def exposure_chart(frame: pd.DataFrame) -> str:
@@ -80,6 +115,8 @@ def main(argv=None):
     args = parse_args(argv)
     result = json.loads((args.input / "results.json").read_text(encoding="utf-8"))
     daily = pd.read_csv(args.input / "daily.csv", parse_dates=["date"])
+    valuation = json.loads((args.valuation_input / "results.json").read_text(encoding="utf-8"))
+    pca_result = json.loads((args.pca_input / "results.json").read_text(encoding="utf-8"))
 
     ndx_regime = result["variants"]["ndx_regime"]
     ndx_buyhold = result["variants"]["ndx_buyhold"]
@@ -111,6 +148,85 @@ def main(argv=None):
     below_70_share = sum(share for level, share in time_at_exposure if level < 0.70)
 
     pillars = result["pillars"]
+
+    uw = valuation["user_window"]
+    fh = valuation["full_shiller_history"]
+    ref = valuation["reference_result_pasted_by_user"]
+
+    def reg_row(label, fit, extra_label=None):
+        coefs = fit["coefficients"]
+        coef_text = ", ".join(f"{c:+.3f}" for c in coefs)
+        return (
+            f"<tr><td style=\"text-align:left\">{label}</td><td>{fit['n']}</td>"
+            f"<td>{fit['intercept']:.2f}</td><td>{coef_text}</td>"
+            f"<td>{pct(fit['r2'],1)}</td><td>{pct(fit['adjusted_r2'],1)}</td><td>{fit['rmse']:.2f}pp</td></tr>"
+        )
+
+    valuation_rows = "".join([
+        reg_row("CAPE only (our replication, 1946-2013)", uw["cape_only"]),
+        reg_row("Excess CAPE Yield (our replication, 1946-2013)", uw["excess_cape_yield"]),
+        reg_row("ECY + dividend retention rate (our adaptation)", uw["ecy_plus_retention_rate"]),
+        reg_row("ECY + earnings-cycle z-score (our adaptation)", uw["ecy_plus_earnings_cycle"]),
+        reg_row("CAPE only (full Shiller history, 1881-2014)", fh["cape_only"]),
+        reg_row("Excess CAPE Yield (full Shiller history, 1881-2014)", fh["excess_cape_yield"]),
+    ])
+
+    oos = uw["ecy_expanding_window_oos"]
+
+    pca_sample = pca_result["sample"]
+    pc_ratios = pca_result["explained_variance_ratio_top"]
+    scree_svg = scree_chart(pc_ratios)
+    pc_rows = "".join(
+        f"<tr><td style=\"text-align:left\">{label['component']} — {PC_LABELS.get(label['component'],'')}</td>"
+        f"<td>{pct(label['explained_variance'],1)}</td>"
+        f"<td style=\"text-align:left;white-space:normal\">"
+        + ", ".join(
+            f"{name.replace('_',' ')} ({value:+.2f})"
+            for name, value in sorted(
+                ((k, v) for k, v in label.items() if k not in ("component", "explained_variance")),
+                key=lambda kv: -abs(kv[1]),
+            )[:4]
+        )
+        + "</td></tr>"
+        for label in pca_result["loadings"]
+    )
+
+    def pca_reg_row(label, key):
+        row = pca_result["regressions"][key]
+        return (
+            f"<tr><td style=\"text-align:left\">{label}</td>"
+            f"<td>{pct(row['pc1_only']['r2'],1)}</td>"
+            f"<td>{pct(row['all_5_pcs']['r2'],1)}</td></tr>"
+        )
+
+    pca_reg_rows = "".join([
+        pca_reg_row("SPY drawdown (contemporaneous)", "spy_drawdown_contemporaneous"),
+        pca_reg_row("QQQ proxy drawdown (contemporaneous)", "ndx_drawdown_contemporaneous"),
+        pca_reg_row("SPY return, next 1 month", "spy_return_fwd_1m"),
+        pca_reg_row("QQQ proxy return, next 1 month", "ndx_return_fwd_1m"),
+        pca_reg_row("SPY return, next 12 months", "spy_return_fwd_12m"),
+        pca_reg_row("QQQ proxy return, next 12 months", "ndx_return_fwd_12m"),
+    ])
+
+    extra_sections = f"""
+<section class="wide"><div class="eyebrow">VI - Valuation regime</div><h2>CAPE's rate adjustment replicates almost exactly. Profitability adds little, and for a reason.</h2>
+<p>A user-supplied first pass regressed subsequent 10-year real S&amp;P 500 returns on CAPE, then on Excess CAPE Yield (ECY = 1/CAPE minus the real 10-year rate), then added aggregate corporate ROE. Reported: CAPE alone R²=39.0%, ECY R²=52.3%, ECY+ROE R²=55.1% — with a <em>negative</em> ROE coefficient, because current aggregate profitability tends to mean-revert rather than persist. Re-running the same January-observation regressions on our own copy of Shiller's dataset reproduces those first two numbers almost exactly.</p>
+<div class="scroll"><table><thead><tr><th style="text-align:left">Specification</th><th>N</th><th>Intercept</th><th>Coefficient(s)</th><th>R²</th><th>Adj. R²</th><th>RMSE</th></tr></thead>
+<tbody>{valuation_rows}</tbody></table></div>
+<p class="note">We don't hold the long-run (1946+) FRED aggregate-ROE series locally, so the third regression isn't replicated as-is. Using only Shiller's own dividend/earnings columns, the same story shows up anyway: adding an earnings-cycle z-score (today's real earnings versus their own trailing 10-year average) lifts R² only marginally (52.3% → {pct(uw['ecy_plus_earnings_cycle']['r2'],1)}) and its coefficient is <strong>negative</strong> ({uw['ecy_plus_earnings_cycle']['coefficients'][1]:+.2f}) — elevated aggregate profitability, like elevated aggregate ROE, predicts <em>lower</em> subsequent 10-year real returns, not higher. Both proxies point at the same mean-reversion mechanism the user's ROE result surfaced.</p>
+<p class="warning note">The full 1881-2014 Shiller history tells a weaker version of the same story: CAPE alone only reaches R²={pct(fh['cape_only']['r2'],1)} and ECY R²={pct(fh['excess_cape_yield']['r2'],1)} — well below the 1946-2013 window's 39.0%/52.3%. The rate-adjustment edge is concentrated in the modern (post-1946, and especially post-1980s rate-cycle) sample, not a constant of market history.</p>
+<p class="caution note"><strong>The stated statistical caveat holds up.</strong> An expanding-window out-of-sample refit of the ECY regression drops R² from 52.3% in-sample to {pct(oos['oos_r2'],1)} out-of-sample — but the Spearman rank correlation between predicted and realized 10-year returns stays at {oos['rank_correlation']:.2f}. ECY quintile 1 (least attractive) averaged {pct(uw['ecy_quintiles'][0]['mean_forward_10y_real_return'],1)} annualized real return over the next decade; quintile 5 (most attractive) averaged {pct(uw['ecy_quintiles'][4]['mean_forward_10y_real_return'],1)}. This is a ranking tool, not a precise forecaster — as the original analysis said, and 68 mostly-overlapping 10-year windows overstate the effective sample size for any of these R² figures.</p></section>
+
+<section class="wide"><div class="eyebrow">VII - How much of SPY/QQQ risk is macro?</div><h2>A principal-components view: most of drawdown, little of forward return.</h2>
+<p>Eleven monthly macro series ({', '.join(name.replace('_',' ') for name in pca_sample['macro_variables'])}) were standardized and reduced to five principal components, covering {pca_sample['start']} to {pca_sample['end']} ({pca_sample['months']} months — the real-yield series TIPS/DFII10 sets the start date).</p>
+<figure><div class="figure-head"><strong>Explained variance by component</strong><span>share of the 11-variable macro panel</span></div><div class="plate">{scree_svg}</div></figure>
+<div class="scroll"><table><thead><tr><th style="text-align:left">Component</th><th>Variance explained</th><th style="text-align:left">Dominant loadings</th></tr></thead><tbody>{pc_rows}</tbody></table></div>
+<p>The top three components (policy cycle, inflation/liquidity, real rates &amp; financial conditions) already cover {pct(sum(pc_ratios[:3]),1)} of macro-panel variance; the labor-shock and residual components add little.</p>
+<div class="scroll"><table><thead><tr><th style="text-align:left">Target</th><th>R² (PC1 only)</th><th>R² (all 5 PCs)</th></tr></thead><tbody>{pca_reg_rows}</tbody></table></div>
+<p class="warning note"><strong>The drawdown R² is partly circular.</strong> VIX and the Baa-10Y credit spread are themselves market prices of the same equity stress being measured, so a {pct(pca_result['regressions']['spy_drawdown_contemporaneous']['all_5_pcs']['r2'],0)} contemporaneous R² for SPY drawdown mostly confirms that risk gauges move together, not that slow macro data caused or forecast the drawdown. The more informative numbers are the <em>forward</em>-return regressions: five macro components explain only {pct(pca_result['regressions']['spy_return_fwd_1m']['all_5_pcs']['r2'],1)} of next-month SPY returns and {pct(pca_result['regressions']['spy_return_fwd_12m']['all_5_pcs']['r2'],1)} of next-12-month SPY returns (QQQ proxy: {pct(pca_result['regressions']['ndx_return_fwd_1m']['all_5_pcs']['r2'],1)} and {pct(pca_result['regressions']['ndx_return_fwd_12m']['all_5_pcs']['r2'],1)}). PC1 alone — the single biggest macro factor — explains almost none of either horizon on its own; the explanatory power only shows up once all five components are combined.</p>
+<p class="note">Read together with Section VI: valuation (ECY) explains roughly half of 10-year forward variance on its own, while the broader macro panel here explains under a fifth of 12-month forward variance. Slow-moving macro conditions say much more about whether a drawdown is severe once it is underway than about when the next one starts or how large next year's return will be.</p></section>
+"""
+
 
     html_text = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Macro Equilibrium Overlay - backtest</title>
@@ -171,8 +287,8 @@ def main(argv=None):
 <p>The five pillars are slow, monthly-to-quarterly-refresh macro series. They describe whether the economy and policy stance are stretched, not whether next week's price will fall. That is why they caught the one multi-quarter tightening cycle they were alive for (the GFC) and missed the fast, headline-driven shocks (COVID, 2018, 2025) as well as the pre-signal dot-com top. Sizing the overlay for QQQ specifically does not help: concentrated single-sector exposure carries idiosyncratic risk this macro-only score was never built to see.</p>
 <p class="caution note">Thresholds (4% CPI, 1pp real rate, NFCI &gt; 0, 70th percentile VIX, 0.50pp Sahm-style labor gap) were chosen from macro convention, not fit to these six dates. They are not re-optimized per crash, but they were chosen with the crash record already known, which is an in-sample bias worth weighing against the out-of-sample GFC hit.</p>
 <p class="warning note">Nasdaq-100 (^NDX) excludes dividends; the true QQQ total return is understated by roughly its ~0.5-0.8% historical yield, compounding to a modest understatement of both overlay and buy-and-hold terminal wealth. No taxes, bid/ask spreads, or slippage are modeled; the cash sleeve earns the prior-known effective fed funds rate (DFF), not a bank deposit rate.</p></section>
-
-<footer>Historical simulation, not investment advice. {result['sample']['sessions']:,} trading sessions, {result['sample']['trading_start']} to {result['sample']['trading_end']}; regime signal live from {result['sample']['signal_start']}. Publication lags: UNRATE 40 days, CPI 45 days, NFCI 9 days, daily market series 2 days. Rebalancing costs {result['switch_cost_bp']:.0f}bp of notional moved between exposure bands. Data: FRED (macro.db) and equity.db (^SP500TR, ^NDX). Generated by <code>scripts/run_macro_equilibrium_strategy.py</code> and <code>scripts/build_macro_equilibrium_page.py</code>.</footer>
+{extra_sections}
+<footer>Historical simulation, not investment advice. {result['sample']['sessions']:,} trading sessions, {result['sample']['trading_start']} to {result['sample']['trading_end']}; regime signal live from {result['sample']['signal_start']}. Publication lags: UNRATE 40 days, CPI 45 days, NFCI 9 days, daily market series 2 days. Rebalancing costs {result['switch_cost_bp']:.0f}bp of notional moved between exposure bands. Data: FRED (macro.db) and equity.db (^SP500TR, ^NDX, Shiller monthly). Generated by <code>scripts/run_macro_equilibrium_strategy.py</code>, <code>scripts/run_valuation_regime_regression.py</code>, <code>scripts/run_macro_pca_explained_variance.py</code> and <code>scripts/build_macro_equilibrium_page.py</code>.</footer>
 </main></body></html>
 """
 
