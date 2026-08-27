@@ -1,0 +1,1387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Strategy Vs Spy</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+</head>
+<body>
+<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="Strategy Vs Spy" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;Strategy Vs Spy&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(
+    --background,
+    var(--color-background-primary, light-dark(rgb(255 255 255), rgb(24 24 24)))
+  ) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: var(
+    --color-background-primary,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --card: color-mix(in oklab, var(--foreground) 5%, var(--background));
+  --card-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --popover: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255), rgb(45 45 45))
+  );
+  --popover-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --primary: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --primary-foreground: var(
+    --color-text-inverse,
+    light-dark(rgb(255 255 255), rgb(13 13 13))
+  );
+  --secondary: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%))
+  );
+  --secondary-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: var(
+    --color-text-secondary,
+    light-dark(rgb(26 28 31 / 49.4%), rgb(255 255 255 / 49.8%))
+  );
+  --accent: var(
+    --color-background-info,
+    light-dark(rgb(229 242 255), rgb(13 39 63))
+  );
+  --accent-foreground: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --destructive: var(
+    --color-text-warning,
+    light-dark(rgb(226 85 7), rgb(255 133 73))
+  );
+  --border: var(
+    --color-border-secondary,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+  --input: var(
+    --color-border-primary,
+    light-dark(
+      rgb(26 28 31 / 11.8%),
+      color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+    )
+  );
+  --ring: var(
+    --color-ring-primary,
+    light-dark(rgb(51 156 255), rgb(131 195 255 / 76%))
+  );
+  --font-size-base: var(--font-text-md-size, 14px);
+  --blue: light-dark(rgb(51 156 255), rgb(51 156 255));
+  --orange: light-dark(rgb(226 85 7), rgb(251 106 34));
+  --green: light-dark(rgb(0 162 64), rgb(64 201 119));
+  --red: light-dark(rgb(224 46 42), rgb(255 103 100));
+  --purple: light-dark(rgb(146 79 247), rgb(173 123 249));
+  --yellow: light-dark(rgb(255 195 0), rgb(255 210 64));
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, &quot;Segoe UI&quot;, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --radius: var(--border-radius-lg, 12.5px);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  /* Preserve MCP aliases for older inline renderers without creating :root cycles. */
+  --color-background-primary: var(
+    --background,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --color-text-primary: var(
+    --foreground,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --color-border-secondary: var(
+    --border,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+
+  margin: 0;
+  padding: 5px;
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans) !important;
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: pointer;
+  font-weight: var(--font-weight-medium, 500);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table-responsive &gt; .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead th {
+  padding-block: 8px;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 6px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align=&quot;right&quot;]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align=&quot;center&quot;]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: superellipse(1.5);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget &gt; :not(.card, .progress) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.progress {
+  display: flex;
+  height: 6px;
+  margin-block: calc((var(--line-height-normal, 1.5em) - 6px) / 2);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+}
+
+.progress-bar {
+  height: 100%;
+  flex-shrink: 0;
+  border: 0;
+  background: var(--viz-series-1);
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  padding: 0;
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  min-height: 26px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: 28px;
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: superellipse(1.5);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+  [aria-pressed=&quot;true&quot;],
+  [aria-selected=&quot;true&quot;],
+  .is-selected
+) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+/* Model-authored chart rules can otherwise stretch icons after these styles load. */
+svg.lucide {
+  display: block;
+  width: 16px !important;
+  height: 16px !important;
+  flex: none;
+  margin: 0 !important;
+  stroke-width: 1.6;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div id=&quot;strategy-vs-spy-returns&quot; class=&quot;strategy-returns-viz&quot;&gt;
+  &lt;h2&gt;$100,000 invested: quality-sunset strategy versus SPY&lt;/h2&gt;
+  &lt;p class=&quot;subtitle&quot;&gt;January 1993–August 2026 · adjusted-close total returns · logarithmic wealth scale&lt;/p&gt;
+  &lt;div class=&quot;legend&quot; aria-label=&quot;Series controls&quot;&gt;&lt;/div&gt;
+  &lt;section&gt;
+    &lt;h3&gt;Portfolio growth&lt;/h3&gt;
+    &lt;div class=&quot;chart&quot; data-chart=&quot;wealth&quot;&gt;&lt;/div&gt;
+  &lt;/section&gt;
+  &lt;section&gt;
+    &lt;h3&gt;Drawdown from each portfolio’s prior high&lt;/h3&gt;
+    &lt;div class=&quot;chart drawdown&quot; data-chart=&quot;drawdown&quot;&gt;&lt;/div&gt;
+  &lt;/section&gt;
+  &lt;div class=&quot;tooltip&quot; role=&quot;tooltip&quot; aria-hidden=&quot;true&quot;&gt;&lt;/div&gt;
+&lt;/div&gt;
+
+&lt;style&gt;
+  #strategy-vs-spy-returns {
+    position: relative;
+    width: 100%;
+    color: var(--foreground);
+    font-family: var(--font-sans);
+  }
+  #strategy-vs-spy-returns h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+    line-height: 1.3;
+    font-weight: 650;
+  }
+  #strategy-vs-spy-returns .subtitle {
+    margin: 0 0 10px;
+    color: var(--muted-foreground);
+    font-size: 12px;
+  }
+  #strategy-vs-spy-returns .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+    margin: 0 0 14px;
+  }
+  #strategy-vs-spy-returns .legend button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+    color: var(--foreground);
+    background: transparent;
+    border: 0;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  #strategy-vs-spy-returns .legend button[aria-pressed=&quot;false&quot;] { opacity: 0.45; }
+  #strategy-vs-spy-returns .swatch { width: 16px; height: 3px; display: inline-block; }
+  #strategy-vs-spy-returns section { margin: 0 0 18px; }
+  #strategy-vs-spy-returns h3 { margin: 0 0 4px; font-size: 13px; font-weight: 600; }
+  #strategy-vs-spy-returns .chart { width: 100%; min-height: 300px; }
+  #strategy-vs-spy-returns .chart.drawdown { min-height: 250px; }
+  #strategy-vs-spy-returns svg { display: block; width: 100%; height: auto; overflow: visible; }
+  #strategy-vs-spy-returns svg text { fill: var(--foreground); font-size: 12px; }
+  #strategy-vs-spy-returns .axis path,
+  #strategy-vs-spy-returns .axis line { stroke: var(--border); }
+  #strategy-vs-spy-returns rect[data-chart-frame] { fill: transparent; stroke: var(--border); }
+  #strategy-vs-spy-returns .series-line { fill: none; stroke-width: 2.2; }
+  #strategy-vs-spy-returns .hover-guide { stroke: var(--muted-foreground); stroke-width: 1; stroke-dasharray: 3 3; }
+  #strategy-vs-spy-returns .hover-marker { stroke: var(--popover); stroke-width: 2; }
+  #strategy-vs-spy-returns .tooltip {
+    position: absolute;
+    z-index: 10;
+    display: none;
+    pointer-events: none;
+    min-width: 190px;
+    padding: 7px 9px;
+    color: var(--popover-foreground);
+    background: var(--popover);
+    border: 1px solid var(--border);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  #strategy-vs-spy-returns .tooltip-row {
+    display: grid;
+    grid-template-columns: 10px 1fr auto;
+    gap: 6px;
+    align-items: center;
+  }
+  #strategy-vs-spy-returns .tooltip-dot { width: 8px; height: 8px; border-radius: 50%; }
+&lt;/style&gt;
+
+&lt;script src=&quot;https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const root = document.getElementById(&quot;strategy-vs-spy-returns&quot;);
+  const tooltip = root.querySelector(&quot;.tooltip&quot;);
+  const data = [{&quot;date&quot;:&quot;1993-01-29&quot;,&quot;strategy&quot;:100000.0,&quot;spy&quot;:100000.0,&quot;strategyDd&quot;:0.0,&quot;spyDd&quot;:0.0},{&quot;date&quot;:&quot;1993-01-29&quot;,&quot;strategy&quot;:100000.0,&quot;spy&quot;:100000.0,&quot;strategyDd&quot;:0.0,&quot;spyDd&quot;:0.0},{&quot;date&quot;:&quot;1993-02-26&quot;,&quot;strategy&quot;:101834.36,&quot;spy&quot;:101066.8,&quot;strategyDd&quot;:-0.086977,&quot;spyDd&quot;:-0.035416},{&quot;date&quot;:&quot;1993-03-31&quot;,&quot;strategy&quot;:106590.15,&quot;spy&quot;:103330.57,&quot;strategyDd&quot;:-0.044456,&quot;spyDd&quot;:-0.016552},{&quot;date&quot;:&quot;1993-04-30&quot;,&quot;strategy&quot;:99592.49,&quot;spy&quot;:100686.61,&quot;strategyDd&quot;:-0.118832,&quot;spyDd&quot;:-0.046749},{&quot;date&quot;:&quot;1993-05-28&quot;,&quot;strategy&quot;:105828.86,&quot;spy&quot;:103402.05,&quot;strategyDd&quot;:-0.09162,&quot;spyDd&quot;:-0.033709},{&quot;date&quot;:&quot;1993-06-30&quot;,&quot;strategy&quot;:105972.67,&quot;spy&quot;:103775.05,&quot;strategyDd&quot;:-0.072718,&quot;spyDd&quot;:-0.024621},{&quot;date&quot;:&quot;1993-07-30&quot;,&quot;strategy&quot;:103957.09,&quot;spy&quot;:103271.32,&quot;strategyDd&quot;:-0.075979,&quot;spyDd&quot;:-0.024621},{&quot;date&quot;:&quot;1993-08-31&quot;,&quot;strategy&quot;:113810.52,&quot;spy&quot;:107229.45,&quot;strategyDd&quot;:-0.044883,&quot;spyDd&quot;:-0.009456},{&quot;date&quot;:&quot;1993-09-30&quot;,&quot;strategy&quot;:110929.69,&quot;spy&quot;:106449.29,&quot;strategyDd&quot;:-0.058764,&quot;spyDd&quot;:-0.021458},{&quot;date&quot;:&quot;1993-10-29&quot;,&quot;strategy&quot;:115971.24,&quot;spy&quot;:108549.29,&quot;strategyDd&quot;:-0.039028,&quot;spyDd&quot;:-0.014608},{&quot;date&quot;:&quot;1993-11-30&quot;,&quot;strategy&quot;:111950.67,&quot;spy&quot;:107390.62,&quot;strategyDd&quot;:-0.070317,&quot;spyDd&quot;:-0.025897},{&quot;date&quot;:&quot;1993-12-31&quot;,&quot;strategy&quot;:114798.38,&quot;spy&quot;:108709.07,&quot;strategyDd&quot;:-0.046015,&quot;spyDd&quot;:-0.013944},{&quot;date&quot;:&quot;1994-01-31&quot;,&quot;strategy&quot;:124575.33,&quot;spy&quot;:112500.44,&quot;strategyDd&quot;:-0.035245,&quot;spyDd&quot;:-0.013271},{&quot;date&quot;:&quot;1994-02-28&quot;,&quot;strategy&quot;:114475.16,&quot;spy&quot;:109219.44,&quot;strategyDd&quot;:-0.093808,&quot;spyDd&quot;:-0.034951},{&quot;date&quot;:&quot;1994-03-31&quot;,&quot;strategy&quot;:101428.68,&quot;spy&quot;:104642.98,&quot;strategyDd&quot;:-0.193866,&quot;spyDd&quot;:-0.073652},{&quot;date&quot;:&quot;1994-04-29&quot;,&quot;strategy&quot;:99692.25,&quot;spy&quot;:105816.31,&quot;strategyDd&quot;:-0.221595,&quot;spyDd&quot;:-0.085369},{&quot;date&quot;:&quot;1994-05-31&quot;,&quot;strategy&quot;:102145.95,&quot;spy&quot;:107502.84,&quot;strategyDd&quot;:-0.232129,&quot;spyDd&quot;:-0.077232},{&quot;date&quot;:&quot;1994-06-30&quot;,&quot;strategy&quot;:96281.75,&quot;spy&quot;:105039.57,&quot;strategyDd&quot;:-0.241268,&quot;spyDd&quot;:-0.076045},{&quot;date&quot;:&quot;1994-07-29&quot;,&quot;strategy&quot;:101435.22,&quot;spy&quot;:108435.08,&quot;strategyDd&quot;:-0.226427,&quot;spyDd&quot;:-0.065561},{&quot;date&quot;:&quot;1994-08-31&quot;,&quot;strategy&quot;:111273.53,&quot;spy&quot;:112568.8,&quot;strategyDd&quot;:-0.195716,&quot;spyDd&quot;:-0.040005},{&quot;date&quot;:&quot;1994-09-30&quot;,&quot;strategy&quot;:102577.11,&quot;spy&quot;:109725.82,&quot;strategyDd&quot;:-0.189967,&quot;spyDd&quot;:-0.033398},{&quot;date&quot;:&quot;1994-10-31&quot;,&quot;strategy&quot;:106473.97,&quot;spy&quot;:112844.97,&quot;strategyDd&quot;:-0.222691,&quot;spyDd&quot;:-0.047216},{&quot;date&quot;:&quot;1994-11-30&quot;,&quot;strategy&quot;:94572.95,&quot;spy&quot;:108351.87,&quot;strategyDd&quot;:-0.259831,&quot;spyDd&quot;:-0.055737},{&quot;date&quot;:&quot;1994-12-30&quot;,&quot;strategy&quot;:95318.73,&quot;spy&quot;:109140.99,&quot;strategyDd&quot;:-0.265589,&quot;spyDd&quot;:-0.058361},{&quot;date&quot;:&quot;1995-01-31&quot;,&quot;strategy&quot;:99606.8,&quot;spy&quot;:112808.98,&quot;strategyDd&quot;:-0.230816,&quot;spyDd&quot;:-0.031685},{&quot;date&quot;:&quot;1995-02-28&quot;,&quot;strategy&quot;:109466.72,&quot;spy&quot;:117412.64,&quot;strategyDd&quot;:-0.203288,&quot;spyDd&quot;:-0.007972},{&quot;date&quot;:&quot;1995-03-31&quot;,&quot;strategy&quot;:116667.62,&quot;spy&quot;:120682.29,&quot;strategyDd&quot;:-0.154137,&quot;spyDd&quot;:-0.011795},{&quot;date&quot;:&quot;1995-04-28&quot;,&quot;strategy&quot;:125228.42,&quot;spy&quot;:124257.27,&quot;strategyDd&quot;:-0.060598,&quot;spyDd&quot;:-0.010094},{&quot;date&quot;:&quot;1995-05-31&quot;,&quot;strategy&quot;:137581.7,&quot;spy&quot;:129186.92,&quot;strategyDd&quot;:-0.05148,&quot;spyDd&quot;:-0.018268},{&quot;date&quot;:&quot;1995-06-30&quot;,&quot;strategy&quot;:143793.79,&quot;spy&quot;:131800.32,&quot;strategyDd&quot;:-0.046045,&quot;spyDd&quot;:-0.015873},{&quot;date&quot;:&quot;1995-07-31&quot;,&quot;strategy&quot;:155245.81,&quot;spy&quot;:136039.73,&quot;strategyDd&quot;:-0.054982,&quot;spyDd&quot;:-0.019407},{&quot;date&quot;:&quot;1995-08-31&quot;,&quot;strategy&quot;:155507.2,&quot;spy&quot;:136645.32,&quot;strategyDd&quot;:-0.054021,&quot;spyDd&quot;:-0.01765},{&quot;date&quot;:&quot;1995-09-29&quot;,&quot;strategy&quot;:173055.94,&quot;spy&quot;:142435.82,&quot;strategyDd&quot;:-0.032315,&quot;spyDd&quot;:-0.010633},{&quot;date&quot;:&quot;1995-10-31&quot;,&quot;strategy&quot;:169551.53,&quot;spy&quot;:142017.27,&quot;strategyDd&quot;:-0.070074,&quot;spyDd&quot;:-0.024287},{&quot;date&quot;:&quot;1995-11-30&quot;,&quot;strategy&quot;:189668.43,&quot;spy&quot;:148334.3,&quot;strategyDd&quot;:-0.025209,&quot;spyDd&quot;:-0.008132},{&quot;date&quot;:&quot;1995-12-29&quot;,&quot;strategy&quot;:195905.84,&quot;spy&quot;:150668.05,&quot;strategyDd&quot;:-0.075137,&quot;spyDd&quot;:-0.025951},{&quot;date&quot;:&quot;1996-01-31&quot;,&quot;strategy&quot;:213392.84,&quot;spy&quot;:156028.55,&quot;strategyDd&quot;:-0.108356,&quot;spyDd&quot;:-0.037613},{&quot;date&quot;:&quot;1996-02-29&quot;,&quot;strategy&quot;:212652.2,&quot;spy&quot;:156526.29,&quot;strategyDd&quot;:-0.107361,&quot;spyDd&quot;:-0.036984},{&quot;date&quot;:&quot;1996-03-29&quot;,&quot;strategy&quot;:219596.76,&quot;spy&quot;:159221.41,&quot;strategyDd&quot;:-0.128996,&quot;spyDd&quot;:-0.042638},{&quot;date&quot;:&quot;1996-04-30&quot;,&quot;strategy&quot;:223504.62,&quot;spy&quot;:160952.05,&quot;strategyDd&quot;:-0.153348,&quot;spyDd&quot;:-0.047141},{&quot;date&quot;:&quot;1996-05-31&quot;,&quot;strategy&quot;:235140.89,&quot;spy&quot;:164605.67,&quot;strategyDd&quot;:-0.120885,&quot;spyDd&quot;:-0.031051},{&quot;date&quot;:&quot;1996-06-28&quot;,&quot;strategy&quot;:238643.6,&quot;spy&quot;:166057.78,&quot;strategyDd&quot;:-0.084816,&quot;spyDd&quot;:-0.02704},{&quot;date&quot;:&quot;1996-07-31&quot;,&quot;strategy&quot;:198607.61,&quot;spy&quot;:158595.8,&quot;strategyDd&quot;:-0.236283,&quot;spyDd&quot;:-0.07625},{&quot;date&quot;:&quot;1996-08-30&quot;,&quot;strategy&quot;:203964.19,&quot;spy&quot;:161650.23,&quot;strategyDd&quot;:-0.182525,&quot;spyDd&quot;:-0.039392},{&quot;date&quot;:&quot;1996-09-30&quot;,&quot;strategy&quot;:236076.95,&quot;spy&quot;:170682.06,&quot;strategyDd&quot;:-0.195923,&quot;spyDd&quot;:-0.041465},{&quot;date&quot;:&quot;1996-10-31&quot;,&quot;strategy&quot;:255893.06,&quot;spy&quot;:176200.33,&quot;strategyDd&quot;:-0.05919,&quot;spyDd&quot;:-0.019307},{&quot;date&quot;:&quot;1996-11-29&quot;,&quot;strategy&quot;:311053.15,&quot;spy&quot;:189063.68,&quot;strategyDd&quot;:-0.031021,&quot;spyDd&quot;:-0.008776},{&quot;date&quot;:&quot;1996-12-31&quot;,&quot;strategy&quot;:284962.63,&quot;spy&quot;:184564.49,&quot;strategyDd&quot;:-0.147001,&quot;spyDd&quot;:-0.049262},{&quot;date&quot;:&quot;1997-01-31&quot;,&quot;strategy&quot;:333603.12,&quot;spy&quot;:195968.04,&quot;strategyDd&quot;:-0.084613,&quot;spyDd&quot;:-0.02933},{&quot;date&quot;:&quot;1997-02-28&quot;,&quot;strategy&quot;:337989.61,&quot;spy&quot;:197842.51,&quot;strategyDd&quot;:-0.09758,&quot;spyDd&quot;:-0.033206},{&quot;date&quot;:&quot;1997-03-31&quot;,&quot;strategy&quot;:291253.22,&quot;spy&quot;:189113.12,&quot;strategyDd&quot;:-0.222364,&quot;spyDd&quot;:-0.075864},{&quot;date&quot;:&quot;1997-04-30&quot;,&quot;strategy&quot;:318566.15,&quot;spy&quot;:200952.41,&quot;strategyDd&quot;:-0.270943,&quot;spyDd&quot;:-0.100384},{&quot;date&quot;:&quot;1997-05-30&quot;,&quot;strategy&quot;:375244.08,&quot;spy&quot;:213653.89,&quot;strategyDd&quot;:-0.152649,&quot;spyDd&quot;:-0.02249},{&quot;date&quot;:&quot;1997-06-30&quot;,&quot;strategy&quot;:415424.5,&quot;spy&quot;:222435.71,&quot;strategyDd&quot;:-0.082227,&quot;spyDd&quot;:-0.02757},{&quot;date&quot;:&quot;1997-07-31&quot;,&quot;strategy&quot;:511417.45,&quot;spy&quot;:240066.82,&quot;strategyDd&quot;:-0.077885,&quot;spyDd&quot;:-0.026166},{&quot;date&quot;:&quot;1997-08-29&quot;,&quot;strategy&quot;:427998.84,&quot;spy&quot;:227630.52,&quot;strategyDd&quot;:-0.188979,&quot;spyDd&quot;:-0.065083},{&quot;date&quot;:&quot;1997-09-30&quot;,&quot;strategy&quot;:482811.21,&quot;spy&quot;:238577.33,&quot;strategyDd&quot;:-0.164993,&quot;spyDd&quot;:-0.050439},{&quot;date&quot;:&quot;1997-10-31&quot;,&quot;strategy&quot;:408728.97,&quot;spy&quot;:232731.43,&quot;strategyDd&quot;:-0.318841,&quot;spyDd&quot;:-0.11203},{&quot;date&quot;:&quot;1997-11-28&quot;,&quot;strategy&quot;:432087.14,&quot;spy&quot;:241737.43,&quot;strategyDd&quot;:-0.272487,&quot;spyDd&quot;:-0.078294},{&quot;date&quot;:&quot;1997-12-31&quot;,&quot;strategy&quot;:432266.92,&quot;spy&quot;:246347.67,&quot;strategyDd&quot;:-0.258922,&quot;spyDd&quot;:-0.05215},{&quot;date&quot;:&quot;1998-01-30&quot;,&quot;strategy&quot;:433300.18,&quot;spy&quot;:249520.36,&quot;strategyDd&quot;:-0.287445,&quot;spyDd&quot;:-0.063248},{&quot;date&quot;:&quot;1998-02-27&quot;,&quot;strategy&quot;:519889.07,&quot;spy&quot;:266810.59,&quot;strategyDd&quot;:-0.162052,&quot;spyDd&quot;:-0.007807},{&quot;date&quot;:&quot;1998-03-31&quot;,&quot;strategy&quot;:589318.13,&quot;spy&quot;:279826.6,&quot;strategyDd&quot;:-0.075438,&quot;spyDd&quot;:-0.015699},{&quot;date&quot;:&quot;1998-04-30&quot;,&quot;strategy&quot;:602834.13,&quot;spy&quot;:283405.82,&quot;strategyDd&quot;:-0.115782,&quot;spyDd&quot;:-0.040067},{&quot;date&quot;:&quot;1998-05-29&quot;,&quot;strategy&quot;:559059.52,&quot;spy&quot;:277519.84,&quot;strategyDd&quot;:-0.118268,&quot;spyDd&quot;:-0.035922},{&quot;date&quot;:&quot;1998-06-30&quot;,&quot;strategy&quot;:619275.05,&quot;spy&quot;:289334.81,&quot;strategyDd&quot;:-0.163555,&quot;spyDd&quot;:-0.049185},{&quot;date&quot;:&quot;1998-07-31&quot;,&quot;strategy&quot;:584840.29,&quot;spy&quot;:285424.85,&quot;strategyDd&quot;:-0.167653,&quot;spyDd&quot;:-0.057196},{&quot;date&quot;:&quot;1998-08-31&quot;,&quot;strategy&quot;:405926.46,&quot;spy&quot;:245128.57,&quot;strategyDd&quot;:-0.422284,&quot;spyDd&quot;:-0.190301},{&quot;date&quot;:&quot;1998-09-30&quot;,&quot;strategy&quot;:400956.51,&quot;spy&quot;:260728.48,&quot;strategyDd&quot;:-0.429357,&quot;spyDd&quot;:-0.17554},{&quot;date&quot;:&quot;1998-10-30&quot;,&quot;strategy&quot;:428655.57,&quot;spy&quot;:281868.63,&quot;strategyDd&quot;:-0.458167,&quot;spyDd&quot;:-0.182415},{&quot;date&quot;:&quot;1998-11-30&quot;,&quot;strategy&quot;:474112.91,&quot;spy&quot;:297563.59,&quot;strategyDd&quot;:-0.378672,&quot;spyDd&quot;:-0.059949},{&quot;date&quot;:&quot;1998-12-31&quot;,&quot;strategy&quot;:533331.35,&quot;spy&quot;:317030.9,&quot;strategyDd&quot;:-0.355228,&quot;spyDd&quot;:-0.048117},{&quot;date&quot;:&quot;1999-01-29&quot;,&quot;strategy&quot;:557782.13,&quot;spy&quot;:328198.58,&quot;strategyDd&quot;:-0.279494,&quot;spyDd&quot;:-0.051125},{&quot;date&quot;:&quot;1999-02-26&quot;,&quot;strategy&quot;:519724.37,&quot;spy&quot;:317673.7,&quot;strategyDd&quot;:-0.280823,&quot;spyDd&quot;:-0.048679},{&quot;date&quot;:&quot;1999-03-31&quot;,&quot;strategy&quot;:540715.13,&quot;spy&quot;:330846.96,&quot;strategyDd&quot;:-0.269513,&quot;spyDd&quot;:-0.043527},{&quot;date&quot;:&quot;1999-04-30&quot;,&quot;strategy&quot;:563837.63,&quot;spy&quot;:343410.75,&quot;strategyDd&quot;:-0.228191,&quot;spyDd&quot;:-0.049977},{&quot;date&quot;:&quot;1999-05-28&quot;,&quot;strategy&quot;:532036.7,&quot;spy&quot;:335558.38,&quot;strategyDd&quot;:-0.261093,&quot;spyDd&quot;:-0.063936},{&quot;date&quot;:&quot;1999-06-30&quot;,&quot;strategy&quot;:594554.81,&quot;spy&quot;:354141.04,&quot;strategyDd&quot;:-0.249288,&quot;spyDd&quot;:-0.05529},{&quot;date&quot;:&quot;1999-07-30&quot;,&quot;strategy&quot;:537467.64,&quot;spy&quot;:343154.81,&quot;strategyDd&quot;:-0.235074,&quot;spyDd&quot;:-0.063905},{&quot;date&quot;:&quot;1999-08-31&quot;,&quot;strategy&quot;:522144.35,&quot;spy&quot;:341377.73,&quot;strategyDd&quot;:-0.281964,&quot;spyDd&quot;:-0.092773},{&quot;date&quot;:&quot;1999-09-30&quot;,&quot;strategy&quot;:495888.28,&quot;spy&quot;:333752.22,&quot;strategyDd&quot;:-0.314538,&quot;spyDd&quot;:-0.103255},{&quot;date&quot;:&quot;1999-10-29&quot;,&quot;strategy&quot;:554896.97,&quot;spy&quot;:355138.46,&quot;strategyDd&quot;:-0.337803,&quot;spyDd&quot;:-0.116956},{&quot;date&quot;:&quot;1999-11-30&quot;,&quot;strategy&quot;:570398.0,&quot;spy&quot;:361052.12,&quot;strategyDd&quot;:-0.237658,&quot;spyDd&quot;:-0.04823},{&quot;date&quot;:&quot;1999-12-31&quot;,&quot;strategy&quot;:661668.99,&quot;spy&quot;:381671.28,&quot;strategyDd&quot;:-0.169252,&quot;spyDd&quot;:-0.021725},{&quot;date&quot;:&quot;2000-01-31&quot;,&quot;strategy&quot;:530990.94,&quot;spy&quot;:362669.11,&quot;strategyDd&quot;:-0.280868,&quot;spyDd&quot;:-0.07568},{&quot;date&quot;:&quot;2000-02-29&quot;,&quot;strategy&quot;:500781.03,&quot;spy&quot;:357147.04,&quot;strategyDd&quot;:-0.326341,&quot;spyDd&quot;:-0.093006},{&quot;date&quot;:&quot;2000-03-31&quot;,&quot;strategy&quot;:589788.92,&quot;spy&quot;:391759.67,&quot;strategyDd&quot;:-0.29851,&quot;spyDd&quot;:-0.070579},{&quot;date&quot;:&quot;2000-04-28&quot;,&quot;strategy&quot;:527503.74,&quot;spy&quot;:378000.97,&quot;strategyDd&quot;:-0.33178,&quot;spyDd&quot;:-0.114367},{&quot;date&quot;:&quot;2000-05-31&quot;,&quot;strategy&quot;:506155.26,&quot;spy&quot;:372057.81,&quot;strategyDd&quot;:-0.324862,&quot;spyDd&quot;:-0.10236},{&quot;date&quot;:&quot;2000-06-30&quot;,&quot;strategy&quot;:521628.28,&quot;spy&quot;:379380.72,&quot;strategyDd&quot;:-0.268115,&quot;spyDd&quot;:-0.058839},{&quot;date&quot;:&quot;2000-07-31&quot;,&quot;strategy&quot;:502255.63,&quot;spy&quot;:373423.48,&quot;strategyDd&quot;:-0.293309,&quot;spyDd&quot;:-0.072506},{&quot;date&quot;:&quot;2000-08-31&quot;,&quot;strategy&quot;:562564.85,&quot;spy&quot;:397823.21,&quot;strategyDd&quot;:-0.277052,&quot;spyDd&quot;:-0.060879},{&quot;date&quot;:&quot;2000-09-29&quot;,&quot;strategy&quot;:497814.12,&quot;spy&quot;:375997.92,&quot;strategyDd&quot;:-0.301941,&quot;spyDd&quot;:-0.068131},{&quot;date&quot;:&quot;2000-10-31&quot;,&quot;strategy&quot;:487829.84,&quot;spy&quot;:374238.93,&quot;strategyDd&quot;:-0.388182,&quot;spyDd&quot;:-0.128865},{&quot;date&quot;:&quot;2000-11-30&quot;,&quot;strategy&quot;:414743.64,&quot;spy&quot;:346300.79,&quot;strategyDd&quot;:-0.409735,&quot;spyDd&quot;:-0.135306},{&quot;date&quot;:&quot;2000-12-29&quot;,&quot;strategy&quot;:399610.02,&quot;spy&quot;:344490.9,&quot;strategyDd&quot;:-0.45143,&quot;spyDd&quot;:-0.171319},{&quot;date&quot;:&quot;2001-01-31&quot;,&quot;strategy&quot;:416296.83,&quot;spy&quot;:359806.81,&quot;strategyDd&quot;:-0.440817,&quot;spyDd&quot;:-0.154499},{&quot;date&quot;:&quot;2001-02-28&quot;,&quot;strategy&quot;:379378.21,&quot;spy&quot;:325485.56,&quot;strategyDd&quot;:-0.460067,&quot;spyDd&quot;:-0.186416},{&quot;date&quot;:&quot;2001-03-30&quot;,&quot;strategy&quot;:359754.28,&quot;spy&quot;:307246.32,&quot;strategyDd&quot;:-0.510605,&quot;spyDd&quot;:-0.268666},{&quot;date&quot;:&quot;2001-04-30&quot;,&quot;strategy&quot;:388185.25,&quot;spy&quot;:333497.49,&quot;strategyDd&quot;:-0.513519,&quot;spyDd&quot;:-0.27347},{&quot;date&quot;:&quot;2001-05-31&quot;,&quot;strategy&quot;:386297.72,&quot;spy&quot;:331627.93,&quot;strategyDd&quot;:-0.453541,&quot;spyDd&quot;:-0.176327},{&quot;date&quot;:&quot;2001-06-29&quot;,&quot;strategy&quot;:377897.28,&quot;spy&quot;:323725.54,&quot;strategyDd&quot;:-0.467661,&quot;spyDd&quot;:-0.19966},{&quot;date&quot;:&quot;2001-07-31&quot;,&quot;strategy&quot;:374476.43,&quot;spy&quot;:320424.97,&quot;strategyDd&quot;:-0.481497,&quot;spyDd&quot;:-0.222496},{&quot;date&quot;:&quot;2001-08-31&quot;,&quot;strategy&quot;:354006.67,&quot;spy&quot;:301413.3,&quot;strategyDd&quot;:-0.499543,&quot;spyDd&quot;:-0.252065},{&quot;date&quot;:&quot;2001-09-28&quot;,&quot;strategy&quot;:327493.74,&quot;spy&quot;:276808.86,&quot;strategyDd&quot;:-0.563224,&quot;spyDd&quot;:-0.355524},{&quot;date&quot;:&quot;2001-10-31&quot;,&quot;strategy&quot;:331542.93,&quot;spy&quot;:280413.58,&quot;strategyDd&quot;:-0.534608,&quot;spyDd&quot;:-0.309215},{&quot;date&quot;:&quot;2001-11-30&quot;,&quot;strategy&quot;:355331.51,&quot;spy&quot;:302279.25,&quot;strategyDd&quot;:-0.51706,&quot;spyDd&quot;:-0.281125},{&quot;date&quot;:&quot;2001-12-31&quot;,&quot;strategy&quot;:357282.14,&quot;spy&quot;:303984.01,&quot;strategyDd&quot;:-0.502353,&quot;spyDd&quot;:-0.257606},{&quot;date&quot;:&quot;2002-01-31&quot;,&quot;strategy&quot;:354130.17,&quot;spy&quot;:301005.15,&quot;strategyDd&quot;:-0.507967,&quot;spyDd&quot;:-0.266886},{&quot;date&quot;:&quot;2002-02-28&quot;,&quot;strategy&quot;:348304.43,&quot;spy&quot;:295606.39,&quot;strategyDd&quot;:-0.517108,&quot;spyDd&quot;:-0.281909},{&quot;date&quot;:&quot;2002-03-28&quot;,&quot;strategy&quot;:359010.13,&quot;spy&quot;:305441.37,&quot;strategyDd&quot;:-0.493675,&quot;spyDd&quot;:-0.243885},{&quot;date&quot;:&quot;2002-04-30&quot;,&quot;strategy&quot;:339843.09,&quot;spy&quot;:287678.18,&quot;strategyDd&quot;:-0.520431,&quot;spyDd&quot;:-0.287586},{&quot;date&quot;:&quot;2002-05-31&quot;,&quot;strategy&quot;:338067.49,&quot;spy&quot;:285971.27,&quot;strategyDd&quot;:-0.527639,&quot;spyDd&quot;:-0.29932},{&quot;date&quot;:&quot;2002-06-28&quot;,&quot;strategy&quot;:315218.52,&quot;spy&quot;:264864.34,&quot;strategyDd&quot;:-0.557157,&quot;spyDd&quot;:-0.347311},{&quot;date&quot;:&quot;2002-07-31&quot;,&quot;strategy&quot;:292557.42,&quot;spy&quot;:243987.87,&quot;strategyDd&quot;:-0.629926,&quot;spyDd&quot;:-0.465124},{&quot;date&quot;:&quot;2002-08-30&quot;,&quot;strategy&quot;:294425.46,&quot;spy&quot;:245647.24,&quot;strategyDd&quot;:-0.614113,&quot;spyDd&quot;:-0.439568},{&quot;date&quot;:&quot;2002-09-30&quot;,&quot;strategy&quot;:266637.04,&quot;spy&quot;:219890.62,&quot;strategyDd&quot;:-0.620521,&quot;spyDd&quot;:-0.450361},{&quot;date&quot;:&quot;2002-10-31&quot;,&quot;strategy&quot;:286319.88,&quot;spy&quot;:237984.05,&quot;strategyDd&quot;:-0.635709,&quot;spyDd&quot;:-0.475159},{&quot;date&quot;:&quot;2002-11-29&quot;,&quot;strategy&quot;:302107.1,&quot;spy&quot;:252663.08,&quot;strategyDd&quot;:-0.593661,&quot;spyDd&quot;:-0.406882},{&quot;date&quot;:&quot;2002-12-31&quot;,&quot;strategy&quot;:286606.7,&quot;spy&quot;:238370.04,&quot;strategyDd&quot;:-0.595661,&quot;spyDd&quot;:-0.40991},{&quot;date&quot;:&quot;2003-01-31&quot;,&quot;strategy&quot;:280222.49,&quot;spy&quot;:232507.28,&quot;strategyDd&quot;:-0.607976,&quot;spyDd&quot;:-0.429832},{&quot;date&quot;:&quot;2003-02-28&quot;,&quot;strategy&quot;:276896.02,&quot;spy&quot;:229373.45,&quot;strategyDd&quot;:-0.617625,&quot;spyDd&quot;:-0.445567},{&quot;date&quot;:&quot;2003-03-31&quot;,&quot;strategy&quot;:277542.53,&quot;spy&quot;:229864.24,&quot;strategyDd&quot;:-0.624141,&quot;spyDd&quot;:-0.456237},{&quot;date&quot;:&quot;2003-04-30&quot;,&quot;strategy&quot;:298634.6,&quot;spy&quot;:249313.36,&quot;strategyDd&quot;:-0.59958,&quot;spyDd&quot;:-0.416617},{&quot;date&quot;:&quot;2003-05-30&quot;,&quot;strategy&quot;:313420.99,&quot;spy&quot;:262984.92,&quot;strategyDd&quot;:-0.575025,&quot;spyDd&quot;:-0.376884},{&quot;date&quot;:&quot;2003-06-30&quot;,&quot;strategy&quot;:316474.83,&quot;spy&quot;:265786.15,&quot;strategyDd&quot;:-0.552283,&quot;spyDd&quot;:-0.33993},{&quot;date&quot;:&quot;2003-07-31&quot;,&quot;strategy&quot;:321737.73,&quot;spy&quot;:270577.56,&quot;strategyDd&quot;:-0.546776,&quot;spyDd&quot;:-0.331218},{&quot;date&quot;:&quot;2003-08-29&quot;,&quot;strategy&quot;:327818.52,&quot;spy&quot;:276158.35,&quot;strategyDd&quot;:-0.554617,&quot;spyDd&quot;:-0.343875},{&quot;date&quot;:&quot;2003-09-30&quot;,&quot;strategy&quot;:324628.01,&quot;spy&quot;:273146.43,&quot;strategyDd&quot;:-0.537993,&quot;spyDd&quot;:-0.317243},{&quot;date&quot;:&quot;2003-10-31&quot;,&quot;strategy&quot;:340384.49,&quot;spy&quot;:287767.34,&quot;strategyDd&quot;:-0.529073,&quot;spyDd&quot;:-0.302693},{&quot;date&quot;:&quot;2003-11-28&quot;,&quot;strategy&quot;:343788.52,&quot;spy&quot;:290910.06,&quot;strategyDd&quot;:-0.521902,&quot;spyDd&quot;:-0.29108},{&quot;date&quot;:&quot;2003-12-31&quot;,&quot;strategy&quot;:359562.52,&quot;spy&quot;:305546.51,&quot;strategyDd&quot;:-0.509534,&quot;spyDd&quot;:-0.270928},{&quot;date&quot;:&quot;2004-01-30&quot;,&quot;strategy&quot;:365947.45,&quot;spy&quot;:311587.11,&quot;strategyDd&quot;:-0.488472,&quot;spyDd&quot;:-0.236599},{&quot;date&quot;:&quot;2004-02-27&quot;,&quot;strategy&quot;:370424.59,&quot;spy&quot;:315815.58,&quot;strategyDd&quot;:-0.481766,&quot;spyDd&quot;:-0.22548},{&quot;date&quot;:&quot;2004-03-31&quot;,&quot;strategy&quot;:366055.16,&quot;spy&quot;:311632.26,&quot;strategyDd&quot;:-0.494061,&quot;spyDd&quot;:-0.246114},{&quot;date&quot;:&quot;2004-04-30&quot;,&quot;strategy&quot;:359880.18,&quot;spy&quot;:305735.96,&quot;strategyDd&quot;:-0.487817,&quot;spyDd&quot;:-0.235782},{&quot;date&quot;:&quot;2004-05-28&quot;,&quot;strategy&quot;:365419.42,&quot;spy&quot;:310971.09,&quot;strategyDd&quot;:-0.496592,&quot;spyDd&quot;:-0.250452},{&quot;date&quot;:&quot;2004-06-30&quot;,&quot;strategy&quot;:371517.32,&quot;spy&quot;:316724.41,&quot;strategyDd&quot;:-0.483101,&quot;spyDd&quot;:-0.227999},{&quot;date&quot;:&quot;2004-07-30&quot;,&quot;strategy&quot;:360821.27,&quot;spy&quot;:306520.16,&quot;strategyDd&quot;:-0.495143,&quot;spyDd&quot;:-0.248269},{&quot;date&quot;:&quot;2004-08-31&quot;,&quot;strategy&quot;:361656.97,&quot;spy&quot;:307266.76,&quot;strategyDd&quot;:-0.502988,&quot;spyDd&quot;:-0.261403},{&quot;date&quot;:&quot;2004-09-30&quot;,&quot;strategy&quot;:364955.23,&quot;spy&quot;:310350.76,&quot;strategyDd&quot;:-0.484803,&quot;spyDd&quot;:-0.231258},{&quot;date&quot;:&quot;2004-10-29&quot;,&quot;strategy&quot;:369217.29,&quot;spy&quot;:314349.43,&quot;strategyDd&quot;:-0.488431,&quot;spyDd&quot;:-0.237435},{&quot;date&quot;:&quot;2004-11-30&quot;,&quot;strategy&quot;:384014.31,&quot;spy&quot;:328343.65,&quot;strategyDd&quot;:-0.47323,&quot;spyDd&quot;:-0.212099},{&quot;date&quot;:&quot;2004-12-31&quot;,&quot;strategy&quot;:394494.53,&quot;spy&quot;:338233.69,&quot;strategyDd&quot;:-0.45257,&quot;spyDd&quot;:-0.17781},{&quot;date&quot;:&quot;2005-01-31&quot;,&quot;strategy&quot;:386675.59,&quot;spy&quot;:330650.45,&quot;strategyDd&quot;:-0.456392,&quot;spyDd&quot;:-0.184768},{&quot;date&quot;:&quot;2005-02-28&quot;,&quot;strategy&quot;:393961.81,&quot;spy&quot;:337562.04,&quot;strategyDd&quot;:-0.447764,&quot;spyDd&quot;:-0.170429},{&quot;date&quot;:&quot;2005-03-31&quot;,&quot;strategy&quot;:387626.69,&quot;spy&quot;:331387.05,&quot;strategyDd&quot;:-0.454296,&quot;spyDd&quot;:-0.181706},{&quot;date&quot;:&quot;2005-04-29&quot;,&quot;strategy&quot;:381251.48,&quot;spy&quot;:325178.47,&quot;strategyDd&quot;:-0.46557,&quot;spyDd&quot;:-0.200877},{&quot;date&quot;:&quot;2005-05-31&quot;,&quot;strategy&quot;:392279.85,&quot;spy&quot;:335657.22,&quot;strategyDd&quot;:-0.457459,&quot;spyDd&quot;:-0.187394},{&quot;date&quot;:&quot;2005-06-30&quot;,&quot;strategy&quot;:392915.85,&quot;spy&quot;:336165.93,&quot;strategyDd&quot;:-0.441668,&quot;spyDd&quot;:-0.16113},{&quot;date&quot;:&quot;2005-07-29&quot;,&quot;strategy&quot;:406430.62,&quot;spy&quot;:349027.92,&quot;strategyDd&quot;:-0.439514,&quot;spyDd&quot;:-0.157605},{&quot;date&quot;:&quot;2005-08-31&quot;,&quot;strategy&quot;:403156.38,&quot;spy&quot;:345755.92,&quot;strategyDd&quot;:-0.43387,&quot;spyDd&quot;:-0.14858},{&quot;date&quot;:&quot;2005-09-30&quot;,&quot;strategy&quot;:406171.26,&quot;spy&quot;:348530.83,&quot;strategyDd&quot;:-0.430937,&quot;spyDd&quot;:-0.143894},{&quot;date&quot;:&quot;2005-10-31&quot;,&quot;strategy&quot;:397718.0,&quot;spy&quot;:340287.77,&quot;strategyDd&quot;:-0.445427,&quot;spyDd&quot;:-0.168534},{&quot;date&quot;:&quot;2005-11-30&quot;,&quot;strategy&quot;:413445.96,&quot;spy&quot;:355244.13,&quot;strategyDd&quot;:-0.432447,&quot;spyDd&quot;:-0.146867},{&quot;date&quot;:&quot;2005-12-30&quot;,&quot;strategy&quot;:412878.82,&quot;spy&quot;:354564.57,&quot;strategyDd&quot;:-0.412389,&quot;spyDd&quot;:-0.11373},{&quot;date&quot;:&quot;2006-01-31&quot;,&quot;strategy&quot;:412383.17,&quot;spy&quot;:363079.07,&quot;strategyDd&quot;:-0.41945,&quot;spyDd&quot;:-0.103338},{&quot;date&quot;:&quot;2006-02-28&quot;,&quot;strategy&quot;:414642.8,&quot;spy&quot;:365157.83,&quot;strategyDd&quot;:-0.421318,&quot;spyDd&quot;:-0.106826},{&quot;date&quot;:&quot;2006-03-31&quot;,&quot;strategy&quot;:418671.68,&quot;spy&quot;:371184.3,&quot;strategyDd&quot;:-0.413289,&quot;spyDd&quot;:-0.093301},{&quot;date&quot;:&quot;2006-04-28&quot;,&quot;strategy&quot;:422214.5,&quot;spy&quot;:375873.13,&quot;strategyDd&quot;:-0.409565,&quot;spyDd&quot;:-0.080691},{&quot;date&quot;:&quot;2006-05-31&quot;,&quot;strategy&quot;:407043.82,&quot;spy&quot;:364551.49,&quot;strategyDd&quot;:-0.430194,&quot;spyDd&quot;:-0.10549},{&quot;date&quot;:&quot;2006-06-30&quot;,&quot;strategy&quot;:408171.24,&quot;spy&quot;:365502.36,&quot;strategyDd&quot;:-0.440572,&quot;spyDd&quot;:-0.124213},{&quot;date&quot;:&quot;2006-07-31&quot;,&quot;strategy&quot;:409991.34,&quot;spy&quot;:367139.09,&quot;strategyDd&quot;:-0.434885,&quot;spyDd&quot;:-0.114671},{&quot;date&quot;:&quot;2006-08-31&quot;,&quot;strategy&quot;:418128.4,&quot;spy&quot;:375151.11,&quot;strategyDd&quot;:-0.419937,&quot;spyDd&quot;:-0.088543},{&quot;date&quot;:&quot;2006-09-29&quot;,&quot;strategy&quot;:430150.66,&quot;spy&quot;:385280.81,&quot;strategyDd&quot;:-0.407809,&quot;spyDd&quot;:-0.067512},{&quot;date&quot;:&quot;2006-10-31&quot;,&quot;strategy&quot;:452619.4,&quot;spy&quot;:397423.48,&quot;strategyDd&quot;:-0.392131,&quot;spyDd&quot;:-0.040557},{&quot;date&quot;:&quot;2006-11-30&quot;,&quot;strategy&quot;:466742.08,&quot;spy&quot;:405326.25,&quot;strategyDd&quot;:-0.366544,&quot;spyDd&quot;:-0.017741},{&quot;date&quot;:&quot;2006-12-29&quot;,&quot;strategy&quot;:476040.13,&quot;spy&quot;:410746.05,&quot;strategyDd&quot;:-0.338455,&quot;spyDd&quot;:-0.01117},{&quot;date&quot;:&quot;2007-01-31&quot;,&quot;strategy&quot;:486489.05,&quot;spy&quot;:416923.78,&quot;strategyDd&quot;:-0.332294,&quot;spyDd&quot;:-0.013824},{&quot;date&quot;:&quot;2007-02-28&quot;,&quot;strategy&quot;:467090.99,&quot;spy&quot;:408744.89,&quot;strategyDd&quot;:-0.346966,&quot;spyDd&quot;:-0.044782},{&quot;date&quot;:&quot;2007-03-30&quot;,&quot;strategy&quot;:474173.06,&quot;spy&quot;:413481.75,&quot;strategyDd&quot;:-0.365313,&quot;spyDd&quot;:-0.059504},{&quot;date&quot;:&quot;2007-04-30&quot;,&quot;strategy&quot;:509873.43,&quot;spy&quot;:431797.15,&quot;strategyDd&quot;:-0.324073,&quot;spyDd&quot;:-0.022707},{&quot;date&quot;:&quot;2007-05-31&quot;,&quot;strategy&quot;:538826.15,&quot;spy&quot;:446443.85,&quot;strategyDd&quot;:-0.271117,&quot;spyDd&quot;:-0.010453},{&quot;date&quot;:&quot;2007-06-29&quot;,&quot;strategy&quot;:522023.37,&quot;spy&quot;:439916.24,&quot;strategyDd&quot;:-0.275439,&quot;spyDd&quot;:-0.033556},{&quot;date&quot;:&quot;2007-07-31&quot;,&quot;strategy&quot;:490120.19,&quot;spy&quot;:426142.64,&quot;strategyDd&quot;:-0.30706,&quot;spyDd&quot;:-0.064229},{&quot;date&quot;:&quot;2007-08-31&quot;,&quot;strategy&quot;:497544.66,&quot;spy&quot;:431611.24,&quot;strategyDd&quot;:-0.344422,&quot;spyDd&quot;:-0.090475},{&quot;date&quot;:&quot;2007-09-28&quot;,&quot;strategy&quot;:530054.36,&quot;spy&quot;:448320.79,&quot;strategyDd&quot;:-0.308164,&quot;spyDd&quot;:-0.059844},{&quot;date&quot;:&quot;2007-10-31&quot;,&quot;strategy&quot;:540190.52,&quot;spy&quot;:454402.85,&quot;strategyDd&quot;:-0.273704,&quot;spyDd&quot;:-0.04352},{&quot;date&quot;:&quot;2007-11-30&quot;,&quot;strategy&quot;:499376.43,&quot;spy&quot;:436802.79,&quot;strategyDd&quot;:-0.352188,&quot;spyDd&quot;:-0.099246},{&quot;date&quot;:&quot;2007-12-31&quot;,&quot;strategy&quot;:487015.33,&quot;spy&quot;:431884.1,&quot;strategyDd&quot;:-0.321591,&quot;spyDd&quot;:-0.072917},{&quot;date&quot;:&quot;2008-01-31&quot;,&quot;strategy&quot;:424129.08,&quot;spy&quot;:405771.96,&quot;strategyDd&quot;:-0.421729,&quot;spyDd&quot;:-0.160188},{&quot;date&quot;:&quot;2008-02-29&quot;,&quot;strategy&quot;:405736.35,&quot;spy&quot;:395285.76,&quot;strategyDd&quot;:-0.425523,&quot;spyDd&quot;:-0.145219},{&quot;date&quot;:&quot;2008-03-31&quot;,&quot;strategy&quot;:402679.05,&quot;spy&quot;:391750.9,&quot;strategyDd&quot;:-0.444108,&quot;spyDd&quot;:-0.177663},{&quot;date&quot;:&quot;2008-04-30&quot;,&quot;strategy&quot;:417768.15,&quot;spy&quot;:410422.66,&quot;strategyDd&quot;:-0.423285,&quot;spyDd&quot;:-0.141762},{&quot;date&quot;:&quot;2008-05-30&quot;,&quot;strategy&quot;:417052.37,&quot;spy&quot;:416626.88,&quot;strategyDd&quot;:-0.416369,&quot;spyDd&quot;:-0.111353},{&quot;date&quot;:&quot;2008-06-30&quot;,&quot;strategy&quot;:387063.6,&quot;spy&quot;:381806.95,&quot;strategyDd&quot;:-0.450791,&quot;spyDd&quot;:-0.172508},{&quot;date&quot;:&quot;2008-07-31&quot;,&quot;strategy&quot;:384181.17,&quot;spy&quot;:378376.15,&quot;strategyDd&quot;:-0.474709,&quot;spyDd&quot;:-0.214943},{&quot;date&quot;:&quot;2008-08-29&quot;,&quot;strategy&quot;:389311.76,&quot;spy&quot;:384223.19,&quot;strategyDd&quot;:-0.459966,&quot;spyDd&quot;:-0.188989},{&quot;date&quot;:&quot;2008-09-30&quot;,&quot;strategy&quot;:358116.8,&quot;spy&quot;:348039.62,&quot;strategyDd&quot;:-0.507336,&quot;spyDd&quot;:-0.273116},{&quot;date&quot;:&quot;2008-10-31&quot;,&quot;strategy&quot;:308484.16,&quot;spy&quot;:290548.22,&quot;strategyDd&quot;:-0.608486,&quot;spyDd&quot;:-0.452128},{&quot;date&quot;:&quot;2008-11-28&quot;,&quot;strategy&quot;:291022.75,&quot;spy&quot;:270324.09,&quot;strategyDd&quot;:-0.639825,&quot;spyDd&quot;:-0.507601},{&quot;date&quot;:&quot;2008-12-31&quot;,&quot;strategy&quot;:293311.77,&quot;spy&quot;:272972.25,&quot;strategyDd&quot;:-0.615255,&quot;spyDd&quot;:-0.464137},{&quot;date&quot;:&quot;2009-01-30&quot;,&quot;strategy&quot;:273953.49,&quot;spy&quot;:250557.28,&quot;strategyDd&quot;:-0.618516,&quot;spyDd&quot;:-0.469918},{&quot;date&quot;:&quot;2009-02-27&quot;,&quot;strategy&quot;:250708.85,&quot;spy&quot;:223635.17,&quot;strategyDd&quot;:-0.64319,&quot;spyDd&quot;:-0.513604},{&quot;date&quot;:&quot;2009-03-31&quot;,&quot;strategy&quot;:266814.72,&quot;spy&quot;:242266.43,&quot;strategyDd&quot;:-0.66483,&quot;spyDd&quot;:-0.551895},{&quot;date&quot;:&quot;2009-04-30&quot;,&quot;strategy&quot;:287614.2,&quot;spy&quot;:266334.6,&quot;strategyDd&quot;:-0.614499,&quot;spyDd&quot;:-0.462878},{&quot;date&quot;:&quot;2009-05-29&quot;,&quot;strategy&quot;:301071.22,&quot;spy&quot;:281902.77,&quot;strategyDd&quot;:-0.588905,&quot;spyDd&quot;:-0.41762},{&quot;date&quot;:&quot;2009-06-30&quot;,&quot;strategy&quot;:300920.72,&quot;spy&quot;:281718.12,&quot;strategyDd&quot;:-0.581789,&quot;spyDd&quot;:-0.405068},{&quot;date&quot;:&quot;2009-07-31&quot;,&quot;strategy&quot;:319086.44,&quot;spy&quot;:302736.07,&quot;strategyDd&quot;:-0.586754,&quot;spyDd&quot;:-0.413864},{&quot;date&quot;:&quot;2009-08-31&quot;,&quot;strategy&quot;:328755.54,&quot;spy&quot;:313918.97,&quot;strategyDd&quot;:-0.547751,&quot;spyDd&quot;:-0.344895},{&quot;date&quot;:&quot;2009-09-30&quot;,&quot;strategy&quot;:338376.78,&quot;spy&quot;:325049.6,&quot;strategyDd&quot;:-0.542058,&quot;spyDd&quot;:-0.334833},{&quot;date&quot;:&quot;2009-10-30&quot;,&quot;strategy&quot;:332981.97,&quot;spy&quot;:318800.42,&quot;strategyDd&quot;:-0.530153,&quot;spyDd&quot;:-0.313788},{&quot;date&quot;:&quot;2009-11-30&quot;,&quot;strategy&quot;:349951.15,&quot;spy&quot;:338440.74,&quot;strategyDd&quot;:-0.523222,&quot;spyDd&quot;:-0.301535},{&quot;date&quot;:&quot;2009-12-31&quot;,&quot;strategy&quot;:355538.34,&quot;spy&quot;:344905.35,&quot;strategyDd&quot;:-0.503196,&quot;spyDd&quot;:-0.266117},{&quot;date&quot;:&quot;2010-01-29&quot;,&quot;strategy&quot;:344938.68,&quot;spy&quot;:332370.51,&quot;strategyDd&quot;:-0.509082,&quot;spyDd&quot;:-0.27711},{&quot;date&quot;:&quot;2010-02-26&quot;,&quot;strategy&quot;:353713.83,&quot;spy&quot;:342738.78,&quot;strategyDd&quot;:-0.514668,&quot;spyDd&quot;:-0.287207},{&quot;date&quot;:&quot;2010-03-31&quot;,&quot;strategy&quot;:371371.91,&quot;spy&quot;:363604.63,&quot;strategyDd&quot;:-0.492307,&quot;spyDd&quot;:-0.246818},{&quot;date&quot;:&quot;2010-04-30&quot;,&quot;strategy&quot;:376138.24,&quot;spy&quot;:369229.53,&quot;strategyDd&quot;:-0.468469,&quot;spyDd&quot;:-0.20377},{&quot;date&quot;:&quot;2010-05-28&quot;,&quot;strategy&quot;:351331.2,&quot;spy&quot;:339892.66,&quot;strategyDd&quot;:-0.508215,&quot;spyDd&quot;:-0.27562},{&quot;date&quot;:&quot;2010-06-30&quot;,&quot;strategy&quot;:336462.77,&quot;spy&quot;:322306.24,&quot;strategyDd&quot;:-0.521145,&quot;spyDd&quot;:-0.298999},{&quot;date&quot;:&quot;2010-07-30&quot;,&quot;strategy&quot;:355091.74,&quot;spy&quot;:344320.11,&quot;strategyDd&quot;:-0.524978,&quot;spyDd&quot;:-0.305926},{&quot;date&quot;:&quot;2010-08-31&quot;,&quot;strategy&quot;:341999.84,&quot;spy&quot;:328832.26,&quot;strategyDd&quot;:-0.513567,&quot;spyDd&quot;:-0.285349},{&quot;date&quot;:&quot;2010-09-30&quot;,&quot;strategy&quot;:366916.92,&quot;spy&quot;:358280.76,&quot;strategyDd&quot;:-0.501423,&quot;spyDd&quot;:-0.263412},{&quot;date&quot;:&quot;2010-10-29&quot;,&quot;strategy&quot;:378501.08,&quot;spy&quot;:371967.76,&quot;strategyDd&quot;:-0.479237,&quot;spyDd&quot;:-0.22335},{&quot;date&quot;:&quot;2010-11-30&quot;,&quot;strategy&quot;:378508.89,&quot;spy&quot;:371967.76,&quot;strategyDd&quot;:-0.462557,&quot;spyDd&quot;:-0.19324},{&quot;date&quot;:&quot;2010-12-31&quot;,&quot;strategy&quot;:399550.39,&quot;spy&quot;:396834.75,&quot;strategyDd&quot;:-0.451781,&quot;spyDd&quot;:-0.173782},{&quot;date&quot;:&quot;2011-01-31&quot;,&quot;strategy&quot;:407277.72,&quot;spy&quot;:406081.08,&quot;strategyDd&quot;:-0.426745,&quot;spyDd&quot;:-0.128461},{&quot;date&quot;:&quot;2011-02-28&quot;,&quot;strategy&quot;:412537.62,&quot;spy&quot;:420187.11,&quot;strategyDd&quot;:-0.421045,&quot;spyDd&quot;:-0.10437},{&quot;date&quot;:&quot;2011-03-31&quot;,&quot;strategy&quot;:412584.82,&quot;spy&quot;:420237.68,&quot;strategyDd&quot;:-0.438516,&quot;spyDd&quot;:-0.133952},{&quot;date&quot;:&quot;2011-04-29&quot;,&quot;strategy&quot;:423379.86,&quot;spy&quot;:432408.31,&quot;strategyDd&quot;:-0.420306,&quot;spyDd&quot;:-0.099996},{&quot;date&quot;:&quot;2011-05-31&quot;,&quot;strategy&quot;:417553.56,&quot;spy&quot;:427559.13,&quot;strategyDd&quot;:-0.416607,&quot;spyDd&quot;:-0.090415},{&quot;date&quot;:&quot;2011-06-30&quot;,&quot;strategy&quot;:411664.02,&quot;spy&quot;:420346.39,&quot;strategyDd&quot;:-0.434769,&quot;spyDd&quot;:-0.124399},{&quot;date&quot;:&quot;2011-07-29&quot;,&quot;strategy&quot;:404797.01,&quot;spy&quot;:411937.48,&quot;strategyDd&quot;:-0.423891,&quot;spyDd&quot;:-0.104055},{&quot;date&quot;:&quot;2011-08-31&quot;,&quot;strategy&quot;:386300.1,&quot;spy&quot;:389290.94,&quot;strategyDd&quot;:-0.487098,&quot;spyDd&quot;:-0.222309},{&quot;date&quot;:&quot;2011-09-30&quot;,&quot;strategy&quot;:364225.65,&quot;spy&quot;:362265.95,&quot;strategyDd&quot;:-0.482712,&quot;spyDd&quot;:-0.214108},{&quot;date&quot;:&quot;2011-10-31&quot;,&quot;strategy&quot;:396525.11,&quot;spy&quot;:401806.41,&quot;strategyDd&quot;:-0.493617,&quot;spyDd&quot;:-0.234511},{&quot;date&quot;:&quot;2011-11-30&quot;,&quot;strategy&quot;:395192.08,&quot;spy&quot;:400173.54,&quot;strategyDd&quot;:-0.469757,&quot;spyDd&quot;:-0.189875},{&quot;date&quot;:&quot;2011-12-30&quot;,&quot;strategy&quot;:398607.99,&quot;spy&quot;:404354.65,&quot;strategyDd&quot;:-0.452214,&quot;spyDd&quot;:-0.157057},{&quot;date&quot;:&quot;2012-01-31&quot;,&quot;strategy&quot;:413927.29,&quot;spy&quot;:423106.46,&quot;strategyDd&quot;:-0.425208,&quot;spyDd&quot;:-0.106532},{&quot;date&quot;:&quot;2012-02-29&quot;,&quot;strategy&quot;:428578.48,&quot;spy&quot;:441471.56,&quot;strategyDd&quot;:-0.406589,&quot;spyDd&quot;:-0.071704},{&quot;date&quot;:&quot;2012-03-30&quot;,&quot;strategy&quot;:445037.23,&quot;spy&quot;:455670.91,&quot;strategyDd&quot;:-0.407115,&quot;spyDd&quot;:-0.055727},{&quot;date&quot;:&quot;2012-04-30&quot;,&quot;strategy&quot;:434784.89,&quot;spy&quot;:452629.05,&quot;strategyDd&quot;:-0.403815,&quot;spyDd&quot;:-0.043495},{&quot;date&quot;:&quot;2012-05-31&quot;,&quot;strategy&quot;:405547.21,&quot;spy&quot;:425446.16,&quot;strategyDd&quot;:-0.429142,&quot;spyDd&quot;:-0.086851},{&quot;date&quot;:&quot;2012-06-29&quot;,&quot;strategy&quot;:419236.45,&quot;spy&quot;:442711.18,&quot;strategyDd&quot;:-0.435125,&quot;spyDd&quot;:-0.098394},{&quot;date&quot;:&quot;2012-07-31&quot;,&quot;strategy&quot;:418488.83,&quot;spy&quot;:447948.17,&quot;strategyDd&quot;:-0.418085,&quot;spyDd&quot;:-0.055448},{&quot;date&quot;:&quot;2012-08-31&quot;,&quot;strategy&quot;:431519.71,&quot;spy&quot;:459170.33,&quot;strategyDd&quot;:-0.408276,&quot;spyDd&quot;:-0.033303},{&quot;date&quot;:&quot;2012-09-28&quot;,&quot;strategy&quot;:449475.4,&quot;spy&quot;:470811.06,&quot;strategyDd&quot;:-0.387765,&quot;spyDd&quot;:-0.021632},{&quot;date&quot;:&quot;2012-10-31&quot;,&quot;strategy&quot;:435025.45,&quot;spy&quot;:462242.87,&quot;strategyDd&quot;:-0.38319,&quot;spyDd&quot;:-0.037131},{&quot;date&quot;:&quot;2012-11-30&quot;,&quot;strategy&quot;:427109.21,&quot;spy&quot;:464859.26,&quot;strategyDd&quot;:-0.414033,&quot;spyDd&quot;:-0.073456},{&quot;date&quot;:&quot;2012-12-31&quot;,&quot;strategy&quot;:426893.1,&quot;spy&quot;:469012.24,&quot;strategyDd&quot;:-0.400971,&quot;spyDd&quot;:-0.03711},{&quot;date&quot;:&quot;2013-01-31&quot;,&quot;strategy&quot;:463544.04,&quot;spy&quot;:493021.19,&quot;strategyDd&quot;:-0.370346,&quot;spyDd&quot;:-0.006372},{&quot;date&quot;:&quot;2013-02-28&quot;,&quot;strategy&quot;:472764.65,&quot;spy&quot;:499311.69,&quot;strategyDd&quot;:-0.346505,&quot;spyDd&quot;:-0.027732},{&quot;date&quot;:&quot;2013-03-28&quot;,&quot;strategy&quot;:503265.27,&quot;spy&quot;:518271.06,&quot;strategyDd&quot;:-0.323407,&quot;spyDd&quot;:-0.010742},{&quot;date&quot;:&quot;2013-04-30&quot;,&quot;strategy&quot;:518836.34,&quot;spy&quot;:528228.13,&quot;strategyDd&quot;:-0.304666,&quot;spyDd&quot;:-0.031723},{&quot;date&quot;:&quot;2013-05-31&quot;,&quot;strategy&quot;:539364.25,&quot;spy&quot;:540699.57,&quot;strategyDd&quot;:-0.272779,&quot;spyDd&quot;:-0.022253},{&quot;date&quot;:&quot;2013-06-28&quot;,&quot;strategy&quot;:525538.64,&quot;spy&quot;:533484.49,&quot;strategyDd&quot;:-0.278636,&quot;spyDd&quot;:-0.055506},{&quot;date&quot;:&quot;2013-07-31&quot;,&quot;strategy&quot;:576393.32,&quot;spy&quot;:561053.2,&quot;strategyDd&quot;:-0.245763,&quot;spyDd&quot;:-0.030549},{&quot;date&quot;:&quot;2013-08-30&quot;,&quot;strategy&quot;:538519.28,&quot;spy&quot;:544225.7,&quot;strategyDd&quot;:-0.236103,&quot;spyDd&quot;:-0.044574},{&quot;date&quot;:&quot;2013-09-30&quot;,&quot;strategy&quot;:567090.92,&quot;spy&quot;:561448.45,&quot;strategyDd&quot;:-0.227637,&quot;spyDd&quot;:-0.038374},{&quot;date&quot;:&quot;2013-10-31&quot;,&quot;strategy&quot;:630720.96,&quot;spy&quot;:587447.25,&quot;strategyDd&quot;:-0.217333,&quot;spyDd&quot;:-0.039084},{&quot;date&quot;:&quot;2013-11-29&quot;,&quot;strategy&quot;:679782.15,&quot;spy&quot;:604858.07,&quot;strategyDd&quot;:-0.114814,&quot;spyDd&quot;:-0.012644},{&quot;date&quot;:&quot;2013-12-31&quot;,&quot;strategy&quot;:725622.74,&quot;spy&quot;:620539.77,&quot;strategyDd&quot;:-0.07484,&quot;spyDd&quot;:-0.018137},{&quot;date&quot;:&quot;2014-01-31&quot;,&quot;strategy&quot;:658168.08,&quot;spy&quot;:598666.92,&quot;strategyDd&quot;:-0.102622,&quot;spyDd&quot;:-0.039742},{&quot;date&quot;:&quot;2014-02-28&quot;,&quot;strategy&quot;:737853.61,&quot;spy&quot;:625915.88,&quot;strategyDd&quot;:-0.147279,&quot;spyDd&quot;:-0.05696},{&quot;date&quot;:&quot;2014-03-31&quot;,&quot;strategy&quot;:751627.16,&quot;spy&quot;:631107.85,&quot;strategyDd&quot;:-0.051409,&quot;spyDd&quot;:-0.019122},{&quot;date&quot;:&quot;2014-04-30&quot;,&quot;strategy&quot;:763503.44,&quot;spy&quot;:635495.21,&quot;strategyDd&quot;:-0.104188,&quot;spyDd&quot;:-0.03902},{&quot;date&quot;:&quot;2014-05-30&quot;,&quot;strategy&quot;:811354.65,&quot;spy&quot;:650242.72,&quot;strategyDd&quot;:-0.037357,&quot;spyDd&quot;:-0.013477},{&quot;date&quot;:&quot;2014-06-30&quot;,&quot;strategy&quot;:856996.81,&quot;spy&quot;:663666.85,&quot;strategyDd&quot;:-0.029436,&quot;spyDd&quot;:-0.010532},{&quot;date&quot;:&quot;2014-07-31&quot;,&quot;strategy&quot;:821727.69,&quot;spy&quot;:654748.73,&quot;strategyDd&quot;:-0.077938,&quot;spyDd&quot;:-0.027989},{&quot;date&quot;:&quot;2014-08-29&quot;,&quot;strategy&quot;:914795.93,&quot;spy&quot;:680587.57,&quot;strategyDd&quot;:-0.105906,&quot;spyDd&quot;:-0.038358},{&quot;date&quot;:&quot;2014-09-30&quot;,&quot;strategy&quot;:875928.06,&quot;spy&quot;:671198.01,&quot;strategyDd&quot;:-0.06474,&quot;spyDd&quot;:-0.022605},{&quot;date&quot;:&quot;2014-10-31&quot;,&quot;strategy&quot;:919916.42,&quot;spy&quot;:687005.2,&quot;strategyDd&quot;:-0.201416,&quot;spyDd&quot;:-0.072735},{&quot;date&quot;:&quot;2014-11-28&quot;,&quot;strategy&quot;:994018.85,&quot;spy&quot;:705878.6,&quot;strategyDd&quot;:-0.017225,&quot;spyDd&quot;:-0.003469},{&quot;date&quot;:&quot;2014-12-31&quot;,&quot;strategy&quot;:979916.51,&quot;spy&quot;:704088.16,&quot;strategyDd&quot;:-0.138007,&quot;spyDd&quot;:-0.04851},{&quot;date&quot;:&quot;2015-01-30&quot;,&quot;strategy&quot;:891396.39,&quot;spy&quot;:683226.52,&quot;strategyDd&quot;:-0.133176,&quot;spyDd&quot;:-0.046474},{&quot;date&quot;:&quot;2015-02-27&quot;,&quot;strategy&quot;:1040862.33,&quot;spy&quot;:721626.99,&quot;strategyDd&quot;:-0.10006,&quot;spyDd&quot;:-0.032579},{&quot;date&quot;:&quot;2015-03-31&quot;,&quot;strategy&quot;:987459.29,&quot;spy&quot;:710293.36,&quot;strategyDd&quot;:-0.101144,&quot;spyDd&quot;:-0.035332},{&quot;date&quot;:&quot;2015-04-30&quot;,&quot;strategy&quot;:1012785.4,&quot;spy&quot;:717278.23,&quot;strategyDd&quot;:-0.077979,&quot;spyDd&quot;:-0.02534},{&quot;date&quot;:&quot;2015-05-29&quot;,&quot;strategy&quot;:1047106.94,&quot;spy&quot;:726499.65,&quot;strategyDd&quot;:-0.051083,&quot;spyDd&quot;:-0.017056},{&quot;date&quot;:&quot;2015-06-30&quot;,&quot;strategy&quot;:981172.44,&quot;spy&quot;:711743.1,&quot;strategyDd&quot;:-0.099583,&quot;spyDd&quot;:-0.033165},{&quot;date&quot;:&quot;2015-07-31&quot;,&quot;strategy&quot;:1042715.57,&quot;spy&quot;:727820.74,&quot;strategyDd&quot;:-0.112459,&quot;spyDd&quot;:-0.037354},{&quot;date&quot;:&quot;2015-08-31&quot;,&quot;strategy&quot;:851045.11,&quot;spy&quot;:683459.9,&quot;strategyDd&quot;:-0.286314,&quot;spyDd&quot;:-0.119103},{&quot;date&quot;:&quot;2015-09-30&quot;,&quot;strategy&quot;:803011.28,&quot;spy&quot;:666020.73,&quot;strategyDd&quot;:-0.285673,&quot;spyDd&quot;:-0.111024},{&quot;date&quot;:&quot;2015-10-30&quot;,&quot;strategy&quot;:964162.79,&quot;spy&quot;:722672.25,&quot;strategyDd&quot;:-0.254811,&quot;spyDd&quot;:-0.091543},{&quot;date&quot;:&quot;2015-11-30&quot;,&quot;strategy&quot;:969659.56,&quot;spy&quot;:725313.79,&quot;strategyDd&quot;:-0.178586,&quot;spyDd&quot;:-0.042321},{&quot;date&quot;:&quot;2015-12-31&quot;,&quot;strategy&quot;:904229.72,&quot;spy&quot;:712778.61,&quot;strategyDd&quot;:-0.202713,&quot;spyDd&quot;:-0.048608},{&quot;date&quot;:&quot;2016-01-29&quot;,&quot;strategy&quot;:792813.65,&quot;spy&quot;:677291.65,&quot;strategyDd&quot;:-0.326035,&quot;spyDd&quot;:-0.116959},{&quot;date&quot;:&quot;2016-02-29&quot;,&quot;strategy&quot;:788547.3,&quot;spy&quot;:676732.2,&quot;strategyDd&quot;:-0.348229,&quot;spyDd&quot;:-0.130229},{&quot;date&quot;:&quot;2016-03-31&quot;,&quot;strategy&quot;:908640.24,&quot;spy&quot;:722253.59,&quot;strategyDd&quot;:-0.238009,&quot;spyDd&quot;:-0.057693},{&quot;date&quot;:&quot;2016-04-29&quot;,&quot;strategy&quot;:915302.23,&quot;spy&quot;:725099.72,&quot;strategyDd&quot;:-0.181455,&quot;spyDd&quot;:-0.024912},{&quot;date&quot;:&quot;2016-05-31&quot;,&quot;strategy&quot;:957618.66,&quot;spy&quot;:737435.13,&quot;strategyDd&quot;:-0.183468,&quot;spyDd&quot;:-0.028082},{&quot;date&quot;:&quot;2016-06-30&quot;,&quot;strategy&quot;:925630.16,&quot;spy&quot;:739998.14,&quot;strategyDd&quot;:-0.233025,&quot;spyDd&quot;:-0.055243},{&quot;date&quot;:&quot;2016-07-29&quot;,&quot;strategy&quot;:1026419.17,&quot;spy&quot;:766986.71,&quot;strategyDd&quot;:-0.15878,&quot;spyDd&quot;:-0.013543},{&quot;date&quot;:&quot;2016-08-31&quot;,&quot;strategy&quot;:1026892.95,&quot;spy&quot;:767905.47,&quot;strategyDd&quot;:-0.073008,&quot;spyDd&quot;:-0.008216},{&quot;date&quot;:&quot;2016-09-30&quot;,&quot;strategy&quot;:1019923.15,&quot;spy&quot;:767950.08,&quot;strategyDd&quot;:-0.109597,&quot;spyDd&quot;:-0.027112},{&quot;date&quot;:&quot;2016-10-31&quot;,&quot;strategy&quot;:964832.74,&quot;spy&quot;:754635.98,&quot;strategyDd&quot;:-0.110162,&quot;spyDd&quot;:-0.02573},{&quot;date&quot;:&quot;2016-11-30&quot;,&quot;strategy&quot;:1069328.89,&quot;spy&quot;:782435.48,&quot;strategyDd&quot;:-0.158787,&quot;spyDd&quot;:-0.0433},{&quot;date&quot;:&quot;2016-12-30&quot;,&quot;strategy&quot;:1130766.18,&quot;spy&quot;:798297.02,&quot;strategyDd&quot;:-0.039645,&quot;spyDd&quot;:-0.012787},{&quot;date&quot;:&quot;2017-01-31&quot;,&quot;strategy&quot;:1186733.4,&quot;spy&quot;:812582.33,&quot;strategyDd&quot;:-0.026402,&quot;spyDd&quot;:-0.008886},{&quot;date&quot;:&quot;2017-02-28&quot;,&quot;strategy&quot;:1324809.06,&quot;spy&quot;:844509.81,&quot;strategyDd&quot;:-0.025353,&quot;spyDd&quot;:-0.008494},{&quot;date&quot;:&quot;2017-03-31&quot;,&quot;strategy&quot;:1323485.05,&quot;spy&quot;:845565.18,&quot;strategyDd&quot;:-0.064915,&quot;spyDd&quot;:-0.021451},{&quot;date&quot;:&quot;2017-04-28&quot;,&quot;strategy&quot;:1357165.5,&quot;spy&quot;:853958.78,&quot;strategyDd&quot;:-0.079801,&quot;spyDd&quot;:-0.026101},{&quot;date&quot;:&quot;2017-05-31&quot;,&quot;strategy&quot;:1407386.8,&quot;spy&quot;:866010.51,&quot;strategyDd&quot;:-0.054885,&quot;spyDd&quot;:-0.018644},{&quot;date&quot;:&quot;2017-06-30&quot;,&quot;strategy&quot;:1427410.37,&quot;spy&quot;:871531.15,&quot;strategyDd&quot;:-0.041059,&quot;spyDd&quot;:-0.013611},{&quot;date&quot;:&quot;2017-07-31&quot;,&quot;strategy&quot;:1509111.82,&quot;spy&quot;:889445.04,&quot;strategyDd&quot;:-0.051367,&quot;spyDd&quot;:-0.016799},{&quot;date&quot;:&quot;2017-08-31&quot;,&quot;strategy&quot;:1513528.92,&quot;spy&quot;:892040.01,&quot;strategyDd&quot;:-0.062711,&quot;spyDd&quot;:-0.020818},{&quot;date&quot;:&quot;2017-09-29&quot;,&quot;strategy&quot;:1598917.21,&quot;spy&quot;:910014.2,&quot;strategyDd&quot;:-0.026744,&quot;spyDd&quot;:-0.007302},{&quot;date&quot;:&quot;2017-10-31&quot;,&quot;strategy&quot;:1705269.66,&quot;spy&quot;:931457.77,&quot;strategyDd&quot;:-0.021415,&quot;spyDd&quot;:-0.007079},{&quot;date&quot;:&quot;2017-11-30&quot;,&quot;strategy&quot;:1855013.99,&quot;spy&quot;:959928.41,&quot;strategyDd&quot;:-0.031037,&quot;spyDd&quot;:-0.010304},{&quot;date&quot;:&quot;2017-12-29&quot;,&quot;strategy&quot;:1914008.95,&quot;spy&quot;:971570.27,&quot;strategyDd&quot;:-0.0208,&quot;spyDd&quot;:-0.006868},{&quot;date&quot;:&quot;2018-01-31&quot;,&quot;strategy&quot;:2223297.82,&quot;spy&quot;:1026327.26,&quot;strategyDd&quot;:-0.048233,&quot;spyDd&quot;:-0.016819},{&quot;date&quot;:&quot;2018-02-28&quot;,&quot;strategy&quot;:1816828.72,&quot;spy&quot;:989009.75,&quot;strategyDd&quot;:-0.2868,&quot;spyDd&quot;:-0.101019},{&quot;date&quot;:&quot;2018-03-29&quot;,&quot;strategy&quot;:1699109.83,&quot;spy&quot;:961900.51,&quot;strategyDd&quot;:-0.297672,&quot;spyDd&quot;:-0.095947},{&quot;date&quot;:&quot;2018-04-30&quot;,&quot;strategy&quot;:1708932.56,&quot;spy&quot;:966871.57,&quot;strategyDd&quot;:-0.302345,&quot;spyDd&quot;:-0.097979},{&quot;date&quot;:&quot;2018-05-31&quot;,&quot;strategy&quot;:1785803.02,&quot;spy&quot;:990375.52,&quot;strategyDd&quot;:-0.277951,&quot;spyDd&quot;:-0.079936},{&quot;date&quot;:&quot;2018-06-29&quot;,&quot;strategy&quot;:1794688.94,&quot;spy&quot;:996071.13,&quot;strategyDd&quot;:-0.241322,&quot;spyDd&quot;:-0.052121},{&quot;date&quot;:&quot;2018-07-31&quot;,&quot;strategy&quot;:1923707.59,&quot;spy&quot;:1032971.94,&quot;strategyDd&quot;:-0.233098,&quot;spyDd&quot;:-0.046667},{&quot;date&quot;:&quot;2018-08-31&quot;,&quot;strategy&quot;:2097586.61,&quot;spy&quot;:1065944.35,&quot;strategyDd&quot;:-0.179628,&quot;spyDd&quot;:-0.013306},{&quot;date&quot;:&quot;2018-09-28&quot;,&quot;strategy&quot;:2123176.7,&quot;spy&quot;:1072281.8,&quot;strategyDd&quot;:-0.126604,&quot;spyDd&quot;:-0.013311},{&quot;date&quot;:&quot;2018-10-31&quot;,&quot;strategy&quot;:1721213.93,&quot;spy&quot;:998182.51,&quot;strategyDd&quot;:-0.297745,&quot;spyDd&quot;:-0.097164},{&quot;date&quot;:&quot;2018-11-30&quot;,&quot;strategy&quot;:1774919.19,&quot;spy&quot;:1016698.32,&quot;strategyDd&quot;:-0.304092,&quot;spyDd&quot;:-0.099252},{&quot;date&quot;:&quot;2018-12-31&quot;,&quot;strategy&quot;:1441465.03,&quot;spy&quot;:927179.5,&quot;strategyDd&quot;:-0.428812,&quot;spyDd&quot;:-0.193489},{&quot;date&quot;:&quot;2019-01-31&quot;,&quot;strategy&quot;:1617519.38,&quot;spy&quot;:1001414.52,&quot;strategyDd&quot;:-0.410354,&quot;spyDd&quot;:-0.15952},{&quot;date&quot;:&quot;2019-02-28&quot;,&quot;strategy&quot;:1717525.06,&quot;spy&quot;:1033876.27,&quot;strategyDd&quot;:-0.306154,&quot;spyDd&quot;:-0.070554},{&quot;date&quot;:&quot;2019-03-29&quot;,&quot;strategy&quot;:1773812.81,&quot;spy&quot;:1052590.14,&quot;strategyDd&quot;:-0.286303,&quot;spyDd&quot;:-0.055411},{&quot;date&quot;:&quot;2019-04-30&quot;,&quot;strategy&quot;:1918199.97,&quot;spy&quot;:1095590.85,&quot;strategyDd&quot;:-0.22208,&quot;spyDd&quot;:-0.011947},{&quot;date&quot;:&quot;2019-05-31&quot;,&quot;strategy&quot;:1623409.84,&quot;spy&quot;:1025724.02,&quot;strategyDd&quot;:-0.30414,&quot;spyDd&quot;:-0.063803},{&quot;date&quot;:&quot;2019-06-28&quot;,&quot;strategy&quot;:1845570.73,&quot;spy&quot;:1097100.45,&quot;strategyDd&quot;:-0.307954,&quot;spyDd&quot;:-0.066184},{&quot;date&quot;:&quot;2019-07-31&quot;,&quot;strategy&quot;:1899272.27,&quot;spy&quot;:1113687.81,&quot;strategyDd&quot;:-0.194914,&quot;spyDd&quot;:-0.015165},{&quot;date&quot;:&quot;2019-08-30&quot;,&quot;strategy&quot;:1809188.98,&quot;spy&quot;:1095040.82,&quot;strategyDd&quot;:-0.266959,&quot;spyDd&quot;:-0.06023},{&quot;date&quot;:&quot;2019-09-30&quot;,&quot;strategy&quot;:1862447.53,&quot;spy&quot;:1116348.21,&quot;strategyDd&quot;:-0.233727,&quot;spyDd&quot;:-0.037316},{&quot;date&quot;:&quot;2019-10-31&quot;,&quot;strategy&quot;:1963503.23,&quot;spy&quot;:1141024.47,&quot;strategyDd&quot;:-0.247731,&quot;spyDd&quot;:-0.041786},{&quot;date&quot;:&quot;2019-11-29&quot;,&quot;strategy&quot;:2170829.82,&quot;spy&quot;:1182327.59,&quot;strategyDd&quot;:-0.135486,&quot;spyDd&quot;:-0.005609},{&quot;date&quot;:&quot;2019-12-31&quot;,&quot;strategy&quot;:2349720.98,&quot;spy&quot;:1216681.08,&quot;strategyDd&quot;:-0.111381,&quot;spyDd&quot;:-0.018797},{&quot;date&quot;:&quot;2020-01-31&quot;,&quot;strategy&quot;:2331507.96,&quot;spy&quot;:1216189.77,&quot;strategyDd&quot;:-0.088707,&quot;spyDd&quot;:-0.030787},{&quot;date&quot;:&quot;2020-02-28&quot;,&quot;strategy&quot;:1911019.9,&quot;spy&quot;:1119909.21,&quot;strategyDd&quot;:-0.287548,&quot;spyDd&quot;:-0.124372},{&quot;date&quot;:&quot;2020-03-31&quot;,&quot;strategy&quot;:1373513.34,&quot;spy&quot;:980064.3,&quot;strategyDd&quot;:-0.55677,&quot;spyDd&quot;:-0.337173},{&quot;date&quot;:&quot;2020-04-30&quot;,&quot;strategy&quot;:1549031.76,&quot;spy&quot;:1104516.44,&quot;strategyDd&quot;:-0.510825,&quot;spyDd&quot;:-0.268199},{&quot;date&quot;:&quot;2020-05-29&quot;,&quot;strategy&quot;:1627023.41,&quot;spy&quot;:1157141.54,&quot;strategyDd&quot;:-0.439617,&quot;spyDd&quot;:-0.162807},{&quot;date&quot;:&quot;2020-06-30&quot;,&quot;strategy&quot;:1582153.04,&quot;spy&quot;:1177662.61,&quot;strategyDd&quot;:-0.42634,&quot;spyDd&quot;:-0.106291},{&quot;date&quot;:&quot;2020-07-31&quot;,&quot;strategy&quot;:1683112.17,&quot;spy&quot;:1247017.96,&quot;strategyDd&quot;:-0.4074,&quot;spyDd&quot;:-0.072766},{&quot;date&quot;:&quot;2020-08-31&quot;,&quot;strategy&quot;:1925726.81,&quot;spy&quot;:1334055.27,&quot;strategyDd&quot;:-0.363872,&quot;spyDd&quot;:-0.01821},{&quot;date&quot;:&quot;2020-09-30&quot;,&quot;strategy&quot;:1776593.37,&quot;spy&quot;:1284103.73,&quot;strategyDd&quot;:-0.384166,&quot;spyDd&quot;:-0.094404},{&quot;date&quot;:&quot;2020-10-30&quot;,&quot;strategy&quot;:1683580.3,&quot;spy&quot;:1252086.27,&quot;strategyDd&quot;:-0.37234,&quot;spyDd&quot;:-0.083458},{&quot;date&quot;:&quot;2020-11-30&quot;,&quot;strategy&quot;:2053845.49,&quot;spy&quot;:1388284.25,&quot;strategyDd&quot;:-0.358721,&quot;spyDd&quot;:-0.073185},{&quot;date&quot;:&quot;2020-12-31&quot;,&quot;strategy&quot;:2204086.83,&quot;spy&quot;:1439718.18,&quot;strategyDd&quot;:-0.223611,&quot;spyDd&quot;:-0.014885},{&quot;date&quot;:&quot;2021-01-29&quot;,&quot;strategy&quot;:2099693.33,&quot;spy&quot;:1425046.67,&quot;strategyDd&quot;:-0.217208,&quot;spyDd&quot;:-0.037254},{&quot;date&quot;:&quot;2021-02-26&quot;,&quot;strategy&quot;:2221181.41,&quot;spy&quot;:1464670.72,&quot;strategyDd&quot;:-0.191723,&quot;spyDd&quot;:-0.031276},{&quot;date&quot;:&quot;2021-03-31&quot;,&quot;strategy&quot;:2505361.49,&quot;spy&quot;:1531165.83,&quot;strategyDd&quot;:-0.197954,&quot;spyDd&quot;:-0.040597},{&quot;date&quot;:&quot;2021-04-30&quot;,&quot;strategy&quot;:2899737.1,&quot;spy&quot;:1612180.57,&quot;strategyDd&quot;:-0.036741,&quot;spyDd&quot;:-0.012199},{&quot;date&quot;:&quot;2021-05-28&quot;,&quot;strategy&quot;:2937667.03,&quot;spy&quot;:1622766.61,&quot;strategyDd&quot;:-0.113438,&quot;spyDd&quot;:-0.039586},{&quot;date&quot;:&quot;2021-06-30&quot;,&quot;strategy&quot;:3125652.29,&quot;spy&quot;:1659160.62,&quot;strategyDd&quot;:-0.061143,&quot;spyDd&quot;:-0.021123},{&quot;date&quot;:&quot;2021-07-30&quot;,&quot;strategy&quot;:3339020.41,&quot;spy&quot;:1699665.27,&quot;strategyDd&quot;:-0.080273,&quot;spyDd&quot;:-0.027707},{&quot;date&quot;:&quot;2021-08-31&quot;,&quot;strategy&quot;:3627418.45,&quot;spy&quot;:1750246.69,&quot;strategyDd&quot;:-0.050795,&quot;spyDd&quot;:-0.017428},{&quot;date&quot;:&quot;2021-09-30&quot;,&quot;strategy&quot;:3135940.28,&quot;spy&quot;:1668675.72,&quot;strategyDd&quot;:-0.144433,&quot;spyDd&quot;:-0.050034},{&quot;date&quot;:&quot;2021-10-29&quot;,&quot;strategy&quot;:3814319.86,&quot;spy&quot;:1785756.04,&quot;strategyDd&quot;:-0.148439,&quot;spyDd&quot;:-0.051141},{&quot;date&quot;:&quot;2021-11-30&quot;,&quot;strategy&quot;:3706848.51,&quot;spy&quot;:1771407.52,&quot;strategyDd&quot;:-0.089208,&quot;spyDd&quot;:-0.030166},{&quot;date&quot;:&quot;2021-12-31&quot;,&quot;strategy&quot;:4195225.03,&quot;spy&quot;:1853331.08,&quot;strategyDd&quot;:-0.119131,&quot;spyDd&quot;:-0.040938},{&quot;date&quot;:&quot;2022-01-31&quot;,&quot;strategy&quot;:3491358.98,&quot;spy&quot;:1755584.2,&quot;strategyDd&quot;:-0.244663,&quot;spyDd&quot;:-0.097277},{&quot;date&quot;:&quot;2022-02-28&quot;,&quot;strategy&quot;:3167429.97,&quot;spy&quot;:1703764.52,&quot;strategyDd&quot;:-0.304334,&quot;spyDd&quot;:-0.116724},{&quot;date&quot;:&quot;2022-03-31&quot;,&quot;strategy&quot;:3352549.11,&quot;spy&quot;:1767809.94,&quot;strategyDd&quot;:-0.324548,&quot;spyDd&quot;:-0.128656},{&quot;date&quot;:&quot;2022-04-29&quot;,&quot;strategy&quot;:2748940.17,&quot;spy&quot;:1612650.86,&quot;strategyDd&quot;:-0.355362,&quot;spyDd&quot;:-0.134873},{&quot;date&quot;:&quot;2022-05-31&quot;,&quot;strategy&quot;:2513100.79,&quot;spy&quot;:1616291.08,&quot;strategyDd&quot;:-0.444255,&quot;spyDd&quot;:-0.182203},{&quot;date&quot;:&quot;2022-06-30&quot;,&quot;strategy&quot;:2307086.06,&quot;spy&quot;:1483011.18,&quot;strategyDd&quot;:-0.476568,&quot;spyDd&quot;:-0.2301},{&quot;date&quot;:&quot;2022-07-29&quot;,&quot;strategy&quot;:2521854.15,&quot;spy&quot;:1619577.83,&quot;strategyDd&quot;:-0.457543,&quot;spyDd&quot;:-0.203028},{&quot;date&quot;:&quot;2022-08-31&quot;,&quot;strategy&quot;:2376758.76,&quot;spy&quot;:1553495.43,&quot;strategyDd&quot;:-0.44264,&quot;spyDd&quot;:-0.166607},{&quot;date&quot;:&quot;2022-09-30&quot;,&quot;strategy&quot;:2158010.82,&quot;spy&quot;:1409881.59,&quot;strategyDd&quot;:-0.493937,&quot;spyDd&quot;:-0.243651},{&quot;date&quot;:&quot;2022-10-31&quot;,&quot;strategy&quot;:2328151.84,&quot;spy&quot;:1524470.46,&quot;strategyDd&quot;:-0.495398,&quot;spyDd&quot;:-0.244964},{&quot;date&quot;:&quot;2022-11-30&quot;,&quot;strategy&quot;:2456603.47,&quot;spy&quot;:1609217.69,&quot;strategyDd&quot;:-0.475644,&quot;spyDd&quot;:-0.214365},{&quot;date&quot;:&quot;2022-12-30&quot;,&quot;strategy&quot;:2311638.5,&quot;spy&quot;:1516481.67,&quot;strategyDd&quot;:-0.466103,&quot;spyDd&quot;:-0.198738},{&quot;date&quot;:&quot;2023-01-31&quot;,&quot;strategy&quot;:2458099.56,&quot;spy&quot;:1611849.11,&quot;strategyDd&quot;:-0.462436,&quot;spyDd&quot;:-0.192952},{&quot;date&quot;:&quot;2023-02-28&quot;,&quot;strategy&quot;:2400500.99,&quot;spy&quot;:1571322.94,&quot;strategyDd&quot;:-0.437072,&quot;spyDd&quot;:-0.157044},{&quot;date&quot;:&quot;2023-03-31&quot;,&quot;strategy&quot;:2492970.19,&quot;spy&quot;:1629584.11,&quot;strategyDd&quot;:-0.4524,&quot;spyDd&quot;:-0.180231},{&quot;date&quot;:&quot;2023-04-28&quot;,&quot;strategy&quot;:2532836.12,&quot;spy&quot;:1655616.71,&quot;strategyDd&quot;:-0.42267,&quot;spyDd&quot;:-0.13653},{&quot;date&quot;:&quot;2023-05-31&quot;,&quot;strategy&quot;:2535623.85,&quot;spy&quot;:1663259.11,&quot;strategyDd&quot;:-0.42113,&quot;spyDd&quot;:-0.134886},{&quot;date&quot;:&quot;2023-06-30&quot;,&quot;strategy&quot;:2827236.67,&quot;spy&quot;:1771038.22,&quot;strategyDd&quot;:-0.399545,&quot;spyDd&quot;:-0.099246},{&quot;date&quot;:&quot;2023-07-31&quot;,&quot;strategy&quot;:2995344.27,&quot;spy&quot;:1829010.19,&quot;strategyDd&quot;:-0.351393,&quot;spyDd&quot;:-0.060042},{&quot;date&quot;:&quot;2023-08-31&quot;,&quot;strategy&quot;:2882918.09,&quot;spy&quot;:1799284.72,&quot;strategyDd&quot;:-0.363256,&quot;spyDd&quot;:-0.064886},{&quot;date&quot;:&quot;2023-09-29&quot;,&quot;strategy&quot;:2605084.88,&quot;spy&quot;:1713936.72,&quot;strategyDd&quot;:-0.393274,&quot;spyDd&quot;:-0.083978},{&quot;date&quot;:&quot;2023-10-31&quot;,&quot;strategy&quot;:2487089.92,&quot;spy&quot;:1676729.44,&quot;strategyDd&quot;:-0.4272,&quot;spyDd&quot;:-0.116672},{&quot;date&quot;:&quot;2023-11-30&quot;,&quot;strategy&quot;:2851896.24,&quot;spy&quot;:1829888.13,&quot;strategyDd&quot;:-0.41044,&quot;spyDd&quot;:-0.090904},{&quot;date&quot;:&quot;2023-12-29&quot;,&quot;strategy&quot;:3093926.74,&quot;spy&quot;:1913432.54,&quot;strategyDd&quot;:-0.336745,&quot;spyDd&quot;:-0.02186},{&quot;date&quot;:&quot;2024-01-31&quot;,&quot;strategy&quot;:3170898.57,&quot;spy&quot;:1943906.86,&quot;strategyDd&quot;:-0.298318,&quot;spyDd&quot;:-0.01974},{&quot;date&quot;:&quot;2024-02-29&quot;,&quot;strategy&quot;:3477331.52,&quot;spy&quot;:2045353.2,&quot;strategyDd&quot;:-0.237952,&quot;spyDd&quot;:-0.014206},{&quot;date&quot;:&quot;2024-03-28&quot;,&quot;strategy&quot;:3767977.8,&quot;spy&quot;:2112240.25,&quot;strategyDd&quot;:-0.190239,&quot;spyDd&quot;:-0.011056},{&quot;date&quot;:&quot;2024-04-30&quot;,&quot;strategy&quot;:3288306.01,&quot;spy&quot;:2027075.51,&quot;strategyDd&quot;:-0.237585,&quot;spyDd&quot;:-0.053539},{&quot;date&quot;:&quot;2024-05-31&quot;,&quot;strategy&quot;:3645917.78,&quot;spy&quot;:2129604.31,&quot;strategyDd&quot;:-0.233746,&quot;spyDd&quot;:-0.043619},{&quot;date&quot;:&quot;2024-06-28&quot;,&quot;strategy&quot;:3986029.92,&quot;spy&quot;:2204737.21,&quot;strategyDd&quot;:-0.143563,&quot;spyDd&quot;:-0.007291},{&quot;date&quot;:&quot;2024-07-31&quot;,&quot;strategy&quot;:4062494.58,&quot;spy&quot;:2231434.62,&quot;strategyDd&quot;:-0.13293,&quot;spyDd&quot;:-0.046826},{&quot;date&quot;:&quot;2024-08-30&quot;,&quot;strategy&quot;:4176030.84,&quot;spy&quot;:2283573.48,&quot;strategyDd&quot;:-0.233238,&quot;spyDd&quot;:-0.084056},{&quot;date&quot;:&quot;2024-09-30&quot;,&quot;strategy&quot;:4375770.07,&quot;spy&quot;:2331538.67,&quot;strategyDd&quot;:-0.164624,&quot;spyDd&quot;:-0.043373},{&quot;date&quot;:&quot;2024-10-31&quot;,&quot;strategy&quot;:4211777.77,&quot;spy&quot;:2310733.09,&quot;strategyDd&quot;:-0.082239,&quot;spyDd&quot;:-0.027284},{&quot;date&quot;:&quot;2024-11-29&quot;,&quot;strategy&quot;:4925022.06,&quot;spy&quot;:2448530.28,&quot;strategyDd&quot;:-0.077817,&quot;spyDd&quot;:-0.025283},{&quot;date&quot;:&quot;2024-12-31&quot;,&quot;strategy&quot;:4525689.69,&quot;spy&quot;:2389617.97,&quot;strategyDd&quot;:-0.106413,&quot;spyDd&quot;:-0.035719},{&quot;date&quot;:&quot;2025-01-31&quot;,&quot;strategy&quot;:4816114.31,&quot;spy&quot;:2453794.63,&quot;strategyDd&quot;:-0.129927,&quot;spyDd&quot;:-0.041734},{&quot;date&quot;:&quot;2025-02-28&quot;,&quot;strategy&quot;:4594579.75,&quot;spy&quot;:2422644.36,&quot;strategyDd&quot;:-0.127149,&quot;spyDd&quot;:-0.045486},{&quot;date&quot;:&quot;2025-03-31&quot;,&quot;strategy&quot;:3812899.6,&quot;spy&quot;:2287656.54,&quot;strategyDd&quot;:-0.258473,&quot;spyDd&quot;:-0.100354},{&quot;date&quot;:&quot;2025-04-30&quot;,&quot;strategy&quot;:3236648.93,&quot;spy&quot;:2267822.17,&quot;strategyDd&quot;:-0.42384,&quot;spyDd&quot;:-0.187552},{&quot;date&quot;:&quot;2025-05-30&quot;,&quot;strategy&quot;:3626311.42,&quot;spy&quot;:2410343.31,&quot;strategyDd&quot;:-0.349323,&quot;spyDd&quot;:-0.086111},{&quot;date&quot;:&quot;2025-06-30&quot;,&quot;strategy&quot;:3977647.09,&quot;spy&quot;:2534201.51,&quot;strategyDd&quot;:-0.273269,&quot;spyDd&quot;:-0.03008},{&quot;date&quot;:&quot;2025-07-31&quot;,&quot;strategy&quot;:4110044.57,&quot;spy&quot;:2592568.09,&quot;strategyDd&quot;:-0.212431,&quot;spyDd&quot;:-0.007996},{&quot;date&quot;:&quot;2025-08-29&quot;,&quot;strategy&quot;:4244884.77,&quot;spy&quot;:2645766.51,&quot;strategyDd&quot;:-0.224281,&quot;spyDd&quot;:-0.024141},{&quot;date&quot;:&quot;2025-09-30&quot;,&quot;strategy&quot;:4657076.88,&quot;spy&quot;:2740009.6,&quot;strategyDd&quot;:-0.17741,&quot;spyDd&quot;:-0.01333},{&quot;date&quot;:&quot;2025-10-31&quot;,&quot;strategy&quot;:4924985.57,&quot;spy&quot;:2805324.03,&quot;strategyDd&quot;:-0.133517,&quot;spyDd&quot;:-0.029847},{&quot;date&quot;:&quot;2025-11-28&quot;,&quot;strategy&quot;:4893394.41,&quot;spy&quot;:2810794.68,&quot;strategyDd&quot;:-0.1498,&quot;spyDd&quot;:-0.050714},{&quot;date&quot;:&quot;2025-12-31&quot;,&quot;strategy&quot;:4855725.27,&quot;spy&quot;:2813036.3,&quot;strategyDd&quot;:-0.08416,&quot;spyDd&quot;:-0.025785},{&quot;date&quot;:&quot;2026-01-30&quot;,&quot;strategy&quot;:5020567.33,&quot;spy&quot;:2854494.06,&quot;strategyDd&quot;:-0.075126,&quot;spyDd&quot;:-0.025289},{&quot;date&quot;:&quot;2026-02-27&quot;,&quot;strategy&quot;:4842921.99,&quot;spy&quot;:2829825.64,&quot;strategyDd&quot;:-0.079364,&quot;spyDd&quot;:-0.025694},{&quot;date&quot;:&quot;2026-03-31&quot;,&quot;strategy&quot;:4089810.27,&quot;spy&quot;:2690090.08,&quot;strategyDd&quot;:-0.243929,&quot;spyDd&quot;:-0.08885},{&quot;date&quot;:&quot;2026-04-30&quot;,&quot;strategy&quot;:5378225.0,&quot;spy&quot;:2972691.27,&quot;strategyDd&quot;:-0.189386,&quot;spyDd&quot;:-0.0553},{&quot;date&quot;:&quot;2026-05-29&quot;,&quot;strategy&quot;:6190653.48,&quot;spy&quot;:3129131.39,&quot;strategyDd&quot;:-0.057415,&quot;spyDd&quot;:-0.0193},{&quot;date&quot;:&quot;2026-06-30&quot;,&quot;strategy&quot;:5909698.76,&quot;spy&quot;:3096924.59,&quot;strategyDd&quot;:-0.130758,&quot;spyDd&quot;:-0.044947},{&quot;date&quot;:&quot;2026-07-31&quot;,&quot;strategy&quot;:5848665.22,&quot;spy&quot;:3098002.88,&quot;strategyDd&quot;:-0.127359,&quot;spyDd&quot;:-0.037167},{&quot;date&quot;:&quot;2026-08-24&quot;,&quot;strategy&quot;:6178113.24,&quot;spy&quot;:3165185.58,&quot;strategyDd&quot;:-0.058997,&quot;spyDd&quot;:-0.019643}];
+  const parseDate = d3.utcParse(&quot;%Y-%m-%d&quot;);
+  data.forEach(d =&gt; { d.date = parseDate(d.date); });
+  const series = [
+    { id: &quot;strategy&quot;, label: &quot;Quality sunset · $6.18m&quot;, wealth: &quot;strategy&quot;, drawdown: &quot;strategyDd&quot;, color: &quot;var(--viz-series-1)&quot;, visible: true },
+    { id: &quot;spy&quot;, label: &quot;SPY 1× · $3.17m&quot;, wealth: &quot;spy&quot;, drawdown: &quot;spyDd&quot;, color: &quot;var(--viz-series-2)&quot;, visible: true }
+  ];
+
+  const legend = d3.select(root.querySelector(&quot;.legend&quot;));
+  const buttons = legend.selectAll(&quot;button&quot;).data(series).join(&quot;button&quot;)
+    .attr(&quot;type&quot;, &quot;button&quot;).attr(&quot;aria-pressed&quot;, &quot;true&quot;)
+    .on(&quot;click&quot;, function(event, d) {
+      d.visible = !d.visible;
+      d3.select(this).attr(&quot;aria-pressed&quot;, String(d.visible));
+      drawAll();
+    });
+  buttons.append(&quot;span&quot;).attr(&quot;class&quot;, &quot;swatch&quot;).style(&quot;background&quot;, d =&gt; d.color);
+  buttons.append(&quot;span&quot;).text(d =&gt; d.label);
+
+  const formatMoney = value =&gt; value &gt;= 1e6
+    ? `$${(value / 1e6).toFixed(2)}m`
+    : `$${d3.format(&quot;,.0f&quot;)(value)}`;
+  const bisect = d3.bisector(d =&gt; d.date).center;
+
+  function interpolated(key, date) {
+    const i = bisect(data, date);
+    const a = data[Math.max(0, Math.min(data.length - 1, i))];
+    const b = data[Math.max(0, Math.min(data.length - 1, date &lt; a.date ? i - 1 : i + 1))];
+    if (!b || +a.date === +b.date) return a[key];
+    const left = a.date &lt; b.date ? a : b;
+    const right = a.date &lt; b.date ? b : a;
+    const t = Math.max(0, Math.min(1, (date - left.date) / (right.date - left.date)));
+    return left[key] + (right[key] - left[key]) * t;
+  }
+
+  function showTooltip(event, date, key, valueFormatter) {
+    const visible = series.filter(s =&gt; s.visible);
+    tooltip.innerHTML = `&lt;strong&gt;${d3.utcFormat(&quot;%b %Y&quot;)(date)}&lt;/strong&gt;` + visible.map(s =&gt; {
+      const value = interpolated(s[key], date);
+      return `&lt;div class=&quot;tooltip-row&quot;&gt;&lt;span class=&quot;tooltip-dot&quot; style=&quot;background:${s.color}&quot;&gt;&lt;/span&gt;&lt;span&gt;${s.id === &quot;strategy&quot; ? &quot;Strategy&quot; : &quot;SPY 1×&quot;}&lt;/span&gt;&lt;strong&gt;${valueFormatter(value)}&lt;/strong&gt;&lt;/div&gt;`;
+    }).join(&quot;&quot;);
+    tooltip.style.display = &quot;block&quot;;
+    tooltip.setAttribute(&quot;aria-hidden&quot;, &quot;false&quot;);
+    const bounds = root.getBoundingClientRect();
+    const left = Math.min(event.clientX - bounds.left + 12, bounds.width - tooltip.offsetWidth - 4);
+    const top = Math.max(0, event.clientY - bounds.top - tooltip.offsetHeight - 12);
+    tooltip.style.left = `${Math.max(4, left)}px`;
+    tooltip.style.top = `${top}px`;
+  }
+  function hideTooltip() {
+    tooltip.style.display = &quot;none&quot;;
+    tooltip.setAttribute(&quot;aria-hidden&quot;, &quot;true&quot;);
+  }
+
+  function drawChart(kind) {
+    const holder = root.querySelector(`[data-chart=&quot;${kind}&quot;]`);
+    holder.replaceChildren();
+    const width = Math.max(320, Math.round(holder.getBoundingClientRect().width));
+    const height = kind === &quot;wealth&quot; ? 300 : 250;
+    const margin = { top: 28, right: 18, bottom: 45, left: width &lt; 500 ? 66 : 78 };
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+    const x = d3.scaleUtc()
+      .domain(d3.extent(data, d =&gt; d.date))
+      .range([margin.left, margin.left + innerWidth]);
+    const keys = kind === &quot;wealth&quot; ? series.map(s =&gt; s.wealth) : series.map(s =&gt; s.drawdown);
+    const values = data.flatMap(d =&gt; keys.map(key =&gt; d[key]));
+    const extent = d3.extent(values);
+    const y = kind === &quot;wealth&quot;
+      ? d3.scaleLog().domain([extent[0] / 1.12, extent[1] * 1.12]).range([margin.top + innerHeight, margin.top])
+      : d3.scaleLinear().domain([extent[0] * 1.05, Math.max(0, extent[1])]).range([margin.top + innerHeight, margin.top]);
+    const svg = d3.select(holder).append(&quot;svg&quot;)
+      .attr(&quot;viewBox&quot;, `0 0 ${width} ${height}`)
+      .attr(&quot;role&quot;, &quot;img&quot;)
+      .attr(&quot;aria-label&quot;, kind === &quot;wealth&quot; ? &quot;Portfolio value over time&quot; : &quot;Portfolio drawdown over time&quot;);
+    const clipId = `strategy-spy-${kind}-clip`;
+    svg.append(&quot;defs&quot;).append(&quot;clipPath&quot;).attr(&quot;id&quot;, clipId).append(&quot;rect&quot;)
+      .attr(&quot;x&quot;, margin.left).attr(&quot;y&quot;, margin.top).attr(&quot;width&quot;, innerWidth).attr(&quot;height&quot;, innerHeight);
+    svg.append(&quot;rect&quot;).attr(&quot;data-chart-frame&quot;, &quot;&quot;)
+      .attr(&quot;x&quot;, margin.left).attr(&quot;y&quot;, margin.top).attr(&quot;width&quot;, innerWidth).attr(&quot;height&quot;, innerHeight);
+    svg.append(&quot;g&quot;).attr(&quot;class&quot;, &quot;axis&quot;)
+      .attr(&quot;transform&quot;, `translate(0,${margin.top + innerHeight})`)
+      .call(d3.axisBottom(x).ticks(width &lt; 500 ? 4 : 7).tickFormat(d3.utcFormat(&quot;%Y&quot;)));
+    const logTicks = kind === &quot;wealth&quot;
+      ? d3.range(Math.floor(Math.log10(y.domain()[0])), Math.ceil(Math.log10(y.domain()[1])) + 1)
+          .flatMap(power =&gt; [1, 2, 5].map(multiplier =&gt; multiplier * 10 ** power))
+          .filter(value =&gt; value &gt;= y.domain()[0] &amp;&amp; value &lt;= y.domain()[1])
+      : [];
+    const yAxis = kind === &quot;wealth&quot;
+      ? d3.axisLeft(y).tickValues(logTicks).tickFormat(formatMoney)
+      : d3.axisLeft(y).ticks(6).tickFormat(d =&gt; `${Math.round(d * 100)}%`);
+    svg.append(&quot;g&quot;).attr(&quot;class&quot;, &quot;axis&quot;).attr(&quot;transform&quot;, `translate(${margin.left},0)`).call(yAxis);
+    svg.append(&quot;text&quot;).attr(&quot;class&quot;, &quot;axis-title&quot;).attr(&quot;data-axis&quot;, &quot;x&quot;)
+      .attr(&quot;x&quot;, margin.left + innerWidth / 2).attr(&quot;y&quot;, height - 5)
+      .attr(&quot;text-anchor&quot;, &quot;middle&quot;).text(&quot;Date&quot;);
+    svg.append(&quot;text&quot;).attr(&quot;class&quot;, &quot;axis-title&quot;).attr(&quot;data-axis&quot;, &quot;y&quot;)
+      .attr(&quot;x&quot;, margin.left).attr(&quot;y&quot;, 15).attr(&quot;text-anchor&quot;, &quot;start&quot;)
+      .text(kind === &quot;wealth&quot; ? &quot;Portfolio value (USD)&quot; : &quot;Drawdown (%)&quot;);
+    const line = key =&gt; d3.line().x(d =&gt; x(d.date)).y(d =&gt; y(d[key]))(data);
+    series.forEach(s =&gt; {
+      const key = kind === &quot;wealth&quot; ? s.wealth : s.drawdown;
+      svg.append(&quot;path&quot;).attr(&quot;class&quot;, `series-line series-${s.id}`)
+        .attr(&quot;clip-path&quot;, `url(#${clipId})`).attr(&quot;stroke&quot;, s.color)
+        .attr(&quot;d&quot;, line(key)).style(&quot;display&quot;, s.visible ? null : &quot;none&quot;);
+    });
+    const guide = svg.append(&quot;line&quot;).attr(&quot;class&quot;, &quot;hover-guide&quot;)
+      .attr(&quot;data-chart-hover-guide&quot;, &quot;&quot;).attr(&quot;y1&quot;, margin.top)
+      .attr(&quot;y2&quot;, margin.top + innerHeight).style(&quot;display&quot;, &quot;none&quot;);
+    const markers = svg.selectAll(&quot;circle.hover-marker&quot;).data(series).join(&quot;circle&quot;)
+      .attr(&quot;class&quot;, &quot;hover-marker&quot;).attr(&quot;data-chart-hover-marker&quot;, &quot;&quot;)
+      .attr(&quot;r&quot;, 4).attr(&quot;fill&quot;, d =&gt; d.color).style(&quot;display&quot;, &quot;none&quot;);
+    svg.append(&quot;rect&quot;).attr(&quot;data-chart-hit&quot;, &quot;&quot;)
+      .attr(&quot;data-chart-hover-overlay&quot;, &quot;cross-series&quot;)
+      .attr(&quot;x&quot;, margin.left).attr(&quot;y&quot;, margin.top).attr(&quot;width&quot;, innerWidth)
+      .attr(&quot;height&quot;, innerHeight).attr(&quot;fill&quot;, &quot;transparent&quot;)
+      .on(&quot;pointermove&quot;, function(event) {
+        const px = Math.max(margin.left, Math.min(margin.left + innerWidth, d3.pointer(event, svg.node())[0]));
+        const date = x.invert(px);
+        guide.attr(&quot;x1&quot;, px).attr(&quot;x2&quot;, px).style(&quot;display&quot;, null);
+        markers.each(function(s) {
+          const key = kind === &quot;wealth&quot; ? s.wealth : s.drawdown;
+          d3.select(this).attr(&quot;cx&quot;, px).attr(&quot;cy&quot;, y(interpolated(key, date)))
+            .style(&quot;display&quot;, s.visible ? null : &quot;none&quot;);
+        });
+        showTooltip(event, date, kind === &quot;wealth&quot; ? &quot;wealth&quot; : &quot;drawdown&quot;,
+          kind === &quot;wealth&quot; ? formatMoney : value =&gt; `${(value * 100).toFixed(1)}%`);
+      })
+      .on(&quot;pointerleave&quot;, () =&gt; {
+        guide.style(&quot;display&quot;, &quot;none&quot;);
+        markers.style(&quot;display&quot;, &quot;none&quot;);
+        hideTooltip();
+      });
+  }
+
+  function drawAll() { drawChart(&quot;wealth&quot;); drawChart(&quot;drawdown&quot;); }
+  let lastWidth = 0;
+  drawAll();
+  new ResizeObserver(() =&gt; {
+    const width = Math.round(root.getBoundingClientRect().width);
+    if (width !== lastWidth) { lastWidth = width; drawAll(); }
+  }).observe(root);
+})();
+&lt;/script&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+
+  const getTrigger = (target) =&gt;
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest(&quot;[data-tooltip]&quot;)
+      : null;
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handleLeave = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    document.removeEventListener(&quot;pointerover&quot;, handlePointerOpen);
+    document.removeEventListener(&quot;pointerout&quot;, handleLeave);
+    document.removeEventListener(&quot;focusin&quot;, handleFocusIn);
+    document.removeEventListener(&quot;focusout&quot;, handleLeave);
+    document.removeEventListener(&quot;keydown&quot;, handleKeyDown);
+    document.removeEventListener(&quot;contextmenu&quot;, handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener(&quot;pointerover&quot;, handlePointerOpen);
+  document.addEventListener(&quot;pointerout&quot;, handleLeave);
+  document.addEventListener(&quot;focusin&quot;, handleFocusIn);
+  document.addEventListener(&quot;focusout&quot;, handleLeave);
+  document.addEventListener(&quot;keydown&quot;, handleKeyDown);
+  document.addEventListener(&quot;contextmenu&quot;, handleContextMenu);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+</body>
+</html>

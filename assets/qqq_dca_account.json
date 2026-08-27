@@ -1,0 +1,7 @@
+{
+  "name": "QQQ core",
+  "entry_date": "2026-08-24",
+  "initial_investment": 10000.0,
+  "core_leverage": 1.0,
+  "distribution_policy": "reinvest"
+}
