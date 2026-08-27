@@ -103,6 +103,42 @@ def parse_args(argv=None):
     return parser.parse_args(argv)
 
 
+def _pid_alive(pid: int) -> bool:
+    """Whether a process id is still running.
+
+    ``os.kill(pid, 0)`` is the usual POSIX trick and it is not reliable on
+    Windows: for a *live* process it can raise WinError 87, which CPython then
+    re-raises as SystemError rather than OSError. Catching only OSError there
+    would read a running download as dead and let a second one start. Windows
+    gets a real handle query instead.
+    """
+    if sys.platform == "win32":
+        import ctypes
+        SYNCHRONIZE = 0x00100000
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        k = ctypes.windll.kernel32
+        handle = k.OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION,
+                               False, pid)
+        if not handle:
+            return False
+        try:
+            code = ctypes.c_ulong()
+            if k.GetExitCodeProcess(handle, ctypes.byref(code)):
+                return code.value == 259          # STILL_ACTIVE
+            return True
+        finally:
+            k.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True                                # exists, not ours to signal
+    except (OSError, SystemError):
+        return False
+    return True
+
+
 def acquire_lock(db_path: pathlib.Path):
     """Refuse to start when another copy of this script is already downloading.
 
@@ -120,11 +156,7 @@ def acquire_lock(db_path: pathlib.Path):
         except (ValueError, OSError):
             pid = None
         if pid is not None:
-            try:
-                os.kill(pid, 0)                 # signal 0 only tests existence
-            except OSError:
-                pass                            # stale lock, previous run died
-            else:
+            if _pid_alive(pid):
                 raise SystemExit(
                     f"error: another download is already running (pid {pid}). "
                     f"Stop it first, or remove {lock} if that pid is dead.")
